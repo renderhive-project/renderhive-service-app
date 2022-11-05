@@ -28,11 +28,18 @@ services. This also includes a crypto wallet with very basic functionality.
 */
 
 import (
+
+  // standard
   "fmt"
   "os"
 
+  // external
   "github.com/joho/godotenv"
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+
+  // internal
+  "rendera/logger"
+
 )
 
 // empty structure to hold all methods
@@ -49,9 +56,10 @@ type HederaServices struct {}
 // TESTNET INTEGRATIONS
 // #############################################################################
 // Initialize everything required for communication with the Hedera Testnet
-func (testnet *HederaTestnet) Init() error {
+func (testnet *HederaTestnet) Init() (error) {
 
-    fmt.Println("[HEDERA] Initializing the testnet account ...")
+    // log information
+    logger.RenderaLogger.Package["hedera"].Debug().Msg("Initializing the testnet operator account:")
 
     // Loads the .env file and throws an error if it cannot load the variables
     // from that file correctly
@@ -74,6 +82,46 @@ func (testnet *HederaTestnet) Init() error {
     // Create your testnet client
     testnet.Client = hederasdk.ClientForTestnet()
     testnet.Client.SetOperator(testnet.AccountID, testnet.PrivateKey)
+
+    // log the testnet account ID and private key to the console
+    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v\n", testnet.AccountID))
+    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Private key: %v\n", testnet.PrivateKey))
+
+    return nil
+}
+
+// Initialize everything required for communication with the Hedera Testnet
+func (testnet *HederaTestnet) CreateAccount() error {
+
+    // log information
+    logger.RenderaLogger.Package["hedera"].Debug().Msg("Create a new Hedera account on testnet:")
+
+    // Generate a new private key for a the new account
+    newAccountPrivateKey, err := hederasdk.PrivateKeyGenerateEd25519()
+    if err != nil {
+      return err
+    }
+    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Private key: %v", newAccountPrivateKey))
+
+    // get the public key
+    newAccountPublicKey := newAccountPrivateKey.PublicKey()
+    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Public key: %v", newAccountPublicKey))
+
+    // Create new account, assign the public key, and transfer 1000 hBar to it
+    newAccount, err := hederasdk.NewAccountCreateTransaction().
+        SetKey(newAccountPublicKey).
+        SetInitialBalance(hederasdk.HbarFrom(1000000, hederasdk.HbarUnits.Tinybar)).
+        Execute(testnet.Client)
+
+    // Request the receipt of the account creation transaction
+    receipt, err := newAccount.GetReceipt(testnet.Client)
+    if err != nil {
+      return err
+    }
+
+    // Get the new account ID from the receipt
+    newAccountId := *receipt.AccountID
+    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] AccountID: %v", newAccountId))
 
     return nil
 }

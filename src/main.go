@@ -21,9 +21,9 @@
 package main
 
 import (
-  "fmt"
   "os"
 
+  "rendera/logger"
   "rendera/cli"
   "rendera/hedera"
 )
@@ -35,28 +35,55 @@ const COMPILER_HEDERA_TESTNET = true
 // MAIN LOOP
 // #############################################################################
 func main () {
+
+  // prepare end of program
   defer os.Exit(0)
 
-  fmt.Println("[INFO] Rendera service started.")
+  // error value
+  var err error
 
+  // LOGGER SYSTEM
+  // ***************************************************************************
+  // initialize the logger system
+  logger.Init()
+
+  // add the package loggers
+  logger.AddPackageLogger("node")
+  logger.AddPackageLogger("hedera")
+  logger.AddPackageLogger("ipfs")
+
+  // log the start of the rendera service
+  logger.RenderaLogger.Main.Info().Msg("Rendera service started.")
+
+  // make sure the end of the program is logged
+  defer logger.RenderaLogger.Main.Info().Msg("Rendera service stopped.")
+
+
+  // COMMAND LINE INTERFACE
+  // ***************************************************************************
+  // start the command line interface tool
+  cli_tool := cli.CommandLine{}
+  cli_tool.Start()
+
+
+
+  // HEDERA TESTNET
+  // ***************************************************************************
   // initialize the Hedera testnet, if required
   if COMPILER_HEDERA_TESTNET {
     hederaTestnet := hedera.HederaTestnet{}
-    err := hederaTestnet.Init()
+    err = hederaTestnet.Init()
     if err != nil {
-      fmt.Println("[HEDERA]", "ERROR:", err)
+      logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
 
-    // Print the testnet account ID and private key to the console
-    fmt.Printf("[HEDERA] The account ID is: %v\n", hederaTestnet.AccountID)
-    fmt.Printf("[HEDERA] The private key is: %v\n", hederaTestnet.PrivateKey)
-
+    // create a new account
+    err = hederaTestnet.CreateAccount()
+    if err != nil {
+      logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+      os.Exit(1)
+    }
   }
 
-  // start the command line interface tool
-	cli_tool := cli.CommandLine{}
-	cli_tool.Start()
-
-  fmt.Println("[INFO] Rendera service stopped.")
 }
