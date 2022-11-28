@@ -31,6 +31,17 @@ types are:
 
 */
 
+
+// Rendera account
+type RenderaAccount struct {
+
+  ID int
+  Username string
+
+  Wallet *HederaAccount
+
+}
+
 type Node struct {
   id int
   type sting

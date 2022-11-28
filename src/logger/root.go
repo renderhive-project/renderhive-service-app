@@ -58,7 +58,8 @@ var RenderaLogger = RenderaLoggers{}
 // initialize the logger package
 func Init() {
 
-  // set the global logger level
+  // set global logger level
+  // TODO: This can interfere with other packages that use zerolog
   zerolog.SetGlobalLevel(COMPILER_RENDERA_LOGGER_LEVEL)
 
   // create a file writer with a log file in the log directory
@@ -90,7 +91,7 @@ func Init() {
   }
 
   // create the main logger with a multi-output: to a log file andthe console
-  mainLogger := zerolog.New(zerolog.MultiLevelWriter(fileWriter, consoleWriter)).With().Timestamp().Caller().Logger()
+  mainLogger := zerolog.New(zerolog.MultiLevelWriter(fileWriter, consoleWriter)).Level(zerolog.DebugLevel).With().Timestamp().Caller().Str("module", "rendera").Logger()
   RenderaLogger.Main = &mainLogger
 
   fmt.Printf("The log file is allocated at %s\n", fileWriter.Name())
