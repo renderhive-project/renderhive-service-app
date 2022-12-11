@@ -36,7 +36,7 @@ type CommandLine struct {}
 
 func (cli *CommandLine) Help() {
 	fmt.Println("Usage:")
-	fmt.Println(" node command argument - commands for the rendera node")
+	fmt.Println(" node command argument - commands for the renderhive node")
 	fmt.Println(" ipfs command argument - commands for the internal IPFS node")
 	fmt.Println(" wallet command argument - commands for the internal wallet")
 }

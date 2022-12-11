@@ -23,7 +23,7 @@ package logger
 /*
 
 The logger package handles the logging of infos, debug, and error messages. It
-if mainly important for development and bug tracing capabilities of the Rendera
+if mainly important for development and bug tracing capabilities of the Renderhive
 Service app.
 
 */
@@ -44,30 +44,30 @@ import (
 )
 
 // compiler flags
-const COMPILER_RENDERA_LOGGER_LEVEL = zerolog.DebugLevel
+const COMPILER_RENDERHIVE_LOGGER_LEVEL = zerolog.DebugLevel
 
 // structure for the main and package loggers
-type RenderaLoggers struct {
+type RenderhiveLoggers struct {
     Main *zerolog.Logger
     Package map[string]*zerolog.Logger
 }
 
 // initialize the global logger
-var RenderaLogger = RenderaLoggers{}
+var RenderhiveLogger = RenderhiveLoggers{}
 
 // initialize the logger package
 func Init() {
 
   // set global logger level
   // TODO: This can interfere with other packages that use zerolog
-  zerolog.SetGlobalLevel(COMPILER_RENDERA_LOGGER_LEVEL)
+  zerolog.SetGlobalLevel(COMPILER_RENDERHIVE_LOGGER_LEVEL)
 
   // create a file writer with a log file in the log directory
   workingDirectory, err := os.Getwd()
   if err != nil {
     log.Error().Err(err).Msg("There was an error creating a temporary file four our log.")
   }
-  fileWriter, err := ioutil.TempFile(filepath.Join(workingDirectory, "tmp"), "rendera_service_*.log")
+  fileWriter, err := ioutil.TempFile(filepath.Join(workingDirectory, "tmp"), "renderhive_service_*.log")
   if err != nil {
     // Can we log an error before we have our logger? :)
     log.Error().Err(err).Msg("There was an error creating a temporary file four our log.")
@@ -91,13 +91,13 @@ func Init() {
   }
 
   // create the main logger with a multi-output: to a log file andthe console
-  mainLogger := zerolog.New(zerolog.MultiLevelWriter(fileWriter, consoleWriter)).Level(zerolog.DebugLevel).With().Timestamp().Caller().Str("module", "rendera").Logger()
-  RenderaLogger.Main = &mainLogger
+  mainLogger := zerolog.New(zerolog.MultiLevelWriter(fileWriter, consoleWriter)).Level(zerolog.DebugLevel).With().Timestamp().Caller().Str("module", "renderhive").Logger()
+  RenderhiveLogger.Main = &mainLogger
 
   fmt.Printf("The log file is allocated at %s\n", fileWriter.Name())
 
   // create the package logger map
-  RenderaLogger.Package = make(map[string]*zerolog.Logger)
+  RenderhiveLogger.Package = make(map[string]*zerolog.Logger)
 
 }
 
@@ -105,10 +105,10 @@ func Init() {
 func AddPackageLogger(name string) *zerolog.Logger {
 
   // create a new package logger
-  NewPackageLogger := RenderaLogger.Main.With().Str("package", name).Caller().Logger()
+  NewPackageLogger := RenderhiveLogger.Main.With().Str("package", name).Caller().Logger()
 
   // add a package logger to the global structure map
-  RenderaLogger.Package[name] = &NewPackageLogger
+  RenderhiveLogger.Package[name] = &NewPackageLogger
 
-  return RenderaLogger.Package[name]
+  return RenderhiveLogger.Package[name]
 }

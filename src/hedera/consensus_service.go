@@ -32,7 +32,7 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  "rendera/logger"
+  "renderhive/logger"
 
 )
 
@@ -81,7 +81,7 @@ func (topic *HederaTopic) New(m *HederaManager, adminKey interface{}) (*hederasd
     thisKey, ok := adminKey.(hederasdk.PrivateKey)
     if ok == true {
 
-        logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
+        logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
 
         // and sign the transaction with this key
         newTopicCreateTransaction = frozenTopicCreateTransaction.Sign(thisKey)
@@ -95,7 +95,7 @@ func (topic *HederaTopic) New(m *HederaManager, adminKey interface{}) (*hederasd
         // iterate through all keys
         for i, thisKey := range keyList {
 
-          logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
+          logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
 
           // and sign the transaction with each key
           newTopicCreateTransaction = frozenTopicCreateTransaction.Sign(thisKey)
@@ -123,7 +123,7 @@ func (topic *HederaTopic) New(m *HederaManager, adminKey interface{}) (*hederasd
   }
 
   // log the receipt status of the transaction
-  logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+  logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
 
   // get the topic ID from the transaction receipt
   topic.ID = *transactionReceipt.TopicID
@@ -175,7 +175,7 @@ func (topic *HederaTopic) Update(m *HederaManager, updatedInfo *hederasdk.TopicI
     thisKey, ok := oldAdminKey.(hederasdk.PrivateKey)
     if ok == true {
 
-        logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
+        logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
 
         // and sign the transaction with this key
         newTopicUpdateTransaction = frozenTopicUpdateTransaction.Sign(thisKey)
@@ -189,7 +189,7 @@ func (topic *HederaTopic) Update(m *HederaManager, updatedInfo *hederasdk.TopicI
         // iterate through all keys
         for i, thisKey := range keyList {
 
-          logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
+          logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
 
           // and sign the transaction with each key
           newTopicUpdateTransaction = frozenTopicUpdateTransaction.Sign(thisKey)
@@ -215,7 +215,7 @@ func (topic *HederaTopic) Update(m *HederaManager, updatedInfo *hederasdk.TopicI
   }
 
   // log the receipt status of the transaction
-  logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+  logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
 
   // free the pointer
   topic = nil//&HederaTopic{}
@@ -246,7 +246,7 @@ func (topic *HederaTopic) Delete(m *HederaManager, adminKey interface{}) (*heder
     thisKey, ok := adminKey.(hederasdk.PrivateKey)
     if ok == true {
 
-        logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
+        logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
 
         // and sign the transaction with this key
         newTopicDeleteTransaction = newTopicDeleteTransaction.Sign(thisKey)
@@ -260,7 +260,7 @@ func (topic *HederaTopic) Delete(m *HederaManager, adminKey interface{}) (*heder
         // iterate through all keys
         for i, thisKey := range keyList {
 
-          logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
+          logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
 
           // and sign the transaction with each key
           newTopicDeleteTransaction = newTopicDeleteTransaction.Sign(thisKey)
@@ -286,7 +286,7 @@ func (topic *HederaTopic) Delete(m *HederaManager, adminKey interface{}) (*heder
   }
 
   // log the receipt status of the transaction
-  logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+  logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
 
   // free the pointer
   topic = nil//&HederaTopic{}
@@ -336,7 +336,7 @@ func (topic *HederaTopic) SubmitMessage(m *HederaManager, message string, submit
       thisKey, ok := submitKey.(hederasdk.PrivateKey)
       if ok == true {
 
-          logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
+          logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
 
           // and sign the transaction with this key
           newScheduledTransaction = newScheduledTransaction.Sign(thisKey)
@@ -350,7 +350,7 @@ func (topic *HederaTopic) SubmitMessage(m *HederaManager, message string, submit
           // iterate through all keys
           for i, thisKey := range keyList {
 
-            logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
+            logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
 
             // and sign the transaction with each key
             newScheduledTransaction = newScheduledTransaction.Sign(thisKey)
@@ -381,7 +381,7 @@ func (topic *HederaTopic) SubmitMessage(m *HederaManager, message string, submit
         thisKey, ok := submitKey.(hederasdk.PrivateKey)
         if ok == true {
 
-            logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
+            logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
 
             // and sign the transaction with this key
             newTopicMessageSubmitTransaction = newTopicMessageSubmitTransaction.Sign(thisKey)
@@ -395,7 +395,7 @@ func (topic *HederaTopic) SubmitMessage(m *HederaManager, message string, submit
             // iterate through all keys
             for i, thisKey := range keyList {
 
-              logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
+              logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
 
               // and sign the transaction with each key
               newTopicMessageSubmitTransaction = newTopicMessageSubmitTransaction.Sign(thisKey)
@@ -423,9 +423,9 @@ func (topic *HederaTopic) SubmitMessage(m *HederaManager, message string, submit
   }
 
   // log the receipt status of the transaction
-  logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+  logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
   if scheduleTxn == true {
-      logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Schedule ID: %v", transactionReceipt.ScheduleID))
+      logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Schedule ID: %v", transactionReceipt.ScheduleID))
   }
 
   return &transactionReceipt, err
@@ -469,7 +469,7 @@ func (topic *HederaTopic) SignSubmitMessage(m *HederaManager, scheduleID hederas
   }
 
   // log the receipt status of the transaction
-  logger.RenderaLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+  logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
 
   return &transactionReceipt, err
 
@@ -514,7 +514,7 @@ func (topic *HederaTopic) Subscribe(m *HederaManager, startTime *time.Time) erro
     // subscribe to the topic
     _, err = newTopicMessageQuery.Subscribe(m.NetworkClient, func(message hederasdk.TopicMessage) {
 
-      logger.RenderaLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
     })
     if err != nil {

@@ -17,7 +17,7 @@
 // ************************** END LICENSE BLOCK ********************************
 // */
 
-module rendera
+module renderhive
 
 go 1.16
 

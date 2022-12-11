@@ -36,7 +36,7 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  "rendera/logger"
+  "renderhive/logger"
 
 )
 
@@ -72,35 +72,35 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
     case NETWORK_TYPE_TESTNET:
 
         // log information
-        logger.RenderaLogger.Package["hedera"].Info().Msg("Initializing on Hedera Testnet:")
+        logger.RenderhiveLogger.Package["hedera"].Info().Msg("Initializing on Hedera Testnet:")
 
         // Create your testnet client
         NetworkClient := hederasdk.ClientForTestnet()
 
         // get the testnet account information from file
-        logger.RenderaLogger.Package["hedera"].Info().Msg(" [#] Load account information from encrypted file.")
+        logger.RenderhiveLogger.Package["hedera"].Info().Msg(" [#] Load account information from encrypted file.")
         Account.FromFile(AccountFilePath)
 
         // create the Hedera manager
         m := HederaManager{NetworkType, NetworkClient, Account}
 
         // log the testnet account ID and private key to the console
-        logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", Account.AccountID))
-        // logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Private key: %v", Account.PrivateKey))
-        // logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Public key: %v", Account.PublicKey))
+        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", Account.AccountID))
+        // logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Private key: %v", Account.PrivateKey))
+        // logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Public key: %v", Account.PublicKey))
 
         // set theis account as the operator
         NetworkClient.SetOperator(Account.AccountID, Account.PrivateKey)
 
         // query the complete account information from the Hedera network
         queryCost, err := Account.QueryInfo(&m)
-        logger.RenderaLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
-        logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
+        logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
+        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
 
         // query the account balance from the Hedera network
         queryCost, err = Account.QueryBalance(&m)
-        logger.RenderaLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
-        logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
+        logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
+        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
 
         // return the initialized Hedera manager
         return m, err
@@ -108,7 +108,7 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
     case NETWORK_TYPE_PREVIEWNET:
 
         // log information
-        logger.RenderaLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Previewnet:")
+        logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Previewnet:")
 
         // return the initialized Hedera manager
         return HederaManager{}, err
@@ -116,7 +116,7 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
     case NETWORK_TYPE_MAINNET:
 
         // log information
-        logger.RenderaLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Mainnet:")
+        logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Mainnet:")
 
         // return the initialized Hedera manager
         return HederaManager{}, err

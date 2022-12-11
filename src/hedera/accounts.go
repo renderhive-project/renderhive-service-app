@@ -31,7 +31,7 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  "rendera/logger"
+  "renderhive/logger"
 
 )
 
@@ -64,18 +64,18 @@ func (h *HederaAccount) New(m *HederaManager, InitialBalance float64) (*hederasd
     var err error
 
     // log information
-    logger.RenderaLogger.Package["hedera"].Debug().Msg("Create a new Hedera account on testnet:")
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Create a new Hedera account on testnet:")
 
     // Generate a new private key for a the new account
     h.PrivateKey, err = hederasdk.PrivateKeyGenerateEd25519()
     if err != nil {
       return nil, err
     }
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Private key: %v", h.PrivateKey))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Private key: %v", h.PrivateKey))
 
     // get the public key
     h.PublicKey = h.PrivateKey.PublicKey()
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Public key: %v", h.PublicKey))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Public key: %v", h.PublicKey))
 
     // Create new account, assign the public key, and transfer 1000 hBar to it
     newAccountTransaction, err := hederasdk.NewAccountCreateTransaction().
@@ -91,7 +91,7 @@ func (h *HederaAccount) New(m *HederaManager, InitialBalance float64) (*hederasd
 
     // Get the new account ID from the receipt
     h.AccountID = *transactionReceipt.AccountID
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] AccountID: %v", h.AccountID))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] AccountID: %v", h.AccountID))
 
     return &transactionReceipt, nil
 }

@@ -22,18 +22,18 @@ package node
 
 /*
 
-The node package handles the all the functionality of the Rendera nodes. The node
+The node package handles all the functionality of the Renderhive nodes. The node
 types are:
 
     (1) Render nodes
     (2) Client nodes
-    (3) Mediator nodes
+    (3) Mediator nodes (not implemented)
 
 */
 
 
-// Rendera account
-type RenderaAccount struct {
+// Renderhive account
+type RenderhiveAccount struct {
 
   ID int
   Username string

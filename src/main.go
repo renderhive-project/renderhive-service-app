@@ -31,9 +31,9 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  "rendera/logger"
-  "rendera/cli"
-  "rendera/hedera"
+  "renderhive/logger"
+  "renderhive/cli"
+  "renderhive/hedera"
 )
 
 // COMPILER FLAGS
@@ -63,11 +63,11 @@ func main () {
   logger.AddPackageLogger("hedera")
   logger.AddPackageLogger("ipfs")
 
-  // log the start of the rendera service
-  logger.RenderaLogger.Main.Info().Msg("Rendera service started.")
+  // log the start of the renderhive service
+  logger.RenderhiveLogger.Main.Info().Msg("Renderhive service started.")
 
   // make sure the end of the program is logged
-  defer logger.RenderaLogger.Main.Info().Msg("Rendera service stopped.")
+  defer logger.RenderhiveLogger.Main.Info().Msg("Renderhive service stopped.")
 
 
 
@@ -78,7 +78,7 @@ func main () {
   // initialize the Hedera Manager
   HederaManager, err := hedera.InitHederaManager(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
 
@@ -117,81 +117,81 @@ func main () {
 
 
   // create a new topic
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Creating the heartbeat topic:")
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Creating the heartbeat topic:")
   // prepare the topic information, which are used to create the topic
-  topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: "rendera-v0.1.0::heartbeat", AdminKey: pubKeyList, SubmitKey: pubKeyList}}
+  topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: "renderhive-v0.1.0::heartbeat", AdminKey: pubKeyList, SubmitKey: pubKeyList}}
   receipt, err = topic.New(&HederaManager, privateKeys)
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   if receipt != nil {
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
   }
 
   // get existing topic information
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Query the heartbeat topic information:")
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Query the heartbeat topic information:")
   topicID, err := hederasdk.TopicIDFromString(topic.ID.String())
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   topic = hedera.HederaTopic{ID: topicID}
   _, err = topic.QueryInfo(&HederaManager)
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
-  logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic ID: %v", topic.ID))
-  logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic Memo: %v", topic.Info.TopicMemo))
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic ID: %v", topic.ID))
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic Memo: %v", topic.Info.TopicMemo))
 
 
   // subscribe to the topic
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Subscribe to the heartbeat topic:")
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Subscribe to the heartbeat topic:")
   err = topic.Subscribe(&HederaManager, time.Unix(0, 0))
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
 
   // Update the topic memo and adminkey
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Updating the heartbeat topic information:")
-  updateInfo := hederasdk.TopicInfo{TopicMemo: "rendera-v0.1.1::heartbeat", AdminKey: HederaManager.Operator.PublicKey}
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Updating the heartbeat topic information:")
+  updateInfo := hederasdk.TopicInfo{TopicMemo: "renderhive-v0.1.1::heartbeat", AdminKey: HederaManager.Operator.PublicKey}
   receipt, err = topic.Update(&HederaManager, &updateInfo, privateKeys)
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   if receipt != nil {
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
   }
 
   // get existing topic information
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Query the heartbeat topic information:")
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Query the heartbeat topic information:")
   topicID, err = hederasdk.TopicIDFromString(topic.ID.String())
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   topic = hedera.HederaTopic{ID: topicID}
   _, err = topic.QueryInfo(&HederaManager)
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
-  logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic ID: %v", topic.ID))
-  logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] New topic memo: %v", topic.Info.TopicMemo))
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic ID: %v", topic.ID))
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] New topic memo: %v", topic.Info.TopicMemo))
 
   // Submit a normal message to the topic
   message := "This is a test message!"
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Send a message to the heartbeat topic:")
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Send a message to the heartbeat topic:")
   receipt, err = topic.SubmitMessage(&HederaManager, message, privateKeys, false, nil, false)
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   if receipt != nil {
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
   }
 
   // wait for 2.5 seconds
@@ -200,16 +200,16 @@ func main () {
   // Submit a scheduled message to the topic
   message = "This is a scheduled test message!"
   expirationTime := time.Now().Add(30 * time.Second)
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Send a message to the heartbeat topic:")
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Send a message to the heartbeat topic:")
   receipt, err = topic.SubmitMessage(&HederaManager, message, privateKeys[0], true, &expirationTime, false)
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   scheduleID := *receipt.ScheduleID
   if receipt != nil {
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Schedule ID: %v", scheduleID))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Schedule ID: %v", scheduleID))
   }
 
   // wait for 2.5 seconds
@@ -218,19 +218,19 @@ func main () {
   // Sign the scheduled transaction with the missing keys
   receipt, err = topic.SignSubmitMessage(&HederaManager, scheduleID, privateKeys[1])
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   if receipt != nil {
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
   }
   receipt, err = topic.SignSubmitMessage(&HederaManager, scheduleID, privateKeys[2])
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   if receipt != nil {
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
   }
 
   // wait loop
@@ -238,14 +238,14 @@ func main () {
 
 
   // Delete the created topic
-  logger.RenderaLogger.Package["hedera"].Debug().Msg("Delete the created topic again")
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Delete the created topic again")
   receipt, err = topic.Delete(&HederaManager, nil)
   if err != nil {
-    logger.RenderaLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
   if receipt != nil {
-    logger.RenderaLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
   }
   // COMMAND LINE INTERFACE
   // ***************************************************************************
