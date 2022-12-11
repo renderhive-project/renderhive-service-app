@@ -31,12 +31,18 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
+  "renderhive/constants"
   "renderhive/logger"
   "renderhive/cli"
   "renderhive/hedera"
+  // "renderhive/node"
 )
 
 // COMPILER FLAGS
+// #############################################################################
+
+
+// RENDERHIVE CONSTANTS
 // #############################################################################
 
 
@@ -52,6 +58,7 @@ func main () {
 
   // placeholder
   fmt.Println(time.Now().Add(30 * time.Second))
+
 
   // LOGGER SYSTEM
   // ***************************************************************************

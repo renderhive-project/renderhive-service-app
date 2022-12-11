@@ -31,18 +31,49 @@ types are:
 
 */
 
+import (
 
-// Renderhive account
-type RenderhiveAccount struct {
+  // standard
+  // "fmt"
+  // "os"
+  // "time"
+
+  // external
+  hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+
+  // internal
+  // "renderhive/logger"
+  // "renderhive/constants"
+  "renderhive/hedera"
+)
+
+
+// User data of the node's owner
+type UserData struct {
 
   ID int
   Username string
-
-  Wallet *HederaAccount
+  UserAccount hederasdk.AccountID  // Hedera account ID of the user's main account
 
 }
 
-type Node struct {
-  id int
-  type sting
+// Node data of this node
+type NodeData struct {
+
+  ID int                      // Renderhive ID of the node
+  ClientNode bool             // True, if the node acts as a client node
+  RenderNode bool             // True, if the node acts as a render node
+
+  UserData *UserData
+  NodeAccount *hedera.HederaAccount
+
+  // Hedera consensus service topics
+  // Hive cycle topics
+  HiveCycleSynchronizationTopic hedera.HederaTopic
+  HiveCycleApplicationTopic hedera.HederaTopic
+  HiveCycleValidationTopic hedera.HederaTopic
+  // Render job topics
+  JobQueueTopic hedera.HederaTopic
+  JobTopics []hedera.HederaTopic
+
 }

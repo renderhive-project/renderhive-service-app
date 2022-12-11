@@ -41,10 +41,11 @@ import (
     // external
     "github.com/rs/zerolog"
     "github.com/rs/zerolog/log"
-)
 
-// compiler flags
-const COMPILER_RENDERHIVE_LOGGER_LEVEL = zerolog.DebugLevel
+    // internal
+    "renderhive/constants"
+
+)
 
 // structure for the main and package loggers
 type RenderhiveLoggers struct {
@@ -60,7 +61,7 @@ func Init() {
 
   // set global logger level
   // TODO: This can interfere with other packages that use zerolog
-  zerolog.SetGlobalLevel(COMPILER_RENDERHIVE_LOGGER_LEVEL)
+  zerolog.SetGlobalLevel(constants.COMPILER_RENDERHIVE_LOGGER_LEVEL)
 
   // create a file writer with a log file in the log directory
   workingDirectory, err := os.Getwd()

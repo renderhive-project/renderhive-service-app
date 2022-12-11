@@ -48,11 +48,6 @@ type HederaAccount struct {
   // account information
   Info hederasdk.AccountInfo
 
-  // Hedera consensus service topics
-  HeartbeatTopic HederaTopic
-  JobQueueTopic HederaTopic
-  JobTopics []HederaTopic
-
 }
 
 

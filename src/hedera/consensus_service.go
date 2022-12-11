@@ -503,7 +503,7 @@ func (topic *HederaTopic) QueryInfo(m *HederaManager) (string, error) {
 
 // Subscribe to the topic to receive all messages
 // NOTE: The messages are requested from Hedera mirror nodes
-func (topic *HederaTopic) Subscribe(m *HederaManager, startTime *time.Time) error {
+func (topic *HederaTopic) Subscribe(m *HederaManager, startTime time.Time) error {
     var err error
 
     // create the topic info query
