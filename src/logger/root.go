@@ -43,7 +43,7 @@ import (
     "github.com/rs/zerolog/log"
 
     // internal
-    "renderhive/constants"
+    . "renderhive/constants"
 
 )
 
@@ -61,7 +61,7 @@ func Init() {
 
   // set global logger level
   // TODO: This can interfere with other packages that use zerolog
-  zerolog.SetGlobalLevel(constants.COMPILER_RENDERHIVE_LOGGER_LEVEL)
+  zerolog.SetGlobalLevel(COMPILER_RENDERHIVE_LOGGER_LEVEL)
 
   // create a file writer with a log file in the log directory
   workingDirectory, err := os.Getwd()

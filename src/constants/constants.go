@@ -20,13 +20,26 @@
 
 package constants
 
+import (
+
+  // external
+  "github.com/rs/zerolog"
+
+)
+
+// COMPILER FLAGS
+// #############################################################################
+const COMPILER_RENDERHIVE_LOGGER_LEVEL = zerolog.DebugLevel
+
+// RENDERHIVE CONSTANTS
+// #############################################################################
 // Account ID of the Renderhive smart contract
-const RENDERHIVE_TESTNET_SMART_CONTRACT = ""
+const RENDERHIVE_TESTNET_SMART_CONTRACT = "0.0.xxxx"
 
 // Account IDs of the Hedera Consensus Service topics
 // Hive cycle
-const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION = ""
-const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION = ""
-const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION = ""
+const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION = "0.0.xxxx"
+const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION = "0.0.xxxx"
+const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION = "0.0.xxxx"
 // Render jobs
-const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = ""
+const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.xxxx"
