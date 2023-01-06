@@ -42,22 +42,30 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  // "renderhive/logger"
+  "renderhive/logger"
   // "renderhive/constants"
   "renderhive/hedera"
 )
 
+// Data required to manage the nodes
+type NodeManager struct {
+
+  User UserData
+  Node NodeData
+
+}
 
 // User data of the node's owner
 type UserData struct {
 
   ID int
   Username string
-  UserAccount hederasdk.AccountID  // Hedera account ID of the user's main account
+  UserAccount hederasdk.AccountID     // Hedera account ID of the user's main account
+  NodeAccounts []hederasdk.AccountID  // Hedera account IDs of the user's node accounts
 
 }
 
-// Node data of this node
+// Node data of the node running this service app instance
 type NodeData struct {
 
   ID int                      // Renderhive ID of the node
@@ -67,13 +75,22 @@ type NodeData struct {
   UserData *UserData
   NodeAccount *hedera.HederaAccount
 
-  // Hedera consensus service topics
-  // Hive cycle topics
-  HiveCycleSynchronizationTopic hedera.HederaTopic
-  HiveCycleApplicationTopic hedera.HederaTopic
-  HiveCycleValidationTopic hedera.HederaTopic
-  // Render job topics
-  JobQueueTopic hedera.HederaTopic
-  JobTopics []hedera.HederaTopic
+}
+
+
+// NODE MANAGER
+// #############################################################################
+// Initialize everything required for the node management
+func InitNodeManager() (NodeManager, error) {
+    var err error
+
+    // log information
+    logger.RenderhiveLogger.Package["node"].Info().Msg("Initializing node:")
+
+    // create a new node manager
+    nm := NodeManager{}
+
+    // return the initialized node manager
+    return nm, err
 
 }

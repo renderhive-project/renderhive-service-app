@@ -31,6 +31,7 @@ import (
 
   // standard
   "fmt"
+  "time"
 
   // external
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
@@ -126,4 +127,44 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
         // return the initialized Hedera manager
         return HederaManager{}, err
     }
+}
+
+// TOPIC MANAGEMENT
+// #############################################################################
+// Obtain the topic information from a TopicID given in string format
+func (hm *HederaManager) TopicInfoFromString(topicID string) (*HederaTopic, error) {
+  var err error
+
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("Query topic information for TopicID string '%v':", topicID))
+  // get the topic ID from a string
+  hTopicID, err := hederasdk.TopicIDFromString(topicID)
+  if err != nil {
+    return nil, err
+  }
+
+  // create a HederaTopic variable and query the information
+  topic := HederaTopic{ID: hTopicID}
+  _, err = topic.QueryInfo(hm)
+  if err != nil {
+    return nil, err
+  }
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic ID: %v", topic.ID))
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic Memo: %v", topic.Info.TopicMemo))
+
+  return &topic, nil
+}
+
+// Subscribe to the topic
+func (hm *HederaManager) TopicSubscribe(topic *HederaTopic, startTime time.Time) (error) {
+  var err error
+
+  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("Subscribe to topic with ID %v.", topic.ID))
+
+  // subscribe to the topic
+  err = topic.Subscribe(hm, startTime)
+  if err != nil {
+    return err
+  }
+
+  return err
 }

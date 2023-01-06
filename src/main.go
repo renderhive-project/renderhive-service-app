@@ -34,13 +34,30 @@ import (
   . "renderhive/constants"
   "renderhive/logger"
   "renderhive/cli"
-  "renderhive/hedera"
-  // "renderhive/node"
+  //"renderhive/hedera"
+  //"renderhive/node"
 )
 
 
-// MAIN LOOP
+// APP
 // #############################################################################
+// INITIALIZE APP
+func init() {
+
+  // LOGGER SYSTEM
+  // ***************************************************************************
+  // initialize the logger system
+  logger.Init()
+
+  // add the package loggers
+  logger.AddPackageLogger("node")
+  logger.AddPackageLogger("hedera")
+  logger.AddPackageLogger("ipfs")
+
+}
+
+
+// MAIN LOOP
 func main () {
 
   // prepare end of program
@@ -53,16 +70,8 @@ func main () {
   fmt.Println(time.Now().Add(30 * time.Second))
 
 
-  // LOGGER SYSTEM
+  // BASIC INFORMATION
   // ***************************************************************************
-  // initialize the logger system
-  logger.Init()
-
-  // add the package loggers
-  logger.AddPackageLogger("node")
-  logger.AddPackageLogger("hedera")
-  logger.AddPackageLogger("ipfs")
-
   // log the start of the renderhive service
   logger.RenderhiveLogger.Main.Info().Msg("Renderhive service started.")
 
@@ -83,19 +92,14 @@ func main () {
 
 
 
-  // HEDERA
+  // INITIALIZE SERVICE APP
   // ***************************************************************************
-  // initialize the Hedera Manager
-  HederaManager, err := hedera.InitHederaManager(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
+  ServiceApp := ServiceApp{}
+  err = ServiceApp.Init()
   if err != nil {
-    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.RenderhiveLogger.Main.Error().Err(err).Msg("")
     os.Exit(1)
   }
-
-  // log the operator's public key
-  logger.RenderhiveLogger.Main.Info().Msg("Loaded the account details from the environment file.")
-  logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s",  HederaManager.Operator.PublicKey))
-
 
 
 

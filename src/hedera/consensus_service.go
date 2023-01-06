@@ -45,13 +45,13 @@ type HederaTopic struct {
 }
 
 
-// TOPIC HELPER FUNCTIONS
-// #############################################################################
-// subscription handler
 
-
-// TOPIC MANAGEMENT
+// TOPIC MANAGEMENT - LOWER LEVEL FUNCTIONS
 // #############################################################################
+// This section contains the lower level functions for the topic management.
+// These functions are extended by higher level functions which are introduced
+// for convenience purposes in the root file.
+
 // Create a new topic with a given name as the topic memo
 func (topic *HederaTopic) New(m *HederaManager, adminKey interface{}) (*hederasdk.TransactionReceipt, error) {
   var err error
