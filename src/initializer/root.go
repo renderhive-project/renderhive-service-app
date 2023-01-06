@@ -18,7 +18,7 @@
  * ************************** END LICENSE BLOCK ********************************
  */
 
-package main
+package initializer
 
 /*
 
