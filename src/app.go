@@ -43,6 +43,7 @@ import (
   "renderhive/node"
   "renderhive/hedera"
   "renderhive/renderer"
+  "renderhive/ipfs"
 )
 
 
@@ -55,6 +56,7 @@ type ServiceApp struct {
   // Managers
   NodeManager node.NodeManager
   HederaManager hedera.HederaManager
+  IPFSManager ipfs.IPFSManager
   RenderManager renderer.RenderManager
 
   // Hedera consensus service topics
@@ -93,12 +95,17 @@ func (service *ServiceApp) Init() (error) {
     logger.RenderhiveLogger.Main.Info().Msg("Loaded the account details from the environment file.")
     logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s", service.HederaManager.Operator.PublicKey))
 
+    // initialize the IPFS manager
+    service.IPFSManager, err = ipfs.InitIPFSManager()
+    if err != nil {
+      return err
+    }
+
     // initialize the render manager
     service.RenderManager, err = renderer.InitRenderManager()
     if err != nil {
       return err
     }
-
 
     // HCS TOPICS
     // *************************************************************************

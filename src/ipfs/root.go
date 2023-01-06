@@ -36,3 +36,43 @@ GO-IPFS EXAMPLES:
   https://github.com/ipfs/kubo/tree/c9cc09f6f7ebe95da69be6fa92c88e4cb245d90b/docs/examples/go-ipfs-as-a-library
 
 */
+
+import (
+
+  // standard
+  // "fmt"
+  // "os"
+  // "time"
+
+  // external
+  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+
+  // internal
+  "renderhive/logger"
+  // "renderhive/constants"
+  // "renderhive/hedera"
+)
+
+// structure for the IPFS manager
+type IPFSManager struct {
+
+  Placeholder string
+
+}
+
+
+// IPFS MANAGER
+// #############################################################################
+// Initialize everything required for the IPFS management
+func InitIPFSManager() (IPFSManager, error) {
+    var err error
+
+    // log information
+    logger.RenderhiveLogger.Package["ipfs"].Info().Msg("Initializing IPFS manager:")
+
+    // create a new IPFS manager
+    ipfsm := IPFSManager{}
+
+    return ipfsm, err
+
+}
