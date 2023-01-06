@@ -90,7 +90,6 @@ func InitNodeManager() (NodeManager, error) {
     // create a new node manager
     nm := NodeManager{}
 
-    // return the initialized node manager
     return nm, err
 
 }

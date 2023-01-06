@@ -40,8 +40,9 @@ import (
   . "renderhive/constants"
   "renderhive/logger"
   //"renderhive/cli"
-  "renderhive/hedera"
   "renderhive/node"
+  "renderhive/hedera"
+  "renderhive/renderer"
 )
 
 
@@ -54,6 +55,7 @@ type ServiceApp struct {
   // Managers
   NodeManager node.NodeManager
   HederaManager hedera.HederaManager
+  RenderManager renderer.RenderManager
 
   // Hedera consensus service topics
   // Hive cycle topics
@@ -91,6 +93,11 @@ func (service *ServiceApp) Init() (error) {
     logger.RenderhiveLogger.Main.Info().Msg("Loaded the account details from the environment file.")
     logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s", service.HederaManager.Operator.PublicKey))
 
+    // initialize the render manager
+    service.RenderManager, err = renderer.InitRenderManager()
+    if err != nil {
+      return err
+    }
 
 
     // HCS TOPICS

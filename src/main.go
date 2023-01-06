@@ -53,6 +53,7 @@ func init() {
   logger.AddPackageLogger("node")
   logger.AddPackageLogger("hedera")
   logger.AddPackageLogger("ipfs")
+  logger.AddPackageLogger("renderer")
 
 }
 
