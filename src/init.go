@@ -48,7 +48,7 @@ import (
 )
 
 // is this a test run? (if so, all topics are deleted afterwards)
-const testRun = true
+const testRun = false
 
 // MAIN LOOP
 // #############################################################################

@@ -34,7 +34,7 @@ const COMPILER_RENDERHIVE_LOGGER_LEVEL = zerolog.DebugLevel
 // RENDERHIVE CONSTANTS
 // #############################################################################
 // Account ID of the Renderhive smart contract
-const RENDERHIVE_TESTNET_SMART_CONTRACT = ""
+const RENDERHIVE_TESTNET_SMART_CONTRACT = "0.0.49230883"
 
 // Account IDs of the Hedera Consensus Service topics
 // Hive cycle
