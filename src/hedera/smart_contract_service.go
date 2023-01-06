@@ -108,7 +108,7 @@ func decodeEvent(eventName string, log []byte, topics [][]byte) ([]interface{}, 
 // #############################################################################
 // This function reads in a contract JSON file, creates a new contract with the contract.Object field as the bytecode,
 // deploys it on the Hedera network, and returns transaction receipt.
-func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath string, adminKey interface{}) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath string, adminKey interface{}, gas int64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
   var err error
 
   // Import and parse the compiled contract from the contract file
@@ -129,7 +129,7 @@ func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath stri
 	// create the transaction to deploy the contract bytecode on the Hedera network
 	newContractCreateFlowTransaction := hederasdk.NewContractCreateFlow().
 		SetBytecode(bytecode).
-		SetGas(100000)
+		SetGas(gas)
 
   // if a contract memo was passed
   if contract.Info.ContractMemo != "" {

@@ -77,6 +77,7 @@ func main () {
 
   // LOAD OPERATOR ACCOUNT DETAILS
   // ***************************************************************************
+  // var response *hederasdk.TransactionResponse
   var receipt *hederasdk.TransactionReceipt
 
   // initialize the Hedera Manager
@@ -84,6 +85,71 @@ func main () {
   if err != nil {
     logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
+  }
+
+
+
+  // HEDERA SMART CONTRACT SERVICE CONTRACT
+  // ***************************************************************************
+  logger.RenderhiveLogger.Main.Info().Msg("Creating the required Hedera Smart Contract ...")
+
+  // define the renderhive version for the topic names
+  const renderhive_contract_main_version = "0"
+  const renderhive_contract_sub_version = "1"
+  const renderhive_contract_patch_version = "0"
+
+  // RENDERHIVE SMART CONTRACT
+  if RENDERHIVE_TESTNET_SMART_CONTRACT == "" {
+
+      // Create the smart contract
+      logger.RenderhiveLogger.Main.Info().Msg(" [#] Renderhive smart contract:")
+
+      // prepare the topic information, which are used to create the topic
+      contract := hedera.HederaSmartContract{Info: hederasdk.ContractInfo{ContractMemo: fmt.Sprintf("renderhive-v%s.%s.%s::smart-contract", renderhive_contract_main_version, renderhive_contract_sub_version, renderhive_contract_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
+      _, receipt, err = contract.New(&HederaManager, "./RenderhiveTestContract.json", HederaManager.Operator.PrivateKey, 100000)
+      if err != nil {
+        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        os.Exit(1)
+      }
+      if receipt != nil {
+        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+      }
+
+      // get contract information
+      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(" [#] [*] Query the contract information ...")
+      contractID, err := hederasdk.ContractIDFromString(contract.ID.String())
+      if err != nil {
+        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        os.Exit(1)
+      }
+      contract = hedera.HederaSmartContract{ID: contractID}
+      _, err = contract.QueryInfo(&HederaManager)
+      if err != nil {
+        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        os.Exit(1)
+      }
+      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Contract ID: %v", contract.ID))
+      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Contract Memo: %v", contract.Info.ContractMemo))
+
+
+      // if this is a test run, delete the topic again
+      if testRun {
+        // wait loop
+        time.Sleep(10 * time.Second)
+
+
+        // Delete the created contract
+        logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Delete the created contract again")
+        _, receipt, err = contract.Delete(&HederaManager, nil)
+        if err != nil {
+          logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+          os.Exit(1)
+        }
+        if receipt != nil {
+          logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+        }
+      }
+
   }
 
 
