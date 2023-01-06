@@ -31,5 +31,9 @@ require github.com/hashgraph/hedera-sdk-go/v2 v2.17.7
 
 require github.com/rs/zerolog v1.28.0
 
-// this is only required for the testnet
-require github.com/joho/godotenv v1.4.0
+require (
+	github.com/ethereum/common v0.0.0-20150727083859-e5cdbecceb9d // indirect
+	github.com/ethereum/go-ethereum v1.10.26 // indirect
+	// this is only required for the testnet
+	github.com/joho/godotenv v1.4.0
+)
