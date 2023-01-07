@@ -124,6 +124,36 @@ func (h *HederaAccount) FromFile(filepath string) error {
     return nil
 }
 
+// Update the public key of a Hedera account
+func (h *HederaAccount) UpdateKey(m *HederaManager, newKey *hederasdk.PrivateKey) (string, error) {
+    var err error
+
+    // Updating the account with the new key
+  	newAccountUpdateTransaction, err := hederasdk.NewAccountUpdateTransaction().
+  		SetAccountID(h.AccountID).
+  		// The new key
+  		SetKey(newKey.PublicKey()).
+  		FreezeWith(m.NetworkClient)
+  	if err != nil {
+  		return "", err
+  	}
+    println(newKey.PublicKey().String())
+    println(newKey.String())
+
+  	// Have to sign with both keys, the initial key first
+  	newAccountUpdateTransaction.Sign(m.Operator.PrivateKey)
+  	newAccountUpdateTransaction.Sign(*newKey)
+
+    // Sign with client operator private key and submit the transaction to the Hedera network
+    _, err = newAccountUpdateTransaction.Execute(m.NetworkClient)
+    if err != nil {
+        return "", err
+    }
+
+    return "", nil
+
+}
+
 
 // ACCOUNT QUERIES
 // #############################################################################
