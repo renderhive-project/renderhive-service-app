@@ -503,7 +503,7 @@ func (topic *HederaTopic) QueryInfo(m *HederaManager) (string, error) {
 
 // Subscribe to the topic to receive all messages
 // NOTE: The messages are requested from Hedera mirror nodes
-func (topic *HederaTopic) Subscribe(m *HederaManager, startTime time.Time) error {
+func (topic *HederaTopic) Subscribe(m *HederaManager, startTime time.Time, onNext func(message hederasdk.TopicMessage)) error {
     var err error
 
     // create the topic info query
@@ -512,11 +512,7 @@ func (topic *HederaTopic) Subscribe(m *HederaManager, startTime time.Time) error
       SetStartTime(startTime)
 
     // subscribe to the topic
-    _, err = newTopicMessageQuery.Subscribe(m.NetworkClient, func(message hederasdk.TopicMessage) {
-
-      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
-
-    })
+    _, err = newTopicMessageQuery.Subscribe(m.NetworkClient, onNext)
     if err != nil {
         return err
     }

@@ -34,7 +34,7 @@ import (
   "time"
 
   // external
-  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
   . "renderhive/constants"
@@ -87,13 +87,15 @@ func (service *ServiceApp) Init() (error) {
     // INITIALIZE INTERNAL MANAGERS
     // *************************************************************************
     // initialize the node manager
-    service.NodeManager, err = node.InitNodeManager()
+    service.NodeManager = &node.NodeManager{}
+    err = service.NodeManager.Init()
     if err != nil {
       return err
     }
 
     // initialize the Hedera manager
-    service.HederaManager, err = hedera.InitHederaManager(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
+    service.HederaManager = &hedera.HederaManager{}
+    err = service.HederaManager.Init(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
     if err != nil {
       return err
     }
@@ -101,19 +103,22 @@ func (service *ServiceApp) Init() (error) {
     logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s", service.HederaManager.Operator.PublicKey))
 
     // initialize the IPFS manager
-    service.IPFSManager, err = ipfs.InitIPFSManager()
+    service.IPFSManager = &ipfs.IPFSManager{}
+    err = service.IPFSManager.Init()
     if err != nil {
       return err
     }
 
     // initialize the render manager
-    service.RenderManager, err = renderer.InitRenderManager()
+    service.RenderManager = &renderer.RenderManager{}
+    err = service.RenderManager.Init()
     if err != nil {
       return err
     }
 
     // initialize the web app manager
-    service.WebAppManager, err = webapp.InitWebAppManager()
+    service.WebAppManager = &webapp.WebAppManager{}
+    err = service.WebAppManager.Init()
     if err != nil {
       return err
     }
@@ -125,7 +130,11 @@ func (service *ServiceApp) Init() (error) {
     if err != nil {
       return err
     }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0))
+    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+
+      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+
+    })
     if err != nil {
       return err
     }
@@ -135,7 +144,7 @@ func (service *ServiceApp) Init() (error) {
     if err != nil {
       return err
     }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0))
+    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), service.NodeManager.HiveCycle.MessageCallback())
     if err != nil {
       return err
     }
@@ -145,7 +154,11 @@ func (service *ServiceApp) Init() (error) {
     if err != nil {
       return err
     }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0))
+    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+
+      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+
+    })
     if err != nil {
       return err
     }
@@ -155,10 +168,20 @@ func (service *ServiceApp) Init() (error) {
     if err != nil {
       return err
     }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0))
+    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+
+      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+
+    })
     if err != nil {
       return err
     }
+
+
+    // HIVE CYCLE
+    // *************************************************************************
+    // Synchronize with the network
+    service.NodeManager.HiveCycle.Synchronize()
 
 
     // STATE CHECKS
@@ -195,31 +218,31 @@ func (service *ServiceApp) DeInit() (error) {
     // *************************************************************************
 
     // deinitialize the web app manager
-    err = service.WebAppManager.DeInitWebAppManager()
+    err = service.WebAppManager.DeInit()
     if err != nil {
       return err
     }
 
     // deinitialize the render manager
-    err = service.RenderManager.DeInitRenderManager()
+    err = service.RenderManager.DeInit()
     if err != nil {
       return err
     }
 
     // deinitialize the IPFS manager
-    service.IPFSManager.DeInitIPFSManager()
+    service.IPFSManager.DeInit()
     if err != nil {
       return err
     }
 
     // deinitialize the Hedera manager
-    err = service.HederaManager.DeInitHederaManager()
+    err = service.HederaManager.DeInit()
     if err != nil {
       return err
     }
 
     // deinitialize the node manager
-    err = service.NodeManager.DeInitNodeManager()
+    err = service.NodeManager.DeInit()
     if err != nil {
       return err
     }

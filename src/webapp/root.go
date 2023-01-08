@@ -54,21 +54,18 @@ type WebAppManager struct {
 // WEBAPP MANAGER
 // #############################################################################
 // Initialize everything required for the web app management
-func InitWebAppManager() (*WebAppManager, error) {
+func (webappm *WebAppManager) Init() (error) {
     var err error
 
     // log information
     logger.RenderhiveLogger.Package["webapp"].Info().Msg("Initializing the web app manager ...")
 
-    // create a new IPFS manager
-    webm := WebAppManager{}
-
-    return &webm, err
+    return err
 
 }
 
 // Deinitialize the web app manager
-func (hm *WebAppManager) DeInitWebAppManager() (error) {
+func (webappm *WebAppManager) DeInit() (error) {
     var err error
 
     // log information

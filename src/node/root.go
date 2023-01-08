@@ -50,8 +50,12 @@ import (
 // Data required to manage the nodes
 type NodeManager struct {
 
+  // Basic data on user and node
   User UserData
   Node NodeData
+
+  // Hivc cycle management
+  HiveCycle HiveCycle 
 
 }
 
@@ -81,21 +85,18 @@ type NodeData struct {
 // NODE MANAGER
 // #############################################################################
 // Initialize everything required for the node management
-func InitNodeManager() (*NodeManager, error) {
+func (nm *NodeManager) Init() (error) {
     var err error
 
     // log information
     logger.RenderhiveLogger.Package["node"].Info().Msg("Initializing the node manager ...")
 
-    // create a new node manager
-    nm := NodeManager{}
-
-    return &nm, err
+    return err
 
 }
 
 // Deinitialize the node manager
-func (nm *NodeManager) DeInitNodeManager() (error) {
+func (nm *NodeManager) DeInit() (error) {
     var err error
 
     // log information
