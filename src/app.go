@@ -42,8 +42,9 @@ import (
   //"renderhive/cli"
   "renderhive/node"
   "renderhive/hedera"
-  "renderhive/renderer"
   "renderhive/ipfs"
+  "renderhive/renderer"
+  "renderhive/webapp"
 )
 
 
@@ -58,6 +59,7 @@ type ServiceApp struct {
   HederaManager hedera.HederaManager
   IPFSManager ipfs.IPFSManager
   RenderManager renderer.RenderManager
+  WebAppManager webapp.WebAppManager
 
   // Hedera consensus service topics
   // Hive cycle topics
@@ -107,7 +109,13 @@ func (service *ServiceApp) Init() (error) {
       return err
     }
 
-    // HCS TOPICS
+    // initialize the web app manager
+    service.WebAppManager, err = webapp.InitWebAppManager()
+    if err != nil {
+      return err
+    }
+
+    // READ HCS TOPIC INFORMATION & SUBSCRIBE
     // *************************************************************************
     // render job queue
     topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_RENDER_JOB_QUEUE)
