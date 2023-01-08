@@ -31,6 +31,10 @@ import (
 // #############################################################################
 const COMPILER_RENDERHIVE_LOGGER_LEVEL = zerolog.DebugLevel
 
+// HEDERA CONSTANTS
+//
+const HEDERA_TESTNET_MIRROR_NODE_URL = "https://testnet.mirrornode.hedera.com:443"
+
 // RENDERHIVE CONSTANTS
 // #############################################################################
 // Account ID of the Renderhive smart contract

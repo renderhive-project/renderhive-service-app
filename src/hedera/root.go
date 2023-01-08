@@ -37,7 +37,7 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  // . "renderhive/constants"
+  . "renderhive/constants"
   "renderhive/logger"
 
 )
@@ -58,6 +58,9 @@ type HederaManager struct {
 
   // account of the user
   Operator HederaAccount
+
+  // Mirror Node
+  MirrorNode MirrorNode
 
 }
 
@@ -126,6 +129,9 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
     queryCost, err = Account.QueryBalance(hm)
     logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
     logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
+
+    // get the mirror node URL
+    hm.MirrorNode.URL = HEDERA_TESTNET_MIRROR_NODE_URL
 
     return err
 }

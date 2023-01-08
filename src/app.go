@@ -101,6 +101,7 @@ func (service *ServiceApp) Init() (error) {
     }
     logger.RenderhiveLogger.Main.Info().Msg("Loaded the account details from the environment file.")
     logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s", service.HederaManager.Operator.PublicKey))
+    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf("Mirror node: %v", service.HederaManager.MirrorNode.URL))
 
     // initialize the IPFS manager
     service.IPFSManager = &ipfs.IPFSManager{}
