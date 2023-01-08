@@ -31,7 +31,7 @@ import (
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  . "renderhive/constants"
+  //. "renderhive/constants"
   "renderhive/logger"
   "renderhive/cli"
   //"renderhive/hedera"
@@ -72,27 +72,6 @@ func main () {
   fmt.Println(time.Now().Add(30 * time.Second))
 
 
-  // BASIC INFORMATION
-  // ***************************************************************************
-  // log the start of the renderhive service
-  logger.RenderhiveLogger.Main.Info().Msg("Renderhive service started.")
-
-  // log some informations about the used constants
-  logger.RenderhiveLogger.Main.Info().Msg("This service app instance relies on the following smart contract(s) and HCS topic(s):")
-  // the renderhive smart contract this instance calls
-  logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Smart Contract: %s", RENDERHIVE_TESTNET_SMART_CONTRACT))
-  // Hive cycle
-  logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Synchronization Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION))
-  logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Application Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION))
-  logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Validation Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
-  // Render jobs
-  logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Render Job Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
-
-
-  // make sure the end of the program is logged
-  defer logger.RenderhiveLogger.Main.Info().Msg("Renderhive service stopped.")
-
-
 
   // INITIALIZE SERVICE APP
   // ***************************************************************************
@@ -102,6 +81,9 @@ func main () {
     logger.RenderhiveLogger.Main.Error().Err(err).Msg("")
     os.Exit(1)
   }
+
+  // deinitialize the service app at the end of the program
+  defer ServiceApp.DeInit()
 
 
 

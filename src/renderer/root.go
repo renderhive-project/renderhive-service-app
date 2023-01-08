@@ -54,15 +54,26 @@ type RenderManager struct {
 // RENDER MANAGER
 // #############################################################################
 // Initialize everything required for the render management
-func InitRenderManager() (RenderManager, error) {
+func InitRenderManager() (*RenderManager, error) {
     var err error
 
     // log information
-    logger.RenderhiveLogger.Package["renderer"].Info().Msg("Initializing render manager:")
+    logger.RenderhiveLogger.Package["renderer"].Info().Msg("Initializing the render manager ...")
 
     // create a new render manager
     rm := RenderManager{}
 
-    return rm, err
+    return &rm, err
+
+}
+
+// Deinitialize the render manager
+func (rm *RenderManager) DeInitRenderManager() (error) {
+    var err error
+
+    // log information
+    logger.RenderhiveLogger.Package["renderer"].Info().Msg("Deinitializing the render manager ...")
+
+    return err
 
 }

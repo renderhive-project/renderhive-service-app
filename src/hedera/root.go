@@ -63,8 +63,10 @@ type HederaManager struct {
 // HEDERA MANAGER
 // #############################################################################
 // Initialize everything required for communication with the Hedera network
-func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, error) {
+func InitHederaManager(NetworkType int, AccountFilePath string) (*HederaManager, error) {
     var err error
+
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing the Hedera manager ...")
 
     // create a new account
     Account := HederaAccount{}
@@ -73,7 +75,7 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
     case NETWORK_TYPE_TESTNET:
 
         // log information
-        logger.RenderhiveLogger.Package["hedera"].Info().Msg("Initializing on Hedera Testnet:")
+        logger.RenderhiveLogger.Package["hedera"].Info().Msg(" [#] Initializing on Hedera Testnet ...")
 
         // Create your testnet client
         NetworkClient := hederasdk.ClientForTestnet()
@@ -83,7 +85,7 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
         Account.FromFile(AccountFilePath)
 
         // create the Hedera manager
-        m := HederaManager{NetworkType, NetworkClient, Account}
+        hm := HederaManager{NetworkType, NetworkClient, Account}
 
         // log the testnet account ID and private key to the console
         logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", Account.AccountID))
@@ -94,17 +96,17 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
         NetworkClient.SetOperator(Account.AccountID, Account.PrivateKey)
 
         // query the complete account information from the Hedera network
-        queryCost, err := Account.QueryInfo(&m)
+        queryCost, err := Account.QueryInfo(&hm)
         logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
         logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
 
         // query the account balance from the Hedera network
-        queryCost, err = Account.QueryBalance(&m)
+        queryCost, err = Account.QueryBalance(&hm)
         logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
         logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
 
         // return the initialized Hedera manager
-        return m, err
+        return &hm, err
 
     case NETWORK_TYPE_PREVIEWNET:
 
@@ -112,7 +114,7 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
         logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Previewnet:")
 
         // return the initialized Hedera manager
-        return HederaManager{}, err
+        return nil, err
 
     case NETWORK_TYPE_MAINNET:
 
@@ -120,14 +122,26 @@ func InitHederaManager(NetworkType int, AccountFilePath string) (HederaManager, 
         logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Mainnet:")
 
         // return the initialized Hedera manager
-        return HederaManager{}, err
+        return nil, err
 
     default:
 
         // return the initialized Hedera manager
-        return HederaManager{}, err
+        return nil, err
     }
 }
+
+// Deinitialize the Hedera manager
+func (hm *HederaManager) DeInitHederaManager() (error) {
+    var err error
+
+    // log information
+    logger.RenderhiveLogger.Package["hedera"].Info().Msg("Deinitializing the Hedera manager ...")
+
+    return err
+
+}
+
 
 // TOPIC MANAGEMENT
 // #############################################################################

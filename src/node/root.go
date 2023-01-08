@@ -81,15 +81,26 @@ type NodeData struct {
 // NODE MANAGER
 // #############################################################################
 // Initialize everything required for the node management
-func InitNodeManager() (NodeManager, error) {
+func InitNodeManager() (*NodeManager, error) {
     var err error
 
     // log information
-    logger.RenderhiveLogger.Package["node"].Info().Msg("Initializing node:")
+    logger.RenderhiveLogger.Package["node"].Info().Msg("Initializing the node manager ...")
 
     // create a new node manager
     nm := NodeManager{}
 
-    return nm, err
+    return &nm, err
+
+}
+
+// Deinitialize the node manager
+func (nm *NodeManager) DeInitNodeManager() (error) {
+    var err error
+
+    // log information
+    logger.RenderhiveLogger.Package["node"].Info().Msg("Deinitializing the node manager ...")
+
+    return err
 
 }

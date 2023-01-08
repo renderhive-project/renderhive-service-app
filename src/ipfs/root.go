@@ -64,15 +64,26 @@ type IPFSManager struct {
 // IPFS MANAGER
 // #############################################################################
 // Initialize everything required for the IPFS management
-func InitIPFSManager() (IPFSManager, error) {
+func InitIPFSManager() (*IPFSManager, error) {
     var err error
 
     // log information
-    logger.RenderhiveLogger.Package["ipfs"].Info().Msg("Initializing IPFS manager:")
+    logger.RenderhiveLogger.Package["ipfs"].Info().Msg("Initializing the IPFS manager ...")
 
     // create a new IPFS manager
-    ipfsm := IPFSManager{}
+    ipfsm := &IPFSManager{}
 
     return ipfsm, err
+
+}
+
+// Deinitialize the ipfs manager
+func (ipfsm *IPFSManager) DeInitIPFSManager() (error) {
+    var err error
+
+    // log information
+    logger.RenderhiveLogger.Package["ipfs"].Info().Msg("Deinitializing the IPFS manager ...")
+
+    return err
 
 }

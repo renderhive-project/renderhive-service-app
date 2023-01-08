@@ -55,11 +55,11 @@ import (
 type ServiceApp struct {
 
   // Managers
-  NodeManager node.NodeManager
-  HederaManager hedera.HederaManager
-  IPFSManager ipfs.IPFSManager
-  RenderManager renderer.RenderManager
-  WebAppManager webapp.WebAppManager
+  NodeManager *node.NodeManager
+  HederaManager *hedera.HederaManager
+  IPFSManager *ipfs.IPFSManager
+  RenderManager *renderer.RenderManager
+  WebAppManager *webapp.WebAppManager
 
   // Hedera consensus service topics
   // Hive cycle topics
@@ -80,6 +80,9 @@ type ServiceApp struct {
 func (service *ServiceApp) Init() (error) {
     var err error
     var topic *hedera.HederaTopic
+
+    // log the start of the renderhive service
+    logger.RenderhiveLogger.Main.Info().Msg("Starting Renderhive service app.")
 
     // INITIALIZE INTERNAL MANAGERS
     // *************************************************************************
@@ -163,5 +166,71 @@ func (service *ServiceApp) Init() (error) {
     // perform important state checks
     // ...
 
+
+
+
+    // LOG BASIC APP INFORMATION
+    // *************************************************************************
+
+    // log some informations about the used constants
+    logger.RenderhiveLogger.Main.Info().Msg("This service app instance relies on the following smart contract(s) and HCS topic(s):")
+    // the renderhive smart contract this instance calls
+    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Smart Contract: %s", RENDERHIVE_TESTNET_SMART_CONTRACT))
+    // Hive cycle
+    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Synchronization Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION))
+    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Application Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION))
+    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Validation Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
+    // Render jobs
+    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Render Job Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
+
+
     return nil
+}
+
+// Deinitialize the Renderhive Service App session
+func (service *ServiceApp) DeInit() (error) {
+    var err error
+
+    // DEINITIALIZE INTERNAL MANAGERS
+    // *************************************************************************
+
+    // deinitialize the web app manager
+    err = service.WebAppManager.DeInitWebAppManager()
+    if err != nil {
+      return err
+    }
+
+    // deinitialize the render manager
+    err = service.RenderManager.DeInitRenderManager()
+    if err != nil {
+      return err
+    }
+
+    // deinitialize the IPFS manager
+    service.IPFSManager.DeInitIPFSManager()
+    if err != nil {
+      return err
+    }
+
+    // deinitialize the Hedera manager
+    err = service.HederaManager.DeInitHederaManager()
+    if err != nil {
+      return err
+    }
+
+    // deinitialize the node manager
+    err = service.NodeManager.DeInitNodeManager()
+    if err != nil {
+      return err
+    }
+
+
+
+    // LOG BASIC APP INFORMATION
+    // *************************************************************************
+
+    logger.RenderhiveLogger.Main.Info().Msg("Renderhive service app stopped.")
+
+    return err
+
 }
