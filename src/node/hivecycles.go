@@ -34,6 +34,7 @@ import (
   "fmt"
   "encoding/json"
   // "os"
+  "math"
   "time"
 
   // external
@@ -42,13 +43,23 @@ import (
   // internal
   "renderhive/logger"
   // "renderhive/constants"
-  // "renderhive/hedera"
+  "renderhive/hedera"
 )
+
+// structure for the time synchronization
+type HiveClock struct {
+
+  NetworkTime time.Time
+  LocalTime time.Time
+  Difference time.Duration
+
+}
 
 // Structure to manage the hive cycle
 type HiveCycle struct {
 
   Configurations []HiveCycleConfigurationMessage
+  NetworkClock HiveClock
   Current int
 
 }
@@ -83,6 +94,10 @@ func (hc *HiveCycle) MessageCallback() (func(message hederasdk.TopicMessage)) {
 
     	}
 
+      // TODO: Validate that the message was from a valid source.
+      //       This could be the admin account ID. But maybe it is not necessary
+      //       at all, if we use a SubmitKey in the topic?
+
       // add the message to the array of configuration messages
       hc.Configurations = append(hc.Configurations, configuration)
 
@@ -97,29 +112,63 @@ func (hc *HiveCycle) MessageCallback() (func(message hederasdk.TopicMessage)) {
 
 // Synchronize with the Hedera network consensus time and calculate the current
 // hive cycle of the network
-func (hc *HiveCycle) Synchronize() (error) {
+func (hc *HiveCycle) Synchronize(hm *hedera.HederaManager) (error) {
     var err error
+    var transactions *[]hedera.TransactionInfo
 
-    // log information
-    logger.RenderhiveLogger.Package["node"].Info().Msg("Synchronize with hive cycle")
+    // Get the last transaction on the Hedera mirror node
+    transactions, err = hm.MirrorNode.Transactions(hm, "", 1, "desc", "", "", "")
+    if err != nil {
+      return err
+    }
 
-    // TODO: check the current Hedera network consensus time by looking at the last
-    // transaction that reached consensus in the network
+    // local time
+    hc.NetworkClock.LocalTime = time.Now()
 
+    // Parse the duration represented by the input string
+    duration, err := time.ParseDuration((*transactions)[0].ConsensusTimestamp + "s")
+    if err != nil {
+        return err
+    }
 
-    // iterate through all configurations messages to calculate the hive cycle
+    // Add the duration to the Unix epoch to obtain a time.Time value
+    hc.NetworkClock.NetworkTime = time.Unix(0, 0).Add(duration)
+
+    // calculate the difference between the local node time
+    hc.NetworkClock.Difference = hc.NetworkClock.LocalTime.Sub(hc.NetworkClock.NetworkTime)
+
+    // reset hive cycle value
+    hc.Current = 0
+
+    // iterate through all configurations messages to calculate the current
+    // hive cycle
     for i, configuration := range hc.Configurations {
 
-      logger.RenderhiveLogger.Package["node"].Info().Msg(fmt.Sprintf("Obtained new configuration message (no. %v):", i))
-      logger.RenderhiveLogger.Package["node"].Info().Msg(fmt.Sprintf(" [#] Iteration: %v", configuration.Iteration))
-      logger.RenderhiveLogger.Package["node"].Info().Msg(fmt.Sprintf(" [#] Duration: %v", configuration.Duration))
-      logger.RenderhiveLogger.Package["node"].Info().Msg(fmt.Sprintf(" [#] Timestamp: %v", configuration.Timestamp))
+      // if there is more than one configuration message
+      if len(hc.Configurations) > 1 {
+
+          // calculate the hive cycles in this iteration (i)
+          hc.Current += int(math.Ceil(float64(hc.NetworkClock.NetworkTime.Sub(configuration.Timestamp) / (time.Duration(configuration.Duration) * time.Second))))
+
+      } else {
+
+          // calculate the hive cycles
+          hc.Current += int(math.Ceil(float64(hc.NetworkClock.NetworkTime.Sub(configuration.Timestamp) / (time.Duration(configuration.Duration) * time.Second))))
+
+      }
+
+      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf("New configuration message (no. %v):", i))
+      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Iteration: %v", configuration.Iteration))
+      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Duration: %v", configuration.Duration))
+      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Timestamp: %v", configuration.Timestamp))
 
     }
 
-    // TODO: Validate that the message was from a valid source.
-    //       This could be the admin account ID. But maybe it is not necessary
-    //       at all, if we use a SubmitKey in the topic?
+    // log information
+    logger.RenderhiveLogger.Package["node"].Debug().Msg("Synchronized with HCS time and calculated hive cycle:")
+    logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Consensus time: %v", hc.NetworkClock.NetworkTime))
+    logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Difference to local time: %v", hc.NetworkClock.Difference))
+    logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Current hive cycle: %v", hc.Current))
 
     return err
 

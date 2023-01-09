@@ -182,7 +182,7 @@ func (service *ServiceApp) Init() (error) {
     // HIVE CYCLE
     // *************************************************************************
     // Synchronize with the network
-    service.NodeManager.HiveCycle.Synchronize()
+    service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
 
 
     // STATE CHECKS

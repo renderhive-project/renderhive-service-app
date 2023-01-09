@@ -55,7 +55,7 @@ type NodeManager struct {
   Node NodeData
 
   // Hivc cycle management
-  HiveCycle HiveCycle 
+  HiveCycle HiveCycle
 
 }
 
