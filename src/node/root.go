@@ -99,8 +99,8 @@ func (nm *NodeManager) Init() (error) {
 func (nm *NodeManager) DeInit() (error) {
     var err error
 
-    // log information
-    logger.RenderhiveLogger.Package["node"].Info().Msg("Deinitializing the node manager ...")
+    // log event
+    logger.RenderhiveLogger.Package["node"].Debug().Msg("Deinitializing the node manager ...")
 
     return err
 

@@ -78,8 +78,8 @@ func (ipfsm *IPFSManager) Init() (error) {
 func (ipfsm *IPFSManager) DeInit() (error) {
     var err error
 
-    // log information
-    logger.RenderhiveLogger.Package["ipfs"].Info().Msg("Deinitializing the IPFS manager ...")
+    // log event
+    logger.RenderhiveLogger.Package["ipfs"].Debug().Msg("Deinitializing the IPFS manager ...")
 
     return err
 

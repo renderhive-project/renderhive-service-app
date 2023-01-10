@@ -140,8 +140,8 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
 func (hm *HederaManager) DeInit() (error) {
     var err error
 
-    // log information
-    logger.RenderhiveLogger.Package["hedera"].Info().Msg("Deinitializing the Hedera manager ...")
+    // log event
+    logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Deinitializing the Hedera manager ...")
 
     return err
 

@@ -32,6 +32,7 @@ import (
   "fmt"
   // "os"
   "time"
+  "sync"
 
   // external
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
@@ -70,6 +71,10 @@ type ServiceApp struct {
   // Render job topics
   JobQueueTopic hedera.HederaTopic
   JobTopics []hedera.HederaTopic
+
+  // Signaling channels
+  Quit chan bool
+  WG sync.WaitGroup
 
 }
 
@@ -179,10 +184,43 @@ func (service *ServiceApp) Init() (error) {
     }
 
 
+
     // HIVE CYCLE
     // *************************************************************************
-    // Synchronize with the network
+    // synchronize with the render hive
     service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
+
+
+    go func() {
+
+       // add call to wait group
+       service.WG.Add(1)
+
+       // loop forever
+       for {
+
+          select {
+
+          // app is quitting
+          case <-service.Quit:
+            logger.RenderhiveLogger.Main.Debug().Msg("Stopped hive cycle synchronization loop.")
+            service.WG.Done()
+            return
+
+          // app is running
+          default:
+
+            // synchronize the hive cycle
+            service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
+
+            // get configuration and wait for the hive cycle duration
+            configurations := service.NodeManager.HiveCycle.Configurations
+            duration := time.Duration(configurations[len(configurations) - 1].Duration / 10)
+            time.Sleep(duration * time.Second)
+          }
+       }
+    }()
+
 
 
     // STATE CHECKS
@@ -214,6 +252,16 @@ func (service *ServiceApp) Init() (error) {
 // Deinitialize the Renderhive Service App session
 func (service *ServiceApp) DeInit() (error) {
     var err error
+
+    // log event
+    logger.RenderhiveLogger.Main.Info().Msg("Stopping Renderhive service app ... ")
+
+    // send the Quit signal to all concurrent go functions
+    service.Quit <- true
+
+    // log event
+    logger.RenderhiveLogger.Main.Info().Msg("Waiting for background operations to shut down ... ")
+    service.WG.Wait()
 
     // DEINITIALIZE INTERNAL MANAGERS
     // *************************************************************************

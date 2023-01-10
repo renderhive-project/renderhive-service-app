@@ -68,8 +68,8 @@ func (webappm *WebAppManager) Init() (error) {
 func (webappm *WebAppManager) DeInit() (error) {
     var err error
 
-    // log information
-    logger.RenderhiveLogger.Package["hedera"].Info().Msg("Deinitializing the web app manager ...")
+    // log event
+    logger.RenderhiveLogger.Package["webapp"].Debug().Msg("Deinitializing the web app manager ...")
 
     return err
 

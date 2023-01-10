@@ -26,6 +26,7 @@ import (
   "fmt"
   "os"
   "time"
+  "sync"
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
@@ -76,13 +77,20 @@ func main () {
   // INITIALIZE SERVICE APP
   // ***************************************************************************
   ServiceApp := ServiceApp{}
+
+  // TODO: use the signal library to catch interrupts, so that the app still
+  //       shuts down decently?
+  ServiceApp.Quit = make(chan bool, 1)
+  ServiceApp.WG = sync.WaitGroup{}
+
+  // initialize service app
   err = ServiceApp.Init()
   if err != nil {
     logger.RenderhiveLogger.Main.Error().Err(err).Msg("")
     os.Exit(1)
   }
 
-  // deinitialize the service app at the end of the program
+  // deinitialize the service app at the end of the main function
   defer ServiceApp.DeInit()
 
 
@@ -92,5 +100,11 @@ func main () {
   // start the command line interface tool
   cli_tool := cli.CommandLine{}
   cli_tool.Start()
+
+
+  // MAIN LOOP
+  // ***************************************************************************
+  time.Sleep(91 * time.Second)
+
 
 }

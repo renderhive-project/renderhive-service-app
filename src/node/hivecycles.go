@@ -142,7 +142,7 @@ func (hc *HiveCycle) Synchronize(hm *hedera.HederaManager) (error) {
 
     // iterate through all configurations messages to calculate the current
     // hive cycle
-    for i, configuration := range hc.Configurations {
+    for _, configuration := range hc.Configurations {
 
       // if there is more than one configuration message
       if len(hc.Configurations) > 1 {
@@ -157,10 +157,9 @@ func (hc *HiveCycle) Synchronize(hm *hedera.HederaManager) (error) {
 
       }
 
-      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf("New configuration message (no. %v):", i))
-      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Iteration: %v", configuration.Iteration))
+      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf("Configuration message (iteration: %v):", configuration.Iteration))
+      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Consensus time: %v", configuration.Timestamp))
       logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Duration: %v", configuration.Duration))
-      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Timestamp: %v", configuration.Timestamp))
 
     }
 

@@ -68,8 +68,8 @@ func (rm *RenderManager) Init() (error) {
 func (rm *RenderManager) DeInit() (error) {
     var err error
 
-    // log information
-    logger.RenderhiveLogger.Package["renderer"].Info().Msg("Deinitializing the render manager ...")
+    // log event
+    logger.RenderhiveLogger.Package["renderer"].Debug().Msg("Deinitializing the render manager ...")
 
     return err
 
