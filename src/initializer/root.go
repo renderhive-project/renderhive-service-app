@@ -40,10 +40,10 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  . "renderhive/constants"
-  "renderhive/logger"
-  "renderhive/hedera"
-  "renderhive/node"
+  . "renderhive/globals"
+  // "renderhive/logger"
+  // "renderhive/hedera"
+  // "renderhive/node"
 
 )
 
@@ -69,10 +69,10 @@ func main () {
   logger.AddPackageLogger("hedera")
 
   // log the start of the renderhive service
-  logger.RenderhiveLogger.Main.Info().Msg("Renderhive initialization started.")
+  logger.Manager.Main.Info().Msg("Renderhive initialization started.")
 
   // make sure the end of the program is logged
-  defer logger.RenderhiveLogger.Main.Info().Msg("Initializer was stopped.")
+  defer logger.Manager.Main.Info().Msg("Initializer was stopped.")
 
 
   // LOAD OPERATOR ACCOUNT DETAILS
@@ -83,7 +83,7 @@ func main () {
   // initialize the Hedera Manager
   HederaManager, err := hedera.InitHederaManager(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
   if err != nil {
-    logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+    logger.Manager.Package["hedera"].Error().Err(err).Msg("")
     os.Exit(1)
   }
 
@@ -91,7 +91,7 @@ func main () {
 
   // HEDERA SMART CONTRACT SERVICE CONTRACT
   // ***************************************************************************
-  logger.RenderhiveLogger.Main.Info().Msg("Creating the required Hedera Smart Contract ...")
+  logger.Manager.Main.Info().Msg("Creating the required Hedera Smart Contract ...")
 
   // define the renderhive version for the topic names
   const renderhive_contract_main_version = "0"
@@ -102,34 +102,34 @@ func main () {
   if RENDERHIVE_TESTNET_SMART_CONTRACT == "" {
 
       // Create the smart contract
-      logger.RenderhiveLogger.Main.Info().Msg(" [#] Renderhive smart contract:")
+      logger.Manager.Main.Info().Msg(" [#] Renderhive smart contract:")
 
       // prepare the topic information, which are used to create the topic
       contract := hedera.HederaSmartContract{Info: hederasdk.ContractInfo{ContractMemo: fmt.Sprintf("renderhive-v%s.%s.%s::smart-contract", renderhive_contract_main_version, renderhive_contract_sub_version, renderhive_contract_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
       _, receipt, err = contract.New(&HederaManager, "./RenderhiveTestContract.json", HederaManager.Operator.PrivateKey, 100000)
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
       if receipt != nil {
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+        logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
       }
 
       // get contract information
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(" [#] [*] Query the contract information ...")
+      logger.Manager.Package["hedera"].Debug().Msg(" [#] [*] Query the contract information ...")
       contractID, err := hederasdk.ContractIDFromString(contract.ID.String())
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
       contract = hedera.HederaSmartContract{ID: contractID}
       _, err = contract.QueryInfo(&HederaManager)
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Contract ID: %v", contract.ID))
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Contract Memo: %v", contract.Info.ContractMemo))
+      logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Contract ID: %v", contract.ID))
+      logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Contract Memo: %v", contract.Info.ContractMemo))
 
 
       // if this is a test run, delete the topic again
@@ -139,14 +139,14 @@ func main () {
 
 
         // Delete the created contract
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Delete the created contract again")
+        logger.Manager.Package["hedera"].Debug().Msg("Delete the created contract again")
         _, receipt, err = contract.Delete(&HederaManager, nil)
         if err != nil {
-          logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+          logger.Manager.Package["hedera"].Error().Err(err).Msg("")
           os.Exit(1)
         }
         if receipt != nil {
-          logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+          logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
         }
       }
 
@@ -155,7 +155,7 @@ func main () {
 
   // HEDERA CONSENSUS SERVICE TOPICS
   // ***************************************************************************
-  logger.RenderhiveLogger.Main.Info().Msg("Creating the required Hedera Consensus Service topics ...")
+  logger.Manager.Main.Info().Msg("Creating the required Hedera Consensus Service topics ...")
 
   // define the renderhive version for the topic names
   const renderhive_topic_main_version = "0"
@@ -166,39 +166,39 @@ func main () {
   if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION == "" {
 
     // Create the hive cycle topics
-    logger.RenderhiveLogger.Main.Info().Msg(" [#] Hive Cycle Synchronization topic:")
+    logger.Manager.Main.Info().Msg(" [#] Hive Cycle Synchronization topic:")
 
 
     // prepare the topic information, which are used to create the topic
     topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::hive-cycle-synchronization", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey, SubmitKey: HederaManager.Operator.PublicKey}}
     receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     if receipt != nil {
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+      logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
     }
 
     // get existing topic information
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
+    logger.Manager.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
     topicID, err := hederasdk.TopicIDFromString(topic.ID.String())
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     topic = hedera.HederaTopic{ID: topicID}
     _, err = topic.QueryInfo(&HederaManager)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
 
 
     // Submit the configuration message to the synchronization topic
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(" [#] [*] Send the configuration message to the synchronization topic:")
+    logger.Manager.Package["hedera"].Debug().Msg(" [#] [*] Send the configuration message to the synchronization topic:")
     message := node.HiveCycleConfigurationMessage{
       Iteration: 1,
       Duration:  300,
@@ -213,11 +213,11 @@ func main () {
 
       receipt, err = topic.SubmitMessage(&HederaManager, string(jsonMessage), HederaManager.Operator.PrivateKey, false, nil, false)
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
       if receipt != nil {
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+        logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
       }
 
     }
@@ -230,14 +230,14 @@ func main () {
 
 
       // Delete the created topic
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Delete the created topic again")
+      logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
       receipt, err = topic.Delete(&HederaManager, nil)
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
       if receipt != nil {
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+        logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
       }
     }
 
@@ -247,35 +247,35 @@ func main () {
   if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION == "" {
 
     // Create the hive cycle topics
-    logger.RenderhiveLogger.Main.Info().Msg(" [#] Hive Cycle Application topic:")
+    logger.Manager.Main.Info().Msg(" [#] Hive Cycle Application topic:")
 
 
     // prepare the topic information, which are used to create the topic
     topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::hive-cycle-application", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
     receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     if receipt != nil {
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+      logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
     }
 
     // get existing topic information
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
+    logger.Manager.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
     topicID, err := hederasdk.TopicIDFromString(topic.ID.String())
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     topic = hedera.HederaTopic{ID: topicID}
     _, err = topic.QueryInfo(&HederaManager)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
 
 
 
@@ -286,14 +286,14 @@ func main () {
 
 
       // Delete the created topic
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Delete the created topic again")
+      logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
       receipt, err = topic.Delete(&HederaManager, nil)
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
       if receipt != nil {
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+        logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
       }
     }
 
@@ -303,35 +303,35 @@ func main () {
   if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION == "" {
 
     // Create the hive cycle topics
-    logger.RenderhiveLogger.Main.Info().Msg(" [#] Hive Cycle Validation topic:")
+    logger.Manager.Main.Info().Msg(" [#] Hive Cycle Validation topic:")
 
 
     // prepare the topic information, which are used to create the topic
     topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::hive-cycle-validation", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
     receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     if receipt != nil {
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+      logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
     }
 
     // get existing topic information
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
+    logger.Manager.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
     topicID, err := hederasdk.TopicIDFromString(topic.ID.String())
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     topic = hedera.HederaTopic{ID: topicID}
     _, err = topic.QueryInfo(&HederaManager)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
 
 
 
@@ -342,14 +342,14 @@ func main () {
 
 
       // Delete the created topic
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Delete the created topic again")
+      logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
       receipt, err = topic.Delete(&HederaManager, nil)
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
       if receipt != nil {
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+        logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
       }
     }
 
@@ -361,35 +361,35 @@ func main () {
   if RENDERHIVE_TESTNET_RENDER_JOB_QUEUE == "" {
 
     // Create the hive cycle topics
-    logger.RenderhiveLogger.Main.Info().Msg(" [#] Render Job Queue topic:")
+    logger.Manager.Main.Info().Msg(" [#] Render Job Queue topic:")
 
 
     // prepare the topic information, which are used to create the topic
     topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::render-job-queue", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
     receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     if receipt != nil {
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+      logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
     }
 
     // get existing topic information
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
+    logger.Manager.Package["hedera"].Debug().Msg(" [#] [*] Query the topic information ...")
     topicID, err := hederasdk.TopicIDFromString(topic.ID.String())
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
     topic = hedera.HederaTopic{ID: topicID}
     _, err = topic.QueryInfo(&HederaManager)
     if err != nil {
-      logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+      logger.Manager.Package["hedera"].Error().Err(err).Msg("")
       os.Exit(1)
     }
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic ID: %v", topic.ID))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] [*] Topic Memo: %v", topic.Info.TopicMemo))
 
 
 
@@ -400,14 +400,14 @@ func main () {
 
 
       // Delete the created topic
-      logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Delete the created topic again")
+      logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
       receipt, err = topic.Delete(&HederaManager, nil)
       if err != nil {
-        logger.RenderhiveLogger.Package["hedera"].Error().Err(err).Msg("")
+        logger.Manager.Package["hedera"].Error().Err(err).Msg("")
         os.Exit(1)
       }
       if receipt != nil {
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
+        logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", receipt.TransactionID.String(), receipt.Status))
       }
     }
 

@@ -18,10 +18,21 @@
  * ************************** END LICENSE BLOCK ********************************
  */
 
-package constants
+package globals
 
-/*
+import (
 
-  This package contains all the global constants of the Renderhive Service App
+  // standard
+  // ...
 
-*/
+  // external
+  // ...
+
+  // internal
+  // ...
+
+)
+
+
+// RENDERHIVE VARIABLES
+// #############################################################################

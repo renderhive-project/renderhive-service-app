@@ -34,6 +34,8 @@ require github.com/rs/zerolog v1.28.0
 require (
 	github.com/ethereum/common v0.0.0-20150727083859-e5cdbecceb9d // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	// this is only required for the testnet
 	github.com/joho/godotenv v1.4.0
+	github.com/spf13/cobra v1.6.1 // indirect
 )

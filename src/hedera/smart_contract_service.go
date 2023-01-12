@@ -153,7 +153,7 @@ func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath stri
     // thisKey, ok := adminKey.(hederasdk.PrivateKey)
     // if ok == true {
     //
-    //     logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key of: %s", thisKey.PublicKey()))
+    //     logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key of: %s", thisKey.PublicKey()))
     //
     //     // and sign the transaction with this key
     //     newContractCreateFlowTransaction = newContractCreateFlowTransaction.Sign(thisKey)
@@ -167,7 +167,7 @@ func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath stri
     //     // iterate through all keys
     //     for i, thisKey := range keyList {
     //
-    //       logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key (%v) of: %s", i, thisKey.PublicKey()))
+    //       logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key (%v) of: %s", i, thisKey.PublicKey()))
     //
     //       // and sign the transaction with each key
     //       newContractCreateFlowTransaction = newContractCreateFlowTransaction.Sign(thisKey)
@@ -190,7 +190,7 @@ func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath stri
   }
 
   // log the receipt status of the transaction
-  logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+  logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
 
   // get the contract ID from the transaction receipt
   contract.ID = *transactionReceipt.ContractID
@@ -223,7 +223,7 @@ func (contract *HederaSmartContract) Delete(m *HederaManager, adminKey interface
     thisKey, ok := adminKey.(hederasdk.PrivateKey)
     if ok == true {
 
-        logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key of: %s", thisKey.PublicKey()))
+        logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key of: %s", thisKey.PublicKey()))
 
         // and sign the transaction with this key
         newContractDeleteTransaction = newContractDeleteTransaction.Sign(thisKey)
@@ -237,7 +237,7 @@ func (contract *HederaSmartContract) Delete(m *HederaManager, adminKey interface
         // iterate through all keys
         for i, thisKey := range keyList {
 
-          logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key (%v) of: %s", i, thisKey.PublicKey()))
+          logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key (%v) of: %s", i, thisKey.PublicKey()))
 
           // and sign the transaction with each key
           newContractDeleteTransaction = newContractDeleteTransaction.Sign(thisKey)
@@ -263,7 +263,7 @@ func (contract *HederaSmartContract) Delete(m *HederaManager, adminKey interface
   }
 
   // log the receipt status of the transaction
-  logger.RenderhiveLogger.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+  logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
 
   // free the pointer
   contract = nil

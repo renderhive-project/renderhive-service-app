@@ -38,14 +38,15 @@ import (
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
+  // . "renderhive/globals"
   "renderhive/logger"
-  // "renderhive/constants"
   // "renderhive/hedera"
 )
 
 // structure for the render manager
 type RenderManager struct {
 
+  // Placeholder
   Placeholder string
 
 }
@@ -58,7 +59,7 @@ func (rm *RenderManager) Init() (error) {
     var err error
 
     // log information
-    logger.RenderhiveLogger.Package["renderer"].Info().Msg("Initializing the render manager ...")
+    logger.Manager.Package["renderer"].Info().Msg("Initializing the render manager ...")
 
     return err
 
@@ -69,7 +70,7 @@ func (rm *RenderManager) DeInit() (error) {
     var err error
 
     // log event
-    logger.RenderhiveLogger.Package["renderer"].Debug().Msg("Deinitializing the render manager ...")
+    logger.Manager.Package["renderer"].Debug().Msg("Deinitializing the render manager ...")
 
     return err
 

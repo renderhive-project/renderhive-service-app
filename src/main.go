@@ -32,79 +32,61 @@ import (
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  //. "renderhive/constants"
-  "renderhive/logger"
-  "renderhive/cli"
+  // . "renderhive/globals"
+  // "renderhive/logger"
+  // "renderhive/cli"
   //"renderhive/hedera"
   //"renderhive/node"
 )
 
 
-// APP
-// #############################################################################
+// error value
+var err error
+var ServiceApp AppManager
+
 // INITIALIZE APP
+// #############################################################################
 func init() {
-
-  // LOGGER SYSTEM
-  // ***************************************************************************
-  // initialize the logger system
-  logger.Init()
-
-  // add the package loggers
-  logger.AddPackageLogger("node")
-  logger.AddPackageLogger("hedera")
-  logger.AddPackageLogger("ipfs")
-  logger.AddPackageLogger("renderer")
-  logger.AddPackageLogger("webapp")
-
-}
-
-
-// MAIN LOOP
-func main () {
-
-  // prepare end of program
-  defer os.Exit(0)
-
-  // error value
-  var err error
-
-  // placeholder
-  fmt.Println(time.Now().Add(30 * time.Second))
-
-
 
   // INITIALIZE SERVICE APP
   // ***************************************************************************
-  ServiceApp := ServiceApp{}
-
   // TODO: use the signal library to catch interrupts, so that the app still
   //       shuts down decently?
+  ServiceApp = AppManager{}
   ServiceApp.Quit = make(chan bool, 1)
   ServiceApp.WG = sync.WaitGroup{}
 
   // initialize service app
   err = ServiceApp.Init()
   if err != nil {
-    logger.RenderhiveLogger.Main.Error().Err(err).Msg("")
+    fmt.Println(err)
     os.Exit(1)
   }
+
+}
+
+
+
+// MAIN FUNCTION
+// #############################################################################
+func main () {
+
+  // prepare end of program
+  defer os.Exit(0)
 
   // deinitialize the service app at the end of the main function
   defer ServiceApp.DeInit()
 
-
+  // placeholder
+  fmt.Println(time.Now().Add(30 * time.Second))
 
   // COMMAND LINE INTERFACE
   // ***************************************************************************
-  // start the command line interface tool
-  cli_tool := cli.CommandLine{}
-  cli_tool.Start()
-
+  // start the command line interface
+  ServiceApp.CLIManager.Commands.Main.Execute()
 
   // MAIN LOOP
   // ***************************************************************************
   time.Sleep(91 * time.Second)
-
 
 }

@@ -20,91 +20,232 @@
 
 package cli
 
+/*
+
+  This package contains the command-line interface of the Renderhive service app.
+  It is mainly usefull for the development phase, where no GUI is available, but
+  it will also enable to run the service app in headless mode later.
+
+*/
+
 import (
-  // "errors"
+
+  // standard
   "fmt"
-  "flag"
   "os"
-  "runtime"
+  "bufio"
+  "strings"
+
+  // external
+  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/spf13/cobra"
+
+  // internal
+  // . "renderhive/globals"
+  "renderhive/logger"
+
 )
 
 
-// MAIN COMMAND LINE INTERFACE
+
+// CLI STRUCTURES, VARIABLES & CONSTANTS
 // #############################################################################
-// an empty structure to hold all methods
-type CommandLine struct {}
+type Commands struct {
 
-func (cli *CommandLine) Help() {
-	fmt.Println("Usage:")
-	fmt.Println(" node command argument - commands for the renderhive node")
-	fmt.Println(" ipfs command argument - commands for the internal IPFS node")
-	fmt.Println(" wallet command argument - commands for the internal wallet")
-}
+  // renderhive main commands
+  Main *cobra.Command
+  MainFlags struct {
 
-func (cli *CommandLine) validate_args() {
-	if len(os.Args) < 2 {
-		cli.Help()
-		runtime.Goexit()
-	}
-}
+    Background bool
 
-func (cli *CommandLine) Start() {
-
-	// nodeID := os.Getenv("NODE_ID")
-	// if nodeID == "" {
-	// 	fmt.Printf("NODE_ID env is not set!")
-	// 	runtime.Goexit()
-	// }
-
-  // define main arguments
-	helpCmd := flag.Bool("help", false, "Prints the help for the command line interface")
-  flag.Parse()
-
-  if *helpCmd {
-     cli.Help()
-  } else {
-
-    // handle all subcommands
-    if err := subcommands(os.Args[1:]); err != nil {
-  		fmt.Println(err)
-  		os.Exit(1)
-  	}
   }
+
+  // renderhive bash commands
+  // NOTE: The bash will give a command line interface for communicating with
+  //       the Renderhive Service App when running it in background / headless
+  //       mode.
+  bash struct {
+
+    // renderhive package commands
+    // NOTE: Each package command will have several subcommands and flags.
+    Hedera *cobra.Command
+    Ipfs *cobra.Command
+    Node *cobra.Command
+    Renderer *cobra.Command
+
+    // misc
+    Exit *cobra.Command
+
+  }
+
+}
+
+type CLIManager struct {
+
+  // CLI commands
+  Commands Commands
+
 }
 
 
-// SUBCOMMANDS
+// CLI MANAGER
 // #############################################################################
-// an interface for all the subcommands
-type Runner interface {
-	Init([]string) error
-	Run() error
-	Name() string
+// Initialize the CLI Manager
+func (clim *CLIManager) Init() (error) {
+    var err error
+
+    logger.Manager.Package["cli"].Debug().Msg("Initializing the Command Line Interface manager ...")
+
+    // create the main command
+    clim.Commands.Main = clim.CreateMainCommand()
+
+    // TODO: create package commands
+    clim.CreatePackageCommands()
+
+    // TODO: add package commands
+    // ...
+
+    return err
 }
 
-func subcommands(args []string) error {
-	if len(args) < 1 {
-		return nil
-	}
+// Deinitialize the CLI manager
+func (clim *CLIManager) DeInit() (error) {
+    var err error
 
-  // add all available subcommands to the interface
-	cmds := []Runner{
-		NewSubCommandNode(),
-  	NewSubCommandIpfs(),
-  	NewSubCommandWallet(),
-	}
+    // log event
+    logger.Manager.Package["cli"].Debug().Msg("Deinitializing the Command Line Interface manager ...")
 
-  // get the parsed subcommand
-	subcommand := os.Args[1]
+    return err
 
-  // try to find the parsed subcommand among the available subcommands
-	for _, cmd := range cmds {
-		if cmd.Name() == subcommand {
-      // if a subcommand was found, initialize and run it
-			cmd.Init(os.Args[2:])
-			return cmd.Run()
-		}
-	}
-
-	return fmt.Errorf("[ERROR] Unknown subcommand: %s", subcommand)
 }
+
+
+// COMMAND LINE INTERFACE
+// #############################################################################
+// Create the main command for the command line interface
+func (clim *CLIManager) CreateMainCommand() *cobra.Command {
+
+    // log debug event
+    logger.Manager.Package["cli"].Debug().Msg("Create the main commands for the CLI.")
+
+    // create the main command
+    clim.Commands.Main = &cobra.Command{
+      Use:     `renderhive`,
+      Short:   `Renderhive is a crowdrendering plattform for Blender based on Web3 technologies`,
+      Long:    `This command line interface gives a complete control over the Renderhive Service App backend, which is the main software package for participating in the renderhive.`,
+      // Args:    ArgsValidator(config),
+      // PreRunE: OptionsValidator(config, headers),
+      RunE: func(cmd *cobra.Command, args []string) error {
+
+        // if the app was started in background mode
+        if clim.Commands.MainFlags.Background {
+
+          // new command line
+    			fmt.Println("------------------------------------------------------------")
+    			fmt.Println("|    _____                _           _     _              |")
+    			fmt.Println("|   |  __ \\              | |         | |   (_)             |")
+    			fmt.Println("|   | |__) |___ _ __   __| | ___ _ __| |__  ___   _____    |")
+    			fmt.Println("|   |  _  // _ \\ '_ \\ / _` |/ _ \\ '__| '_ \\| \\ \\ / / _ \\   |")
+    			fmt.Println("|   | | \\ \\  __/ | | | (_| |  __/ |  | | | | |\\ V /  __/   |")
+    			fmt.Println("|   |_|  \\_\\___|_| |_|\\__,_|\\___|_|  |_| |_|_| \\_/ \\___|   |")
+    			fmt.Println("|           SERVICE APP COMMAND LINE INTERFACE             |")
+    			fmt.Println("------------------------------------------------------------")
+    			fmt.Println("")
+    			fmt.Println("Interact with the Renderhive network from the command line:")
+
+          // start a bash for user interaction
+      		shouldExit := false
+      		for !shouldExit {
+
+            // new command line
+      			fmt.Print("(renderhive) > ")
+
+            // wait for new user input
+      			reader := bufio.NewReader(os.Stdin)
+      			input, _ := reader.ReadString('\n')
+
+            // split the input into arguments
+      			input = strings.TrimSpace(input)
+      			args := strings.Split(input, " ")
+
+            // set arguments and execute the command
+            fmt.Println(args)
+
+      			// rootCmd.SetArgs(args)
+      			// rootCmd.Execute()
+      		}
+      	}
+
+        return nil
+      },
+    }
+
+    // add command flags
+    clim.Commands.Main.PersistentFlags().BoolVarP(&clim.Commands.MainFlags.Background, "background", "b", false, "Run the Renderhive Service App in background / headless mode")
+
+    return clim.Commands.Main
+
+}
+
+// Create the package command for the command line interface
+func (clim *CLIManager) CreatePackageCommands() *cobra.Command {
+    var packageCommands *cobra.Command
+
+
+    // log debug event
+    logger.Manager.Package["cli"].Debug().Msg("Create the package commands for the CLI.")
+
+    return packageCommands
+
+}
+
+
+// package main
+//
+// import (
+// 	"bufio"
+// 	"fmt"
+// 	"os"
+// 	"strings"
+//
+// 	"github.com/spf13/cobra"
+// )
+//
+// var shouldExit bool
+//
+// var cmdExit = &cobra.Command{
+// 	Use:   "exit",
+// 	Short: "Exit the input loop",
+// 	Long: `Exit the input loop`,
+// 	Run: func(cmd *cobra.Command, args []string) {
+// 		shouldExit = true
+// 	},
+// }
+//
+// var cmdInput = &cobra.Command{
+// 	Use:   "input",
+// 	Short: "Prompt for user input",
+// 	Long: `Prompt for user input and execute it as a command.
+// This command prompts for user input and executes it as a command.`,
+// 	RunE: func(cmd *cobra.Command, args []string) error {
+// 		shouldExit = false
+// 		for !shouldExit {
+// 			fmt.Print("> ")
+// 			reader := bufio.NewReader(os.Stdin)
+// 			input, _ := reader.ReadString('\n')
+// 			input = strings.TrimSpace(input)
+// 			args := strings.Split(input, " ")
+// 			rootCmd.SetArgs(args)
+// 			rootCmd.Execute()
+// 		}
+// 		return nil
+// 	},
+// }
+//
+// var rootCmd = &cobra.Command{Use: "app"}
+// rootCmd.AddCommand(cmdInput)
+// rootCmd.AddCommand(cmdExit)
+//
+// func main() {
+// 	rootCmd.Execute()
+// }

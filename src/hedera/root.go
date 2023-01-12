@@ -37,7 +37,7 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  . "renderhive/constants"
+  . "renderhive/globals"
   "renderhive/logger"
 
 )
@@ -71,7 +71,7 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
     var err error
     var NetworkClient *hederasdk.Client
 
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing the Hedera manager ...")
+    logger.Manager.Package["hedera"].Debug().Msg("Initializing the Hedera manager ...")
 
     // create a new account
     Account := HederaAccount{}
@@ -80,7 +80,7 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
     case NETWORK_TYPE_TESTNET:
 
         // log information
-        logger.RenderhiveLogger.Package["hedera"].Info().Msg(" [#] Initializing on Hedera Testnet ...")
+        logger.Manager.Package["hedera"].Info().Msg(" [#] Initializing on Hedera Testnet ...")
 
         // Create your testnet client
         NetworkClient = hederasdk.ClientForTestnet()
@@ -88,7 +88,7 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
     case NETWORK_TYPE_PREVIEWNET:
 
         // log information
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Previewnet:")
+        logger.Manager.Package["hedera"].Debug().Msg("Initializing on Hedera Previewnet:")
 
         // Create your preview client
         NetworkClient = hederasdk.ClientForPreviewnet()
@@ -96,7 +96,7 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
     case NETWORK_TYPE_MAINNET:
 
         // log information
-        logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Initializing on Hedera Mainnet:")
+        logger.Manager.Package["hedera"].Debug().Msg("Initializing on Hedera Mainnet:")
 
         // Create your preview client
         NetworkClient = hederasdk.ClientForPreviewnet()
@@ -104,7 +104,7 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
     }
 
     // get the testnet account information from file
-    logger.RenderhiveLogger.Package["hedera"].Info().Msg(" [#] Load account information from encrypted file.")
+    logger.Manager.Package["hedera"].Info().Msg(" [#] Load account information from encrypted file.")
     Account.FromFile(AccountFilePath)
 
     // Populate the Hedera manager
@@ -113,22 +113,22 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
     hm.Operator = Account
 
     // log the testnet account ID and private key to the console
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", Account.AccountID))
-    // logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Private key: %v", Account.PrivateKey))
-    // logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Public key: %v", Account.PublicKey))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", Account.AccountID))
+    // logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Private key: %v", Account.PrivateKey))
+    // logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Public key: %v", Account.PublicKey))
 
     // set theis account as the operator
     NetworkClient.SetOperator(Account.AccountID, Account.PrivateKey)
 
     // query the complete account information from the Hedera network
     queryCost, err := Account.QueryInfo(hm)
-    logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
+    logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
 
     // query the account balance from the Hedera network
     queryCost, err = Account.QueryBalance(hm)
-    logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
+    logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
+    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
 
     // get the mirror node URL
     hm.MirrorNode.URL = HEDERA_TESTNET_MIRROR_NODE_URL
@@ -141,7 +141,7 @@ func (hm *HederaManager) DeInit() (error) {
     var err error
 
     // log event
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Deinitializing the Hedera manager ...")
+    logger.Manager.Package["hedera"].Debug().Msg("Deinitializing the Hedera manager ...")
 
     return err
 
@@ -154,7 +154,7 @@ func (hm *HederaManager) DeInit() (error) {
 func (hm *HederaManager) TopicInfoFromString(topicID string) (*HederaTopic, error) {
   var err error
 
-  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("Query topic information for TopicID string '%v':", topicID))
+  logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("Query topic information for TopicID string '%v':", topicID))
   // get the topic ID from a string
   hTopicID, err := hederasdk.TopicIDFromString(topicID)
   if err != nil {
@@ -167,8 +167,8 @@ func (hm *HederaManager) TopicInfoFromString(topicID string) (*HederaTopic, erro
   if err != nil {
     return nil, err
   }
-  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic ID: %v", topic.ID))
-  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic Memo: %v", topic.Info.TopicMemo))
+  logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic ID: %v", topic.ID))
+  logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Topic Memo: %v", topic.Info.TopicMemo))
 
   return &topic, nil
 }
@@ -177,7 +177,7 @@ func (hm *HederaManager) TopicInfoFromString(topicID string) (*HederaTopic, erro
 func (hm *HederaManager) TopicSubscribe(topic *HederaTopic, startTime time.Time, onNext func(message hederasdk.TopicMessage)) (error) {
   var err error
 
-  logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf("Subscribe to topic with ID %v.", topic.ID))
+  logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("Subscribe to topic with ID %v.", topic.ID))
 
   // subscribe to the topic
   err = topic.Subscribe(hm, startTime, onNext)

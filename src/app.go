@@ -38,29 +38,27 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  . "renderhive/constants"
+  . "renderhive/globals"
   "renderhive/logger"
-  //"renderhive/cli"
   "renderhive/node"
   "renderhive/hedera"
   "renderhive/ipfs"
   "renderhive/renderer"
   "renderhive/webapp"
+  "renderhive/cli"
 )
 
-
-
-// STRUCTURES
-// #############################################################################
 // Data required to manage the nodes
-type ServiceApp struct {
+type AppManager struct {
 
   // Managers
+  LoggerManager *logger.LoggerManager
   NodeManager *node.NodeManager
   HederaManager *hedera.HederaManager
   IPFSManager *ipfs.IPFSManager
   RenderManager *renderer.RenderManager
   WebAppManager *webapp.WebAppManager
+  CLIManager *cli.CLIManager
 
   // Hedera consensus service topics
   // Hive cycle topics
@@ -78,19 +76,31 @@ type ServiceApp struct {
 
 }
 
-
 // FUNCTIONS
 // #############################################################################
 // Initialize the Renderhive Service App session
-func (service *ServiceApp) Init() (error) {
+func (service *AppManager) Init() (error) {
     var err error
     var topic *hedera.HederaTopic
 
-    // log the start of the renderhive service
-    logger.RenderhiveLogger.Main.Info().Msg("Starting Renderhive service app.")
+    // INITIALIZE LOGGER
+    // *************************************************************************
+    // initialize the logger manager
+    service.LoggerManager = &logger.LoggerManager{}
+    err = service.LoggerManager.Init()
+    if err != nil {
+      return err
+    }
 
     // INITIALIZE INTERNAL MANAGERS
     // *************************************************************************
+    // log the start of the renderhive service
+    logger.Manager.Main.Info().Msg("Starting Renderhive service app.")
+
+    // log debug event
+    logger.Manager.Package["logger"].Debug().Msg("Initialized the logger manager.")
+    logger.Manager.Package["logger"].Debug().Msg(fmt.Sprintf(" [#] The log file is located at '%s'", logger.Manager.FileWriter.Name()))
+
     // initialize the node manager
     service.NodeManager = &node.NodeManager{}
     err = service.NodeManager.Init()
@@ -104,9 +114,9 @@ func (service *ServiceApp) Init() (error) {
     if err != nil {
       return err
     }
-    logger.RenderhiveLogger.Main.Info().Msg("Loaded the account details from the environment file.")
-    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s", service.HederaManager.Operator.PublicKey))
-    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf("Mirror node: %v", service.HederaManager.MirrorNode.URL))
+    logger.Manager.Main.Info().Msg("Loaded the account details from the environment file.")
+    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s", service.HederaManager.Operator.PublicKey))
+    logger.Manager.Main.Info().Msg(fmt.Sprintf("Mirror node: %v", service.HederaManager.MirrorNode.URL))
 
     // initialize the IPFS manager
     service.IPFSManager = &ipfs.IPFSManager{}
@@ -129,6 +139,13 @@ func (service *ServiceApp) Init() (error) {
       return err
     }
 
+    // initialize the command line interfae manager
+    service.CLIManager = &cli.CLIManager{}
+    err = service.CLIManager.Init()
+    if err != nil {
+      return err
+    }
+
     // READ HCS TOPIC INFORMATION & SUBSCRIBE
     // *************************************************************************
     // render job queue
@@ -138,7 +155,7 @@ func (service *ServiceApp) Init() (error) {
     }
     err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
-      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+      logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
     })
     if err != nil {
@@ -162,7 +179,7 @@ func (service *ServiceApp) Init() (error) {
     }
     err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
-      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+      logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
     })
     if err != nil {
@@ -176,7 +193,7 @@ func (service *ServiceApp) Init() (error) {
     }
     err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
-      logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+      logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
     })
     if err != nil {
@@ -190,7 +207,6 @@ func (service *ServiceApp) Init() (error) {
     // synchronize with the render hive
     service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
 
-
     go func() {
 
        // add call to wait group
@@ -203,7 +219,7 @@ func (service *ServiceApp) Init() (error) {
 
           // app is quitting
           case <-service.Quit:
-            logger.RenderhiveLogger.Main.Debug().Msg("Stopped hive cycle synchronization loop.")
+            logger.Manager.Main.Debug().Msg("Stopped hive cycle synchronization loop.")
             service.WG.Done()
             return
 
@@ -235,36 +251,42 @@ func (service *ServiceApp) Init() (error) {
     // *************************************************************************
 
     // log some informations about the used constants
-    logger.RenderhiveLogger.Main.Info().Msg("This service app instance relies on the following smart contract(s) and HCS topic(s):")
+    logger.Manager.Main.Info().Msg("This service app instance relies on the following smart contract(s) and HCS topic(s):")
     // the renderhive smart contract this instance calls
-    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Smart Contract: %s", RENDERHIVE_TESTNET_SMART_CONTRACT))
+    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Smart Contract: %s", RENDERHIVE_TESTNET_SMART_CONTRACT))
     // Hive cycle
-    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Synchronization Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION))
-    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Application Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION))
-    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Validation Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
+    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Synchronization Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION))
+    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Application Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION))
+    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Validation Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
     // Render jobs
-    logger.RenderhiveLogger.Main.Info().Msg(fmt.Sprintf(" [#] Render Job Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
+    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Render Job Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
 
 
     return nil
 }
 
 // Deinitialize the Renderhive Service App session
-func (service *ServiceApp) DeInit() (error) {
+func (service *AppManager) DeInit() (error) {
     var err error
 
     // log event
-    logger.RenderhiveLogger.Main.Info().Msg("Stopping Renderhive service app ... ")
+    logger.Manager.Main.Info().Msg("Stopping Renderhive service app ... ")
 
     // send the Quit signal to all concurrent go functions
     service.Quit <- true
 
     // log event
-    logger.RenderhiveLogger.Main.Info().Msg("Waiting for background operations to shut down ... ")
+    logger.Manager.Main.Info().Msg("Waiting for background operations to shut down ... ")
     service.WG.Wait()
 
     // DEINITIALIZE INTERNAL MANAGERS
     // *************************************************************************
+
+    // deinitialize the commmand line interface manager
+    err = service.CLIManager.DeInit()
+    if err != nil {
+      return err
+    }
 
     // deinitialize the web app manager
     err = service.WebAppManager.DeInit()
@@ -301,7 +323,7 @@ func (service *ServiceApp) DeInit() (error) {
     // LOG BASIC APP INFORMATION
     // *************************************************************************
 
-    logger.RenderhiveLogger.Main.Info().Msg("Renderhive service app stopped.")
+    logger.Manager.Main.Info().Msg("Renderhive service app stopped.")
 
     return err
 

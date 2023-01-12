@@ -105,7 +105,7 @@ func (m *MirrorNode) Transactions(hm *HederaManager, accountID string, limit int
     var parameters []string
 
     // log query
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg("Query a list of transactions:")
+    logger.Manager.Package["hedera"].Trace().Msg("Query a list of transactions:")
 
     // prepare the base command
     command = append(command, m.URL, "api", "v1", "transactions?")
@@ -118,7 +118,7 @@ func (m *MirrorNode) Transactions(hm *HederaManager, accountID string, limit int
     if balanceType != ""      { parameters = append(parameters, "type=" + balanceType) }
 
     // log the command
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Command: %v", strings.Join(command, "/") + strings.Join(parameters, "&")))
+    logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Command: %v", strings.Join(command, "/") + strings.Join(parameters, "&")))
 
     // query the transaction list
     httpResponse, err := http.Get(strings.Join(command, "/") + strings.Join(parameters, "&"))
@@ -138,7 +138,7 @@ func (m *MirrorNode) Transactions(hm *HederaManager, accountID string, limit int
     json.Unmarshal(httpResponseBody, &TransactionResponse)
 
     // log number of transactions
-    logger.RenderhiveLogger.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Mirror node responded with %v transactions", len(TransactionResponse.Transactions)))
+    logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Mirror node responded with %v transactions", len(TransactionResponse.Transactions)))
 
     return &TransactionResponse.Transactions, err
 

@@ -49,13 +49,14 @@ import (
 
   // internal
   "renderhive/logger"
-  // "renderhive/constants"
+  // . "renderhive/globals"
   // "renderhive/hedera"
 )
 
 // structure for the IPFS manager
 type IPFSManager struct {
 
+  // Placeholder
   Placeholder string
 
 }
@@ -68,7 +69,7 @@ func (ipfsm *IPFSManager) Init() (error) {
     var err error
 
     // log information
-    logger.RenderhiveLogger.Package["ipfs"].Info().Msg("Initializing the IPFS manager ...")
+    logger.Manager.Package["ipfs"].Info().Msg("Initializing the IPFS manager ...")
 
     return err
 
@@ -79,7 +80,7 @@ func (ipfsm *IPFSManager) DeInit() (error) {
     var err error
 
     // log event
-    logger.RenderhiveLogger.Package["ipfs"].Debug().Msg("Deinitializing the IPFS manager ...")
+    logger.Manager.Package["ipfs"].Debug().Msg("Deinitializing the IPFS manager ...")
 
     return err
 

@@ -39,13 +39,14 @@ import (
 
   // internal
   "renderhive/logger"
-  // "renderhive/constants"
+  // "renderhive/globals"
   // "renderhive/hedera"
 )
 
 // structure for the web app manager
 type WebAppManager struct {
 
+  // Placeholder
   Placeholder string
 
 }
@@ -58,7 +59,7 @@ func (webappm *WebAppManager) Init() (error) {
     var err error
 
     // log information
-    logger.RenderhiveLogger.Package["webapp"].Info().Msg("Initializing the web app manager ...")
+    logger.Manager.Package["webapp"].Info().Msg("Initializing the web app manager ...")
 
     return err
 
@@ -69,7 +70,7 @@ func (webappm *WebAppManager) DeInit() (error) {
     var err error
 
     // log event
-    logger.RenderhiveLogger.Package["webapp"].Debug().Msg("Deinitializing the web app manager ...")
+    logger.Manager.Package["webapp"].Debug().Msg("Deinitializing the web app manager ...")
 
     return err
 

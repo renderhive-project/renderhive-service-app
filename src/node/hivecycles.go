@@ -41,8 +41,8 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
+  // . "renderhive/globals"
   "renderhive/logger"
-  // "renderhive/constants"
   "renderhive/hedera"
 )
 
@@ -89,7 +89,7 @@ func (hc *HiveCycle) MessageCallback() (func(message hederasdk.TopicMessage)) {
     	err = json.Unmarshal(jsonData, &configuration)
     	if err != nil {
 
-        logger.RenderhiveLogger.Package["hedera"].Info().Msg(fmt.Sprintf("Message received but not processed: %s", string(message.Contents)))
+        logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Message received but not processed: %s", string(message.Contents)))
         return
 
     	}
@@ -157,17 +157,17 @@ func (hc *HiveCycle) Synchronize(hm *hedera.HederaManager) (error) {
 
       }
 
-      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf("Configuration message (iteration: %v):", configuration.Iteration))
-      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Consensus time: %v", configuration.Timestamp))
-      logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Duration: %v", configuration.Duration))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf("Configuration message (iteration: %v):", configuration.Iteration))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Consensus time: %v", configuration.Timestamp))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Duration: %v", configuration.Duration))
 
     }
 
     // log information
-    logger.RenderhiveLogger.Package["node"].Debug().Msg("Synchronized with HCS time and calculated hive cycle:")
-    logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Consensus time: %v", hc.NetworkClock.NetworkTime))
-    logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Difference to local time: %v", hc.NetworkClock.Difference))
-    logger.RenderhiveLogger.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Current hive cycle: %v", hc.Current))
+    logger.Manager.Package["node"].Trace().Msg("Synchronized with HCS time and calculated hive cycle:")
+    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Consensus time: %v", hc.NetworkClock.NetworkTime))
+    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Difference to local time: %v", hc.NetworkClock.Difference))
+    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Current hive cycle: %v", hc.Current))
 
     return err
 

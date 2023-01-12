@@ -42,8 +42,8 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
+  // . "renderhive/globals"
   "renderhive/logger"
-  // "renderhive/constants"
   "renderhive/hedera"
 )
 
@@ -89,7 +89,7 @@ func (nm *NodeManager) Init() (error) {
     var err error
 
     // log information
-    logger.RenderhiveLogger.Package["node"].Info().Msg("Initializing the node manager ...")
+    logger.Manager.Package["node"].Info().Msg("Initializing the node manager ...")
 
     return err
 
@@ -100,7 +100,7 @@ func (nm *NodeManager) DeInit() (error) {
     var err error
 
     // log event
-    logger.RenderhiveLogger.Package["node"].Debug().Msg("Deinitializing the node manager ...")
+    logger.Manager.Package["node"].Debug().Msg("Deinitializing the node manager ...")
 
     return err
 

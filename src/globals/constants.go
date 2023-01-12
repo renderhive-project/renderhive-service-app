@@ -18,12 +18,18 @@
  * ************************** END LICENSE BLOCK ********************************
  */
 
-package constants
+package globals
 
 import (
 
+  // standard
+  // ...
+
   // external
   "github.com/rs/zerolog"
+
+  // internal
+  // ...
 
 )
 
