@@ -60,11 +60,8 @@ type Commands struct {
 
   }
 
-  // renderhive bash commands
-  // NOTE: The bash will give a command line interface for communicating with
-  //       the Renderhive Service App when running it in background / headless
-  //       mode.
-  bash struct {
+  // renderhive package commands
+  Package struct {
 
     // renderhive package commands
     // NOTE: Each package command will have several subcommands and flags.
@@ -73,10 +70,10 @@ type Commands struct {
     Node *cobra.Command
     Renderer *cobra.Command
 
-    // misc
-    Exit *cobra.Command
-
   }
+
+  // other commands
+  Exit *cobra.Command
 
 }
 
@@ -122,6 +119,9 @@ func (clim *CLIManager) DeInit() (error) {
 
 // COMMAND LINE INTERFACE
 // #############################################################################
+//
+var exitCLI bool
+
 // Create the main command for the command line interface
 func (clim *CLIManager) CreateMainCommand() *cobra.Command {
 
@@ -148,14 +148,13 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
     			fmt.Println("|   |  _  // _ \\ '_ \\ / _` |/ _ \\ '__| '_ \\| \\ \\ / / _ \\   |")
     			fmt.Println("|   | | \\ \\  __/ | | | (_| |  __/ |  | | | | |\\ V /  __/   |")
     			fmt.Println("|   |_|  \\_\\___|_| |_|\\__,_|\\___|_|  |_| |_|_| \\_/ \\___|   |")
-    			fmt.Println("|           SERVICE APP COMMAND LINE INTERFACE             |")
+    			fmt.Println("|                  COMMAND LINE INTERFACE                  |")
     			fmt.Println("------------------------------------------------------------")
     			fmt.Println("")
     			fmt.Println("Interact with the Renderhive network from the command line:")
 
-          // start a bash for user interaction
-      		shouldExit := false
-      		for !shouldExit {
+          // start a session for user interaction
+      		for !exitCLI {
 
             // new command line
       			fmt.Print("(renderhive) > ")
@@ -171,8 +170,13 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
             // set arguments and execute the command
             fmt.Println(args)
 
-      			// rootCmd.SetArgs(args)
-      			// rootCmd.Execute()
+            //
+      			clim.Commands.Exit.SetArgs(args)
+      			clim.Commands.Exit.Execute()
+
+            // empty args again, so that they don't interfere with the next loop
+            args = []string{}
+
       		}
       	}
 
@@ -183,6 +187,22 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
     // add command flags
     clim.Commands.Main.PersistentFlags().BoolVarP(&clim.Commands.MainFlags.Background, "background", "b", false, "Run the Renderhive Service App in background / headless mode")
 
+    // Create an exit command
+    clim.Commands.Exit = &cobra.Command{
+    	Use:   "exit",
+    	Short: "Exit the Renderhive command line interface session",
+    	Long: `This command will close the command line interface session and shutdown the Renderhive Service App`,
+    	Run: func(cmd *cobra.Command, args []string) {
+
+        // if the user input corresponds to this command
+        // (upper/ lower case is ignored)
+        if strings.EqualFold(args[0], cmd.Use) {
+            // quit the session
+            exitCLI = true
+        }
+    	},
+    }
+
     return clim.Commands.Main
 
 }
@@ -191,61 +211,9 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
 func (clim *CLIManager) CreatePackageCommands() *cobra.Command {
     var packageCommands *cobra.Command
 
-
     // log debug event
     logger.Manager.Package["cli"].Debug().Msg("Create the package commands for the CLI.")
 
     return packageCommands
 
 }
-
-
-// package main
-//
-// import (
-// 	"bufio"
-// 	"fmt"
-// 	"os"
-// 	"strings"
-//
-// 	"github.com/spf13/cobra"
-// )
-//
-// var shouldExit bool
-//
-// var cmdExit = &cobra.Command{
-// 	Use:   "exit",
-// 	Short: "Exit the input loop",
-// 	Long: `Exit the input loop`,
-// 	Run: func(cmd *cobra.Command, args []string) {
-// 		shouldExit = true
-// 	},
-// }
-//
-// var cmdInput = &cobra.Command{
-// 	Use:   "input",
-// 	Short: "Prompt for user input",
-// 	Long: `Prompt for user input and execute it as a command.
-// This command prompts for user input and executes it as a command.`,
-// 	RunE: func(cmd *cobra.Command, args []string) error {
-// 		shouldExit = false
-// 		for !shouldExit {
-// 			fmt.Print("> ")
-// 			reader := bufio.NewReader(os.Stdin)
-// 			input, _ := reader.ReadString('\n')
-// 			input = strings.TrimSpace(input)
-// 			args := strings.Split(input, " ")
-// 			rootCmd.SetArgs(args)
-// 			rootCmd.Execute()
-// 		}
-// 		return nil
-// 	},
-// }
-//
-// var rootCmd = &cobra.Command{Use: "app"}
-// rootCmd.AddCommand(cmdInput)
-// rootCmd.AddCommand(cmdExit)
-//
-// func main() {
-// 	rootCmd.Execute()
-// }

@@ -87,6 +87,6 @@ func main () {
 
   // MAIN LOOP
   // ***************************************************************************
-  time.Sleep(91 * time.Second)
+  // time.Sleep(91 * time.Second)
 
 }

@@ -276,7 +276,7 @@ func (service *AppManager) DeInit() (error) {
     service.Quit <- true
 
     // log event
-    logger.Manager.Main.Info().Msg("Waiting for background operations to shut down ... ")
+    logger.Manager.Main.Info().Msg("Waiting for background operations to terminate ... ")
     service.WG.Wait()
 
     // DEINITIALIZE INTERNAL MANAGERS
