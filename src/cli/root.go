@@ -56,7 +56,7 @@ type Commands struct {
   Main *cobra.Command
   MainFlags struct {
 
-    Background bool
+    Interactive bool
 
   }
 
@@ -73,6 +73,7 @@ type Commands struct {
   }
 
   // other commands
+  Help *cobra.Command
   Exit *cobra.Command
 
 }
@@ -81,6 +82,7 @@ type CLIManager struct {
 
   // CLI commands
   Commands Commands
+  Quit bool
 
 }
 
@@ -130,31 +132,29 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
 
     // create the main command
     clim.Commands.Main = &cobra.Command{
-      Use:     `renderhive`,
-      Short:   `Renderhive is a crowdrendering plattform for Blender based on Web3 technologies`,
-      Long:    `This command line interface gives a complete control over the Renderhive Service App backend, which is the main software package for participating in the renderhive.`,
-      // Args:    ArgsValidator(config),
-      // PreRunE: OptionsValidator(config, headers),
+      Use:     "renderhive",
+      Short:   "Renderhive is a crowdrendering plattform for Blender based on Web3 technologies",
+      Long:    "This command line interface gives you complete control over the Renderhive Service App backend, which is the main software package for participating in the Renderhive network – the first crowdrendering platform for Blender.",
       RunE: func(cmd *cobra.Command, args []string) error {
 
-        // if the app was started in background mode
-        if clim.Commands.MainFlags.Background {
+        // if the app was started in interactive mode
+        if (clim.Commands.MainFlags.Interactive) {
 
           // new command line
-    			fmt.Println("------------------------------------------------------------")
-    			fmt.Println("|    _____                _           _     _              |")
-    			fmt.Println("|   |  __ \\              | |         | |   (_)             |")
-    			fmt.Println("|   | |__) |___ _ __   __| | ___ _ __| |__  ___   _____    |")
-    			fmt.Println("|   |  _  // _ \\ '_ \\ / _` |/ _ \\ '__| '_ \\| \\ \\ / / _ \\   |")
-    			fmt.Println("|   | | \\ \\  __/ | | | (_| |  __/ |  | | | | |\\ V /  __/   |")
-    			fmt.Println("|   |_|  \\_\\___|_| |_|\\__,_|\\___|_|  |_| |_|_| \\_/ \\___|   |")
-    			fmt.Println("|                  COMMAND LINE INTERFACE                  |")
-    			fmt.Println("------------------------------------------------------------")
-    			fmt.Println("")
-    			fmt.Println("Interact with the Renderhive network from the command line:")
+      		fmt.Println("------------------------------------------------------------")
+      		fmt.Println("|    _____                _           _     _              |")
+      		fmt.Println("|   |  __ \\              | |         | |   (_)             |")
+      		fmt.Println("|   | |__) |___ _ __   __| | ___ _ __| |__  ___   _____    |")
+      		fmt.Println("|   |  _  // _ \\ '_ \\ / _` |/ _ \\ '__| '_ \\| \\ \\ / / _ \\   |")
+      		fmt.Println("|   | | \\ \\  __/ | | | (_| |  __/ |  | | | | |\\ V /  __/   |")
+      		fmt.Println("|   |_|  \\_\\___|_| |_|\\__,_|\\___|_|  |_| |_|_| \\_/ \\___|   |")
+      		fmt.Println("|                  COMMAND LINE INTERFACE                  |")
+      		fmt.Println("------------------------------------------------------------")
+      		fmt.Println("")
+      		fmt.Println("Interact with the Renderhive network from the command line:")
 
           // start a session for user interaction
-      		for !exitCLI {
+      		for !clim.Quit {
 
             // new command line
       			fmt.Print("(renderhive) > ")
@@ -167,40 +167,61 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
       			input = strings.TrimSpace(input)
       			args := strings.Split(input, " ")
 
-            // set arguments and execute the command
-            fmt.Println(args)
-
-            //
-      			clim.Commands.Exit.SetArgs(args)
-      			clim.Commands.Exit.Execute()
+            clim.ProcessSessionCommand(clim.Commands.Main, args)
 
             // empty args again, so that they don't interfere with the next loop
             args = []string{}
 
       		}
-      	}
+
+        }
 
         return nil
+
       },
     }
 
     // add command flags
-    clim.Commands.Main.PersistentFlags().BoolVarP(&clim.Commands.MainFlags.Background, "background", "b", false, "Run the Renderhive Service App in background / headless mode")
+    clim.Commands.Main.PersistentFlags().BoolVarP(&clim.Commands.MainFlags.Interactive, "interactive", "i", false, "Run the Renderhive Service App in an interactive session")
 
-    // Create an exit command
+    // Create an 'exit' command for the CLI session
     clim.Commands.Exit = &cobra.Command{
     	Use:   "exit",
     	Short: "Exit the Renderhive command line interface session",
-    	Long: `This command will close the command line interface session and shutdown the Renderhive Service App`,
+    	Long: "This command will close the command line interface session and shutdown the Renderhive Service App",
     	Run: func(cmd *cobra.Command, args []string) {
 
-        // if the user input corresponds to this command
-        // (upper/ lower case is ignored)
-        if strings.EqualFold(args[0], cmd.Use) {
-            // quit the session
-            exitCLI = true
-        }
+        // quit the session
+        clim.Quit = true
+
+        return
     	},
+    }
+
+    // Create an 'help' command for the CLI session
+    clim.Commands.Help = &cobra.Command{
+    	Use:   "help",
+    	Short: "Print the help for this command line interface",
+    	// Long: "This command will close the command line interface session and shutdown the Renderhive Service App",
+    	Run: func(cmd *cobra.Command, args []string) {
+
+        // execute the main command with the "help" flag
+        clim.Commands.Main.Help()
+
+        return
+    	},
+    }
+
+    // Parse the flags passed to the CLI
+    clim.Commands.Main.ParseFlags(os.Args[1:])
+
+    // if the app was started in interactive mode
+    if (!clim.Commands.MainFlags.Interactive) {
+
+        // add the command
+        clim.Commands.Main.AddCommand(clim.Commands.Exit)
+        clim.Commands.Main.AddCommand(clim.Commands.Help)
+
     }
 
     return clim.Commands.Main
@@ -215,5 +236,23 @@ func (clim *CLIManager) CreatePackageCommands() *cobra.Command {
     logger.Manager.Package["cli"].Debug().Msg("Create the package commands for the CLI.")
 
     return packageCommands
+
+}
+
+// Create the package command for the command line interface
+func (clim *CLIManager) ProcessSessionCommand(cmd *cobra.Command, args []string) {
+
+    // 'exit' command
+    if strings.EqualFold(args[0], "exit") {
+      clim.Commands.Exit.SetArgs(args)
+      clim.Commands.Exit.Execute()
+    }
+
+    // 'help' command
+    if strings.EqualFold(args[0], "help") {
+      clim.Commands.Help.SetArgs(args)
+      clim.Commands.Help.Execute()
+    }
+
 
 }
