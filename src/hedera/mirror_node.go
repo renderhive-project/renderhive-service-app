@@ -99,7 +99,7 @@ type TransactionInfo struct {
 // #############################################################################
 // Query a list of transactions
 // https://mainnet-public.mirrornode.hedera.com/api/v1/transactions?order=desc&limit=1
-func (m *MirrorNode) Transactions(hm *HederaManager, accountID string, limit int, order string, transactionType string, result string, balanceType string) (*[]TransactionInfo, error) {
+func (m *MirrorNode) Transactions(hm *PackageManager, accountID string, limit int, order string, transactionType string, result string, balanceType string) (*[]TransactionInfo, error) {
     var err error
     var command []string
     var parameters []string

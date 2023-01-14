@@ -43,6 +43,11 @@ import (
   // internal
   // . "renderhive/globals"
   "renderhive/logger"
+  "renderhive/node"
+  "renderhive/hedera"
+  "renderhive/ipfs"
+  "renderhive/renderer"
+  "renderhive/webapp"
 
 )
 
@@ -60,25 +65,13 @@ type Commands struct {
 
   }
 
-  // renderhive package commands
-  Package struct {
-
-    // renderhive package commands
-    // NOTE: Each package command will have several subcommands and flags.
-    Hedera *cobra.Command
-    Ipfs *cobra.Command
-    Node *cobra.Command
-    Renderer *cobra.Command
-
-  }
-
-  // other commands
+  // subcommands
   Help *cobra.Command
   Exit *cobra.Command
 
 }
 
-type CLIManager struct {
+type PackageManager struct {
 
   // CLI commands
   Commands Commands
@@ -89,8 +82,11 @@ type CLIManager struct {
 
 // CLI MANAGER
 // #############################################################################
+// create the render manager variable
+var Manager = PackageManager{}
+
 // Initialize the CLI Manager
-func (clim *CLIManager) Init() (error) {
+func (clim *PackageManager) Init() (error) {
     var err error
 
     logger.Manager.Package["cli"].Debug().Msg("Initializing the Command Line Interface manager ...")
@@ -98,17 +94,18 @@ func (clim *CLIManager) Init() (error) {
     // create the main command
     clim.Commands.Main = clim.CreateMainCommand()
 
-    // TODO: create package commands
-    clim.CreatePackageCommands()
-
-    // TODO: add package commands
-    // ...
+    // for each package, add the package command to the CLI
+    clim.AddPackageCommand(node.Manager.CreateCommand())
+    clim.AddPackageCommand(hedera.Manager.CreateCommand())
+    clim.AddPackageCommand(ipfs.Manager.CreateCommand())
+    clim.AddPackageCommand(renderer.Manager.CreateCommand())
+    clim.AddPackageCommand(webapp.Manager.CreateCommand())
 
     return err
 }
 
 // Deinitialize the CLI manager
-func (clim *CLIManager) DeInit() (error) {
+func (clim *PackageManager) DeInit() (error) {
     var err error
 
     // log event
@@ -121,11 +118,8 @@ func (clim *CLIManager) DeInit() (error) {
 
 // COMMAND LINE INTERFACE
 // #############################################################################
-//
-var exitCLI bool
-
 // Create the main command for the command line interface
-func (clim *CLIManager) CreateMainCommand() *cobra.Command {
+func (clim *PackageManager) CreateMainCommand() *cobra.Command {
 
     // log debug event
     logger.Manager.Package["cli"].Debug().Msg("Create the main commands for the CLI.")
@@ -134,7 +128,7 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
     clim.Commands.Main = &cobra.Command{
       Use:     "renderhive",
       Short:   "Renderhive is a crowdrendering plattform for Blender based on Web3 technologies",
-      Long:    "This command line interface gives you complete control over the Renderhive Service App backend, which is the main software package for participating in the Renderhive network – the first crowdrendering platform for Blender.",
+      Long:    "This command line interface gives you complete control over the Renderhive Service App backend, which is the main software package for participating in the Renderhive network – the first crowdrendering platform for Blender built on Web3 technologies.",
       RunE: func(cmd *cobra.Command, args []string) error {
 
         // if the app was started in interactive mode
@@ -167,6 +161,7 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
       			input = strings.TrimSpace(input)
       			args := strings.Split(input, " ")
 
+            // process the command
             clim.ProcessSessionCommand(clim.Commands.Main, args)
 
             // empty args again, so that they don't interfere with the next loop
@@ -206,7 +201,9 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
     	Run: func(cmd *cobra.Command, args []string) {
 
         // execute the main command with the "help" flag
+        fmt.Println("")
         clim.Commands.Main.Help()
+        fmt.Println("")
 
         return
     	},
@@ -215,7 +212,7 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
     // Parse the flags passed to the CLI
     clim.Commands.Main.ParseFlags(os.Args[1:])
 
-    // if the app was started in interactive mode
+    // if the app was NOT started in interactive mode
     if (!clim.Commands.MainFlags.Interactive) {
 
         // add the command
@@ -229,30 +226,47 @@ func (clim *CLIManager) CreateMainCommand() *cobra.Command {
 }
 
 // Create the package command for the command line interface
-func (clim *CLIManager) CreatePackageCommands() *cobra.Command {
+func (clim *PackageManager) AddPackageCommand(command *cobra.Command) *cobra.Command {
     var packageCommands *cobra.Command
 
     // log debug event
     logger.Manager.Package["cli"].Debug().Msg("Create the package commands for the CLI.")
+
+    // if the app was NOT started in interactive mode
+    if (!clim.Commands.MainFlags.Interactive) {
+
+        // add the commands to the main command
+        clim.Commands.Main.AddCommand(command)
+
+    }
+
 
     return packageCommands
 
 }
 
 // Create the package command for the command line interface
-func (clim *CLIManager) ProcessSessionCommand(cmd *cobra.Command, args []string) {
+func (clim *PackageManager) ProcessSessionCommand(cmd *cobra.Command, args []string) {
+
 
     // 'exit' command
     if strings.EqualFold(args[0], "exit") {
       clim.Commands.Exit.SetArgs(args)
       clim.Commands.Exit.Execute()
-    }
 
     // 'help' command
-    if strings.EqualFold(args[0], "help") {
+    } else if strings.EqualFold(args[0], "help") {
       clim.Commands.Help.SetArgs(args)
       clim.Commands.Help.Execute()
-    }
 
+    // Unknown command
+    } else {
+
+      // Print an error
+      fmt.Println("")
+      fmt.Println("Error: Unknown command.")
+      fmt.Println("")
+
+    }
 
 }

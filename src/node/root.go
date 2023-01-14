@@ -40,24 +40,14 @@ import (
 
   // external
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/spf13/cobra"
 
   // internal
   // . "renderhive/globals"
   "renderhive/logger"
   "renderhive/hedera"
+
 )
-
-// Data required to manage the nodes
-type NodeManager struct {
-
-  // Basic data on user and node
-  User UserData
-  Node NodeData
-
-  // Hivc cycle management
-  HiveCycle HiveCycle
-
-}
 
 // User data of the node's owner
 type UserData struct {
@@ -81,11 +71,34 @@ type NodeData struct {
 
 }
 
+// Data required to manage the nodes
+type PackageManager struct {
+
+  // Basic data on user and node
+  User UserData
+  Node NodeData
+
+  // Hivc cycle management
+  HiveCycle HiveCycle
+
+  // Command line interface
+  Command *cobra.Command
+  CommandFlags struct {
+
+    FlagPlaceholder bool
+
+  }
+
+}
+
 
 // NODE MANAGER
 // #############################################################################
+// create the node manager variable
+var Manager = PackageManager{}
+
 // Initialize everything required for the node management
-func (nm *NodeManager) Init() (error) {
+func (nm *PackageManager) Init() (error) {
     var err error
 
     // log information
@@ -96,12 +109,28 @@ func (nm *NodeManager) Init() (error) {
 }
 
 // Deinitialize the node manager
-func (nm *NodeManager) DeInit() (error) {
+func (nm *PackageManager) DeInit() (error) {
     var err error
 
     // log event
     logger.Manager.Package["node"].Debug().Msg("Deinitializing the node manager ...")
 
     return err
+
+}
+
+// NODE MANAGER COMMAND LINE INTERFACE
+// #############################################################################
+// Create the command for the command line interface
+func (nm *PackageManager) CreateCommand() (*cobra.Command) {
+
+    // create the package command
+    nm.Command = &cobra.Command{
+    	Use:   "node",
+    	Short: "Commands for managing the Renderhive node",
+    	Long: "This command and its sub-commands enable the management of this Renderhive node",
+    }
+
+    return nm.Command
 
 }

@@ -56,7 +56,7 @@ type HederaAccount struct {
 // ACCOUNT MANAGEMENT
 // #############################################################################
 // Create a new account
-func (h *HederaAccount) New(m *HederaManager, InitialBalance float64) (*hederasdk.TransactionReceipt, error) {
+func (h *HederaAccount) New(m *PackageManager, InitialBalance float64) (*hederasdk.TransactionReceipt, error) {
     var err error
 
     // log information
@@ -126,7 +126,7 @@ func (h *HederaAccount) FromFile(filepath string) error {
 }
 
 // Update the public key of a Hedera account
-func (h *HederaAccount) UpdateKey(m *HederaManager, newKey *hederasdk.PrivateKey) (string, error) {
+func (h *HederaAccount) UpdateKey(m *PackageManager, newKey *hederasdk.PrivateKey) (string, error) {
     var err error
 
     // Updating the account with the new key
@@ -160,7 +160,7 @@ func (h *HederaAccount) UpdateKey(m *HederaManager, newKey *hederasdk.PrivateKey
 // #############################################################################
 // Query the Hedera network for information on this account
 // NOTE: This should be used spareingly, since it has a network fee
-func (h *HederaAccount) QueryInfo(m *HederaManager) (string, error) {
+func (h *HederaAccount) QueryInfo(m *PackageManager) (string, error) {
     var err error
 
     //Create the account info query
@@ -184,7 +184,7 @@ func (h *HederaAccount) QueryInfo(m *HederaManager) (string, error) {
 
 
 // Query the Hedera network for the account balance
-func (h *HederaAccount) QueryBalance(m *HederaManager) (string, error) {
+func (h *HederaAccount) QueryBalance(m *PackageManager) (string, error) {
     var err error
 
     //Create the account info query

@@ -108,7 +108,7 @@ func decodeEvent(eventName string, log []byte, topics [][]byte) ([]interface{}, 
 // #############################################################################
 // This function reads in a contract JSON file, creates a new contract with the contract.Object field as the bytecode,
 // deploys it on the Hedera network, and returns transaction receipt.
-func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath string, adminKey interface{}, gas int64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) New(m *PackageManager, contractFilePath string, adminKey interface{}, gas int64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
   var err error
 
   // Import and parse the compiled contract from the contract file
@@ -201,7 +201,7 @@ func (contract *HederaSmartContract) New(m *HederaManager, contractFilePath stri
 }
 
 // Delete the contract
-func (contract *HederaSmartContract) Delete(m *HederaManager, adminKey interface{}) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) Delete(m *PackageManager, adminKey interface{}) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
   var err error
 
   // delete the topic
@@ -273,7 +273,7 @@ func (contract *HederaSmartContract) Delete(m *HederaManager, adminKey interface
 }
 
 // Call a smart contract function
-func (contract *HederaSmartContract) CallFunction(m *HederaManager, name string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) CallFunction(m *PackageManager, name string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
     var err error
 
     // create the topic info query
@@ -301,7 +301,7 @@ func (contract *HederaSmartContract) CallFunction(m *HederaManager, name string,
 // Get the events emitted by the contract after a function call
 // TODO: Might be good, if the wallet address would be an indexed event parameter
 //       This would later allow to scan the event history for the user. Useful?
-func (contract *HederaSmartContract) GetEventLog(m *HederaManager, callFunctionResponse *hederasdk.TransactionResponse, eventName string) ([]interface{}, error) {
+func (contract *HederaSmartContract) GetEventLog(m *PackageManager, callFunctionResponse *hederasdk.TransactionResponse, eventName string) ([]interface{}, error) {
     var err error
     var event []interface{}
 
@@ -351,7 +351,7 @@ func (contract *HederaSmartContract) GetEventLog(m *HederaManager, callFunctionR
 
 // Query the Hedera network for information on the contract
 // NOTE: This should be used spareingly, since it has a network fee
-func (contract *HederaSmartContract) QueryInfo(m *HederaManager) (string, error) {
+func (contract *HederaSmartContract) QueryInfo(m *PackageManager) (string, error) {
     var err error
 
     // create the topic info query

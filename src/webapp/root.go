@@ -36,6 +36,7 @@ import (
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/spf13/cobra"
 
   // internal
   "renderhive/logger"
@@ -44,18 +45,29 @@ import (
 )
 
 // structure for the web app manager
-type WebAppManager struct {
+type PackageManager struct {
 
   // Placeholder
   Placeholder string
+
+  // Command line interface
+  Command *cobra.Command
+  CommandFlags struct {
+
+    FlagPlaceholder bool
+
+  }
 
 }
 
 
 // WEBAPP MANAGER
 // #############################################################################
+// create the render manager variable
+var Manager = PackageManager{}
+
 // Initialize everything required for the web app management
-func (webappm *WebAppManager) Init() (error) {
+func (webappm *PackageManager) Init() (error) {
     var err error
 
     // log information
@@ -66,12 +78,28 @@ func (webappm *WebAppManager) Init() (error) {
 }
 
 // Deinitialize the web app manager
-func (webappm *WebAppManager) DeInit() (error) {
+func (webappm *PackageManager) DeInit() (error) {
     var err error
 
     // log event
     logger.Manager.Package["webapp"].Debug().Msg("Deinitializing the web app manager ...")
 
     return err
+
+}
+
+// RENDER MANAGER COMMAND LINE INTERFACE
+// #############################################################################
+// Create the command for the command line interface
+func (webappm *PackageManager) CreateCommand() (*cobra.Command) {
+
+    // create the package command
+    webappm.Command = &cobra.Command{
+    	Use:   "webapp",
+    	Short: "Commands for web frontend of the Renderhive Service App",
+    	Long: "This command and its sub-commands enable the management of the web frontend for the Renderhive Service App.",
+    }
+
+    return webappm.Command
 
 }

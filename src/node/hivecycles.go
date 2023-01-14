@@ -112,7 +112,7 @@ func (hc *HiveCycle) MessageCallback() (func(message hederasdk.TopicMessage)) {
 
 // Synchronize with the Hedera network consensus time and calculate the current
 // hive cycle of the network
-func (hc *HiveCycle) Synchronize(hm *hedera.HederaManager) (error) {
+func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     var err error
     var transactions *[]hedera.TransactionInfo
 

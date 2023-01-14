@@ -53,7 +53,7 @@ type HederaTopic struct {
 // for convenience purposes in the root file.
 
 // Create a new topic with a given name as the topic memo
-func (topic *HederaTopic) New(m *HederaManager, adminKey interface{}) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) New(m *PackageManager, adminKey interface{}) (*hederasdk.TransactionReceipt, error) {
   var err error
 
   // create a new topic
@@ -139,7 +139,7 @@ func (topic *HederaTopic) New(m *HederaManager, adminKey interface{}) (*hederasd
 }
 
 // Update the topic
-func (topic *HederaTopic) Update(m *HederaManager, updatedInfo *hederasdk.TopicInfo, oldAdminKey interface{}) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) Update(m *PackageManager, updatedInfo *hederasdk.TopicInfo, oldAdminKey interface{}) (*hederasdk.TransactionReceipt, error) {
   var err error
 
   // delete the topic
@@ -225,7 +225,7 @@ func (topic *HederaTopic) Update(m *HederaManager, updatedInfo *hederasdk.TopicI
 }
 
 // Delete the topic
-func (topic *HederaTopic) Delete(m *HederaManager, adminKey interface{}) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) Delete(m *PackageManager, adminKey interface{}) (*hederasdk.TransactionReceipt, error) {
   var err error
 
   // delete the topic
@@ -296,7 +296,7 @@ func (topic *HederaTopic) Delete(m *HederaManager, adminKey interface{}) (*heder
 }
 
 // Submit a message to the topic
-func (topic *HederaTopic) SubmitMessage(m *HederaManager, message string, submitKey interface{}, scheduleTxn bool, expirationTime *time.Time, waitForExpiry bool) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) SubmitMessage(m *PackageManager, message string, submitKey interface{}, scheduleTxn bool, expirationTime *time.Time, waitForExpiry bool) (*hederasdk.TransactionReceipt, error) {
   var err error
   var newTopicMessageSubmitTransaction *hederasdk.TopicMessageSubmitTransaction
   var newScheduledTransaction *hederasdk.ScheduleCreateTransaction
@@ -434,7 +434,7 @@ func (topic *HederaTopic) SubmitMessage(m *HederaManager, message string, submit
 
 
 // Sign a scheduled submit message on the network
-func (topic *HederaTopic) SignSubmitMessage(m *HederaManager, scheduleID hederasdk.ScheduleID, privateKey interface{}) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) SignSubmitMessage(m *PackageManager, scheduleID hederasdk.ScheduleID, privateKey interface{}) (*hederasdk.TransactionReceipt, error) {
   var err error
   var transactionResponse hederasdk.TransactionResponse
 
@@ -477,7 +477,7 @@ func (topic *HederaTopic) SignSubmitMessage(m *HederaManager, scheduleID hederas
 
 // Query the Hedera network for information on the topic
 // NOTE: This should be used spareingly, since it has a network fee
-func (topic *HederaTopic) QueryInfo(m *HederaManager) (string, error) {
+func (topic *HederaTopic) QueryInfo(m *PackageManager) (string, error) {
     var err error
 
     // create the topic info query
@@ -503,7 +503,7 @@ func (topic *HederaTopic) QueryInfo(m *HederaManager) (string, error) {
 
 // Subscribe to the topic to receive all messages
 // NOTE: The messages are requested from Hedera mirror nodes
-func (topic *HederaTopic) Subscribe(m *HederaManager, startTime time.Time, onNext func(message hederasdk.TopicMessage)) error {
+func (topic *HederaTopic) Subscribe(m *PackageManager, startTime time.Time, onNext func(message hederasdk.TopicMessage)) error {
     var err error
 
     // create the topic info query

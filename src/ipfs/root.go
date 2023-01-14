@@ -46,6 +46,7 @@ import (
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/spf13/cobra"
 
   // internal
   "renderhive/logger"
@@ -54,18 +55,29 @@ import (
 )
 
 // structure for the IPFS manager
-type IPFSManager struct {
+type PackageManager struct {
 
   // Placeholder
   Placeholder string
+
+  // Command line interface
+  Command *cobra.Command
+  CommandFlags struct {
+
+    FlagPlaceholder bool
+
+  }
 
 }
 
 
 // IPFS MANAGER
 // #############################################################################
+// create the ipfs manager variable
+var Manager = PackageManager{}
+
 // Initialize everything required for the IPFS management
-func (ipfsm *IPFSManager) Init() (error) {
+func (ipfsm *PackageManager) Init() (error) {
     var err error
 
     // log information
@@ -76,12 +88,28 @@ func (ipfsm *IPFSManager) Init() (error) {
 }
 
 // Deinitialize the ipfs manager
-func (ipfsm *IPFSManager) DeInit() (error) {
+func (ipfsm *PackageManager) DeInit() (error) {
     var err error
 
     // log event
     logger.Manager.Package["ipfs"].Debug().Msg("Deinitializing the IPFS manager ...")
 
     return err
+
+}
+
+// IPFS MANAGER COMMAND LINE INTERFACE
+// #############################################################################
+// Create the command for the command line interface
+func (ipfsm *PackageManager) CreateCommand() (*cobra.Command) {
+
+    // create the package command
+    ipfsm.Command = &cobra.Command{
+    	Use:   "ipfs",
+    	Short: "Commands for the interaction with the IPFS and Filecoin services",
+    	Long: "This command and its sub-commands enable the interaction with the IPFS and Filecoin services required by the Renderhive network",
+    }
+    
+    return ipfsm.Command
 
 }

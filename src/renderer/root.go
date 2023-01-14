@@ -36,6 +36,7 @@ import (
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/spf13/cobra"
 
   // internal
   // . "renderhive/globals"
@@ -44,18 +45,29 @@ import (
 )
 
 // structure for the render manager
-type RenderManager struct {
+type PackageManager struct {
 
   // Placeholder
   Placeholder string
+
+  // Command line interface
+  Command *cobra.Command
+  CommandFlags struct {
+
+    FlagPlaceholder bool
+
+  }
 
 }
 
 
 // RENDER MANAGER
 // #############################################################################
+// create the render manager variable
+var Manager = PackageManager{}
+
 // Initialize everything required for the render management
-func (rm *RenderManager) Init() (error) {
+func (rm *PackageManager) Init() (error) {
     var err error
 
     // log information
@@ -66,12 +78,28 @@ func (rm *RenderManager) Init() (error) {
 }
 
 // Deinitialize the render manager
-func (rm *RenderManager) DeInit() (error) {
+func (rm *PackageManager) DeInit() (error) {
     var err error
 
     // log event
     logger.Manager.Package["renderer"].Debug().Msg("Deinitializing the render manager ...")
 
     return err
+
+}
+
+// RENDER MANAGER COMMAND LINE INTERFACE
+// #############################################################################
+// Create the command for the command line interface
+func (rm *PackageManager) CreateCommand() (*cobra.Command) {
+
+    // create the package command
+    rm.Command = &cobra.Command{
+    	Use:   "renderer",
+    	Short: "Commands for rendering and render job management",
+    	Long: "This command and its sub-commands enable the management of the render jobs for this Renderhive node",
+    }
+
+    return rm.Command
 
 }

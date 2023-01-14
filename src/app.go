@@ -52,13 +52,13 @@ import (
 type AppManager struct {
 
   // Managers
-  LoggerManager *logger.LoggerManager
-  NodeManager *node.NodeManager
-  HederaManager *hedera.HederaManager
-  IPFSManager *ipfs.IPFSManager
-  RenderManager *renderer.RenderManager
-  WebAppManager *webapp.WebAppManager
-  CLIManager *cli.CLIManager
+  LoggerManager *logger.PackageManager
+  NodeManager *node.PackageManager
+  HederaManager *hedera.PackageManager
+  IPFSManager *ipfs.PackageManager
+  RenderManager *renderer.PackageManager
+  WebAppManager *webapp.PackageManager
+  CLIManager *cli.PackageManager
 
   // Hedera consensus service topics
   // Hive cycle topics
@@ -86,7 +86,7 @@ func (service *AppManager) Init() (error) {
     // INITIALIZE LOGGER
     // *************************************************************************
     // initialize the logger manager
-    service.LoggerManager = &logger.LoggerManager{}
+    service.LoggerManager = &logger.Manager
     err = service.LoggerManager.Init()
     if err != nil {
       return err
@@ -102,14 +102,14 @@ func (service *AppManager) Init() (error) {
     logger.Manager.Package["logger"].Debug().Msg(fmt.Sprintf(" [#] The log file is located at '%s'", logger.Manager.FileWriter.Name()))
 
     // initialize the node manager
-    service.NodeManager = &node.NodeManager{}
+    service.NodeManager = &node.Manager
     err = service.NodeManager.Init()
     if err != nil {
       return err
     }
 
     // initialize the Hedera manager
-    service.HederaManager = &hedera.HederaManager{}
+    service.HederaManager = &hedera.Manager
     err = service.HederaManager.Init(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
     if err != nil {
       return err
@@ -119,28 +119,28 @@ func (service *AppManager) Init() (error) {
     logger.Manager.Main.Info().Msg(fmt.Sprintf("Mirror node: %v", service.HederaManager.MirrorNode.URL))
 
     // initialize the IPFS manager
-    service.IPFSManager = &ipfs.IPFSManager{}
+    service.IPFSManager = &ipfs.Manager
     err = service.IPFSManager.Init()
     if err != nil {
       return err
     }
 
     // initialize the render manager
-    service.RenderManager = &renderer.RenderManager{}
+    service.RenderManager = &renderer.Manager
     err = service.RenderManager.Init()
     if err != nil {
       return err
     }
 
     // initialize the web app manager
-    service.WebAppManager = &webapp.WebAppManager{}
+    service.WebAppManager = &webapp.Manager
     err = service.WebAppManager.Init()
     if err != nil {
       return err
     }
 
     // initialize the command line interfae manager
-    service.CLIManager = &cli.CLIManager{}
+    service.CLIManager = &cli.Manager
     err = service.CLIManager.Init()
     if err != nil {
       return err

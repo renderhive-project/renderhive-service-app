@@ -41,6 +41,7 @@ import (
     // external
     "github.com/rs/zerolog"
     "github.com/rs/zerolog/log"
+    "github.com/spf13/cobra"
 
     // internal
     . "renderhive/globals"
@@ -49,7 +50,7 @@ import (
 
 
 // structure for the main and package loggers
-type LoggerManager struct {
+type PackageManager struct {
 
   // Directories
   WorkingDirectory string
@@ -62,15 +63,23 @@ type LoggerManager struct {
   Main *zerolog.Logger
   Package map[string]*zerolog.Logger
 
+  // Command line interface
+  Command *cobra.Command
+  CommandFlags struct {
+
+    FlagPlaceholder bool
+
+  }
+
 }
 
 // LOGGER MANAGER
 // #############################################################################
 // create the instance for the logger manager to be used in all packages
-var Manager *LoggerManager
+var Manager = PackageManager{}
 
 // Initialize everything required for the IPFS management
-func (logm *LoggerManager) Init() (error) {
+func (logm *PackageManager) Init() (error) {
     var err error
 
     // set global logger level
@@ -121,16 +130,12 @@ func (logm *LoggerManager) Init() (error) {
     logm.AddPackageLogger("webapp")
     logm.AddPackageLogger("cli")
 
-    // assign this manager to the global manager variable, which will be used
-    // by all other packages to call the loggers
-    Manager = logm
-
     return err
 
 }
 
 // Deinitialize the logger manager
-func (logm *LoggerManager) DeInit() (error) {
+func (logm *PackageManager) DeInit() (error) {
     var err error
 
     // log debug event
@@ -141,11 +146,27 @@ func (logm *LoggerManager) DeInit() (error) {
 }
 
 // add a new logger for a package of the app
-func (logm *LoggerManager) AddPackageLogger(name string) *zerolog.Logger {
+func (logm *PackageManager) AddPackageLogger(name string) *zerolog.Logger {
 
   // create a new package logger and add it to the global structure map
   PackageLogger := logm.Main.With().Str("package", name).Caller().Logger()
   logm.Package[name] = &PackageLogger
 
   return logm.Package[name]
+}
+
+// LOGGER MANAGER COMMAND LINE INTERFACE
+// #############################################################################
+// Create the command for the command line interface
+func (logm *PackageManager) CreateCommand() (*cobra.Command) {
+
+    // create the package command
+    logm.Command = &cobra.Command{
+    	Use:   "logger",
+    	Short: "Commands for the interaction with the Renderhive Service App logger",
+    	Long: "This command and its sub-commands enable the interaction with the logger of the Renderhive Service App",
+    }
+
+    return logm.Command
+
 }

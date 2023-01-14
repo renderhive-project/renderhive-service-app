@@ -35,6 +35,7 @@ import (
 
   // external
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/spf13/cobra"
 
   // internal
   . "renderhive/globals"
@@ -50,7 +51,7 @@ const (
 )
 
 // empty structure to hold all methods for the Hedera interactions
-type HederaManager struct {
+type PackageManager struct {
 
   // network communication
   NetworkType int
@@ -62,12 +63,22 @@ type HederaManager struct {
   // Mirror Node
   MirrorNode MirrorNode
 
+  // Command line interface
+  Command *cobra.Command
+  CommandFlags struct {
+
+    FlagPlaceholder bool
+
+  }
 }
 
 // HEDERA MANAGER
 // #############################################################################
+// create the hedera manager variable
+var Manager = PackageManager{}
+
 // Initialize everything required for communication with the Hedera network
-func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
+func (hm *PackageManager) Init(NetworkType int, AccountFilePath string) (error) {
     var err error
     var NetworkClient *hederasdk.Client
 
@@ -137,7 +148,7 @@ func (hm *HederaManager) Init(NetworkType int, AccountFilePath string) (error) {
 }
 
 // Deinitialize the Hedera manager
-func (hm *HederaManager) DeInit() (error) {
+func (hm *PackageManager) DeInit() (error) {
     var err error
 
     // log event
@@ -151,7 +162,7 @@ func (hm *HederaManager) DeInit() (error) {
 // TOPIC MANAGEMENT
 // #############################################################################
 // Obtain the topic information from a TopicID given in string format
-func (hm *HederaManager) TopicInfoFromString(topicID string) (*HederaTopic, error) {
+func (hm *PackageManager) TopicInfoFromString(topicID string) (*HederaTopic, error) {
   var err error
 
   logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("Query topic information for TopicID string '%v':", topicID))
@@ -174,7 +185,7 @@ func (hm *HederaManager) TopicInfoFromString(topicID string) (*HederaTopic, erro
 }
 
 // Subscribe to the topic
-func (hm *HederaManager) TopicSubscribe(topic *HederaTopic, startTime time.Time, onNext func(message hederasdk.TopicMessage)) (error) {
+func (hm *PackageManager) TopicSubscribe(topic *HederaTopic, startTime time.Time, onNext func(message hederasdk.TopicMessage)) (error) {
   var err error
 
   logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("Subscribe to topic with ID %v.", topic.ID))
@@ -186,4 +197,20 @@ func (hm *HederaManager) TopicSubscribe(topic *HederaTopic, startTime time.Time,
   }
 
   return err
+}
+
+// HEDERA MANAGER COMMAND LINE INTERFACE
+// #############################################################################
+// Create the command for the command line interface
+func (hm *PackageManager) CreateCommand() (*cobra.Command) {
+
+    // create the package command
+    hm.Command = &cobra.Command{
+    	Use:   "hedera",
+    	Short: "Commands for the interaction with the Hedera services",
+    	Long: "This command and its sub-commands enable the interaction with the Hedera services required by the Renderhive network",
+    }
+
+    return hm.Command
+
 }
