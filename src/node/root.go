@@ -34,7 +34,7 @@ types are:
 import (
 
   // standard
-  // "fmt"
+  "fmt"
   // "os"
   // "time"
 
@@ -136,6 +136,42 @@ func (nm *PackageManager) CreateCommand() (*cobra.Command) {
     	},
     }
 
+    // add the subcommands
+    nm.Command.AddCommand(nm.CreateCommandInfo())
+
     return nm.Command
+
+}
+
+
+// Create the CLI command to print node information
+func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
+
+    // flags for the info command
+    var hivecycle bool
+
+    // create a 'info' command for the node
+    command := &cobra.Command{
+    	Use:   "info",
+    	Short: "Print information about this node",
+    	Long: "This command provides information about the node including those information retrieved or derived from external network data.",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        // print the hive cycle
+        if hivecycle {
+          fmt.Println("")
+          fmt.Printf("The current hive cycle of the renderhive is %v.\n", nm.HiveCycle.Current)
+          fmt.Println("")
+        }
+
+        return
+
+    	},
+    }
+
+    // add command flags
+    command.Flags().BoolVarP(&hivecycle, "hivecycle", "c", false, "Print the current hive cycle this node calculated")
+
+    return command
 
 }

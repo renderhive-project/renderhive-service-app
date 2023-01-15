@@ -131,7 +131,6 @@ func (clim *PackageManager) CreateMainCommand() *cobra.Command {
       Long:    "This command line interface gives you complete control over the Renderhive Service App backend, which is the main software package for participating in the Renderhive network – the first crowdrendering platform for Blender built on Web3 technologies.",
       Run: func(cmd *cobra.Command, args []string) {
 
-        clim.Commands.Main.ParseFlags(args)
         return
 
       },
