@@ -165,6 +165,11 @@ func (logm *PackageManager) CreateCommand() (*cobra.Command) {
     	Use:   "logger",
     	Short: "Commands for the interaction with the Renderhive Service App logger",
     	Long: "This command and its sub-commands enable the interaction with the logger of the Renderhive Service App",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        return
+
+    	},
     }
 
     return logm.Command

@@ -209,6 +209,11 @@ func (hm *PackageManager) CreateCommand() (*cobra.Command) {
     	Use:   "hedera",
     	Short: "Commands for the interaction with the Hedera services",
     	Long: "This command and its sub-commands enable the interaction with the Hedera services required by the Renderhive network",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        return
+
+    	},
     }
 
     return hm.Command

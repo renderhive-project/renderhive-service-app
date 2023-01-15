@@ -108,8 +108,13 @@ func (ipfsm *PackageManager) CreateCommand() (*cobra.Command) {
     	Use:   "ipfs",
     	Short: "Commands for the interaction with the IPFS and Filecoin services",
     	Long: "This command and its sub-commands enable the interaction with the IPFS and Filecoin services required by the Renderhive network",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        return
+
+    	},
     }
-    
+
     return ipfsm.Command
 
 }

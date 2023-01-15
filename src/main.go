@@ -27,8 +27,6 @@ import (
   "os"
   "time"
   "sync"
-  // "bufio"
-  // "strings"
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
@@ -84,8 +82,13 @@ func main () {
 
   // COMMAND LINE INTERFACE
   // ***************************************************************************
-  // start the command line interface
-  ServiceApp.CLIManager.Commands.Main.Execute()
+  // if the app was started in interactive CLI mode
+  if (ServiceApp.CLIManager.Commands.MainFlags.Interactive) {
+
+      // start the command line interface
+      ServiceApp.CLIManager.StartInteractive()
+
+  }
 
   // MAIN LOOP
   // ***************************************************************************

@@ -129,6 +129,11 @@ func (nm *PackageManager) CreateCommand() (*cobra.Command) {
     	Use:   "node",
     	Short: "Commands for managing the Renderhive node",
     	Long: "This command and its sub-commands enable the management of this Renderhive node",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        return
+
+    	},
     }
 
     return nm.Command

@@ -129,49 +129,10 @@ func (clim *PackageManager) CreateMainCommand() *cobra.Command {
       Use:     "renderhive",
       Short:   "Renderhive is a crowdrendering plattform for Blender based on Web3 technologies",
       Long:    "This command line interface gives you complete control over the Renderhive Service App backend, which is the main software package for participating in the Renderhive network – the first crowdrendering platform for Blender built on Web3 technologies.",
-      RunE: func(cmd *cobra.Command, args []string) error {
+      Run: func(cmd *cobra.Command, args []string) {
 
-        // if the app was started in interactive mode
-        if (clim.Commands.MainFlags.Interactive) {
-
-          // new command line
-      		fmt.Println("------------------------------------------------------------")
-      		fmt.Println("|    _____                _           _     _              |")
-      		fmt.Println("|   |  __ \\              | |         | |   (_)             |")
-      		fmt.Println("|   | |__) |___ _ __   __| | ___ _ __| |__  ___   _____    |")
-      		fmt.Println("|   |  _  // _ \\ '_ \\ / _` |/ _ \\ '__| '_ \\| \\ \\ / / _ \\   |")
-      		fmt.Println("|   | | \\ \\  __/ | | | (_| |  __/ |  | | | | |\\ V /  __/   |")
-      		fmt.Println("|   |_|  \\_\\___|_| |_|\\__,_|\\___|_|  |_| |_|_| \\_/ \\___|   |")
-      		fmt.Println("|                  COMMAND LINE INTERFACE                  |")
-      		fmt.Println("------------------------------------------------------------")
-      		fmt.Println("")
-      		fmt.Println("Interact with the Renderhive network from the command line:")
-
-          // start a session for user interaction
-      		for !clim.Quit {
-
-            // new command line
-      			fmt.Print("(renderhive) > ")
-
-            // wait for new user input
-      			reader := bufio.NewReader(os.Stdin)
-      			input, _ := reader.ReadString('\n')
-
-            // split the input into arguments
-      			input = strings.TrimSpace(input)
-      			args := strings.Split(input, " ")
-
-            // process the command
-            clim.ProcessSessionCommand(clim.Commands.Main, args)
-
-            // empty args again, so that they don't interfere with the next loop
-            args = []string{}
-
-      		}
-
-        }
-
-        return nil
+        clim.Commands.Main.ParseFlags(args)
+        return
 
       },
     }
@@ -193,33 +154,11 @@ func (clim *PackageManager) CreateMainCommand() *cobra.Command {
     	},
     }
 
-    // Create an 'help' command for the CLI session
-    clim.Commands.Help = &cobra.Command{
-    	Use:   "help",
-    	Short: "Print the help for this command line interface",
-    	// Long: "This command will close the command line interface session and shutdown the Renderhive Service App",
-    	Run: func(cmd *cobra.Command, args []string) {
-
-        // execute the main command with the "help" flag
-        fmt.Println("")
-        clim.Commands.Main.Help()
-        fmt.Println("")
-
-        return
-    	},
-    }
-
     // Parse the flags passed to the CLI
     clim.Commands.Main.ParseFlags(os.Args[1:])
 
-    // if the app was NOT started in interactive mode
-    if (!clim.Commands.MainFlags.Interactive) {
-
-        // add the command
-        clim.Commands.Main.AddCommand(clim.Commands.Exit)
-        clim.Commands.Main.AddCommand(clim.Commands.Help)
-
-    }
+    // add the command
+    clim.Commands.Main.AddCommand(clim.Commands.Exit)
 
     return clim.Commands.Main
 
@@ -232,41 +171,60 @@ func (clim *PackageManager) AddPackageCommand(command *cobra.Command) *cobra.Com
     // log debug event
     logger.Manager.Package["cli"].Debug().Msg("Create the package commands for the CLI.")
 
-    // if the app was NOT started in interactive mode
-    if (!clim.Commands.MainFlags.Interactive) {
-
-        // add the commands to the main command
-        clim.Commands.Main.AddCommand(command)
-
-    }
-
+    // add the commands to the main command
+    clim.Commands.Main.AddCommand(command)
 
     return packageCommands
 
 }
 
-// Create the package command for the command line interface
-func (clim *PackageManager) ProcessSessionCommand(cmd *cobra.Command, args []string) {
+// Start the command line interface in interactive mode
+func (clim *PackageManager) StartInteractive() {
+
+	fmt.Println("------------------------------------------------------------")
+	fmt.Println("|    _____                _           _     _              |")
+	fmt.Println("|   |  __ \\              | |         | |   (_)             |")
+	fmt.Println("|   | |__) |___ _ __   __| | ___ _ __| |__  ___   _____    |")
+	fmt.Println("|   |  _  // _ \\ '_ \\ / _` |/ _ \\ '__| '_ \\| \\ \\ / / _ \\   |")
+	fmt.Println("|   | | \\ \\  __/ | | | (_| |  __/ |  | | | | |\\ V /  __/   |")
+	fmt.Println("|   |_|  \\_\\___|_| |_|\\__,_|\\___|_|  |_| |_|_| \\_/ \\___|   |")
+	fmt.Println("|                  COMMAND LINE INTERFACE                  |")
+	fmt.Println("------------------------------------------------------------")
+	fmt.Println("")
+	fmt.Println("Interact with the Renderhive network from the command line:")
+
+  // start a new interactive CLI session
+	for !clim.Quit {
+
+    // new command line
+		fmt.Print("(renderhive) > ")
+
+    // wait for new user input
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+
+    // split the input into arguments
+		input = strings.TrimSpace(input)
+		args := strings.Split(input, " ")
+
+    // process the command
+    clim.Commands.Main.SetArgs(args)
+    clim.Commands.Main.Execute()
 
 
-    // 'exit' command
-    if strings.EqualFold(args[0], "exit") {
-      clim.Commands.Exit.SetArgs(args)
-      clim.Commands.Exit.Execute()
 
-    // 'help' command
-    } else if strings.EqualFold(args[0], "help") {
-      clim.Commands.Help.SetArgs(args)
-      clim.Commands.Help.Execute()
+    // reset arguments and flags for the next command
+    // empty args again, so that they don't interfere with the next loop
+    args = []string{}
 
-    // Unknown command
-    } else {
+    // reset all flags
+    for _, subcmd := range clim.Commands.Main.Commands() {
 
-      // Print an error
-      fmt.Println("")
-      fmt.Println("Error: Unknown command.")
-      fmt.Println("")
+      // reset the flags of all subcommands
+      subcmd.ResetFlags()
 
     }
+
+	}
 
 }

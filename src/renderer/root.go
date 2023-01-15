@@ -98,6 +98,11 @@ func (rm *PackageManager) CreateCommand() (*cobra.Command) {
     	Use:   "renderer",
     	Short: "Commands for rendering and render job management",
     	Long: "This command and its sub-commands enable the management of the render jobs for this Renderhive node",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        return
+
+    	},
     }
 
     return rm.Command

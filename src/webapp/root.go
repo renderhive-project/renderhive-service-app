@@ -96,8 +96,13 @@ func (webappm *PackageManager) CreateCommand() (*cobra.Command) {
     // create the package command
     webappm.Command = &cobra.Command{
     	Use:   "webapp",
-    	Short: "Commands for web frontend of the Renderhive Service App",
+    	Short: "Commands for the web frontend of the Renderhive Service App",
     	Long: "This command and its sub-commands enable the management of the web frontend for the Renderhive Service App.",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        return
+
+    	},
     }
 
     return webappm.Command
