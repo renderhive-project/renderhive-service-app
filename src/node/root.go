@@ -50,10 +50,11 @@ import (
 )
 
 // User data of the node's owner
+// TODO: add further user data
 type UserData struct {
 
-  ID int
-  Username string
+  ID int                              // User ID given by the Renderhive Smart Contract
+  Username string                     // a user name
   UserAccount hederasdk.AccountID     // Hedera account ID of the user's main account
   NodeAccounts []hederasdk.AccountID  // Hedera account IDs of the user's node accounts
 
@@ -148,6 +149,7 @@ func (nm *PackageManager) CreateCommand() (*cobra.Command) {
 func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
 
     // flags for the info command
+    var user bool
     var hivecycle bool
 
     // create a 'info' command for the node
@@ -156,6 +158,16 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
     	Short: "Print information about this node",
     	Long: "This command provides information about the node including those information retrieved or derived from external network data.",
       Run: func(cmd *cobra.Command, args []string) {
+
+        // print the user data
+        if user {
+          fmt.Println("")
+          fmt.Println("This node is registered on the following user:")
+          fmt.Printf(" [#] User ID: %v\n", nm.User.ID)
+          fmt.Printf(" [#] Username: %v\n", nm.User.Username)
+          fmt.Printf(" [#] Hedera Account ID: %v\n", nm.User.UserAccount.String())
+          fmt.Println("")
+        }
 
         // print the hive cycle
         if hivecycle {
@@ -170,6 +182,7 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
     }
 
     // add command flags
+    command.Flags().BoolVarP(&user, "user", "u", false, "Print the node owner's user data")
     command.Flags().BoolVarP(&hivecycle, "hivecycle", "c", false, "Print the current hive cycle this node calculated")
 
     return command
