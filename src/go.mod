@@ -38,4 +38,5 @@ require (
 	// this is only required for the testnet
 	github.com/joho/godotenv v1.4.0
 	github.com/spf13/cobra v1.6.1 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 )

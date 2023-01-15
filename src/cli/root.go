@@ -38,6 +38,7 @@ import (
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/spf13/pflag"
   "github.com/spf13/cobra"
 
   // internal
@@ -207,6 +208,7 @@ func (clim *PackageManager) StartInteractive() {
 		args := strings.Split(input, " ")
 
     // process the command
+    // fmt.Println(args)
     clim.Commands.Main.SetArgs(args)
     clim.Commands.Main.Execute()
 
@@ -214,16 +216,43 @@ func (clim *PackageManager) StartInteractive() {
 
     // reset arguments and flags for the next command
     // empty args again, so that they don't interfere with the next loop
-    args = []string{}
+    args = []string{""}
 
     // reset all flags
-    for _, subcmd := range clim.Commands.Main.Commands() {
-
-      // reset the flags of all subcommands
-      subcmd.ResetFlags()
-
-    }
+    clim.ResetFlags()
 
 	}
+
+}
+
+// Reset all flags to their default values
+func (clim *PackageManager) ResetFlags() {
+
+  // reset all flags to their default values
+  // TODO: Improve this methode to be recursive without defining the recursion
+  //       level
+  for _, subcmd := range clim.Commands.Main.Commands() {
+    subcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+      // fmt.Println(flag.Name, flag.DefValue)
+      flag.Value.Set(flag.DefValue)
+    })
+
+    subcmd.Flags().VisitAll(func(flag *pflag.Flag) {
+      // fmt.Println(flag.Name, flag.DefValue)
+      flag.Value.Set(flag.DefValue)
+    })
+
+    for _, subsubcmd := range subcmd.Commands() {
+      subsubcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+        // fmt.Println(flag.Name, flag.DefValue)
+        flag.Value.Set(flag.DefValue)
+      })
+
+      subsubcmd.Flags().VisitAll(func(flag *pflag.Flag) {
+        // fmt.Println(flag.Name, flag.DefValue)
+        flag.Value.Set(flag.DefValue)
+      })
+    }
+  }
 
 }
