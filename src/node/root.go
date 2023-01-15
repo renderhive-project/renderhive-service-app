@@ -39,7 +39,7 @@ import (
   // "time"
 
   // external
-  hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
   "github.com/spf13/cobra"
 
   // internal
@@ -53,17 +53,17 @@ import (
 // TODO: add further user data
 type UserData struct {
 
-  ID int                              // User ID given by the Renderhive Smart Contract
+  ID int                              // Renderhive User ID given by the Renderhive Smart Contract
   Username string                     // a user name
-  UserAccount hederasdk.AccountID     // Hedera account ID of the user's main account
-  NodeAccounts []hederasdk.AccountID  // Hedera account IDs of the user's node accounts
+  UserAccount hedera.HederaAccount     // Hedera account ID of the user's main account
+  NodeAccounts []hedera.HederaAccount  // Hedera account IDs of the user's node accounts
 
 }
 
 // Node data of the node running this service app instance
 type NodeData struct {
 
-  ID int                      // Renderhive ID of the node
+  ID int                      // Renderhive Node ID given by the Renderhive Smart Contract
   ClientNode bool             // True, if the node acts as a client node
   RenderNode bool             // True, if the node acts as a render node
 
@@ -149,6 +149,7 @@ func (nm *PackageManager) CreateCommand() (*cobra.Command) {
 func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
 
     // flags for the info command
+    var this bool
     var user bool
     var hivecycle bool
 
@@ -165,7 +166,20 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
           fmt.Println("This node is registered on the following user:")
           fmt.Printf(" [#] User ID: %v\n", nm.User.ID)
           fmt.Printf(" [#] Username: %v\n", nm.User.Username)
-          fmt.Printf(" [#] Hedera Account ID: %v\n", nm.User.UserAccount.String())
+          fmt.Printf(" [#] User Account ID (Hedera): %v\n", nm.User.UserAccount.AccountID.String())
+          fmt.Println("")
+        }
+
+        // print the node data of this node
+        if this {
+          fmt.Println("")
+          fmt.Println("Available information about this node:")
+          fmt.Printf(" [#] Node ID: %v\n", nm.Node.ID)
+          fmt.Printf(" [#] Operating as client node: %v\n", nm.Node.ClientNode)
+          fmt.Printf(" [#] Operating as render node: %v\n", nm.Node.RenderNode)
+          if nm.Node.NodeAccount != nil {
+            fmt.Printf(" [#] Node Account ID (Hedera): %v\n", nm.Node.NodeAccount.AccountID.String())
+          }
           fmt.Println("")
         }
 
@@ -183,6 +197,7 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
 
     // add command flags
     command.Flags().BoolVarP(&user, "user", "u", false, "Print the node owner's user data")
+    command.Flags().BoolVarP(&this, "this", "t", false, "Print the available information about this node")
     command.Flags().BoolVarP(&hivecycle, "hivecycle", "c", false, "Print the current hive cycle this node calculated")
 
     return command
