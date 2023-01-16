@@ -169,7 +169,7 @@ func (clim *PackageManager) AddPackageCommand(command *cobra.Command) *cobra.Com
     var packageCommands *cobra.Command
 
     // log debug event
-    logger.Manager.Package["cli"].Debug().Msg("Create the package commands for the CLI.")
+    logger.Manager.Package["cli"].Debug().Msg(fmt.Sprintf("Create the package command '%v' for the CLI.", command.Name()))
 
     // add the commands to the main command
     clim.Commands.Main.AddCommand(command)

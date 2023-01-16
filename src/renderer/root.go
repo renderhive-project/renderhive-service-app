@@ -23,7 +23,7 @@ package renderer
 /*
 
 The renderer package handles all the functionality for rendering. It manages
-render jobs, the data, calls Blender, etc.
+render jobs, the render result, calls Blender, etc.
 
 */
 
@@ -44,11 +44,77 @@ import (
   // "renderhive/hedera"
 )
 
+
+
+// RENDER JOBS, OFFERS, AND REQUESTS
+// #############################################################################
+// Blender file data
+type BlenderFileData struct {
+
+  // TODO: Fill with information
+  CID string                 // content identifier (CID) of the .blend file on the IPFS
+
+  // Render settings
+  Settings RenderSettings     // rendering settings of this render job
+
+}
+
+// Blender render settings
+type RenderSettings struct {
+
+  // TODO: Fill with further required information
+  // Render settings
+  Engine string               // Render engine to be used (i.e., Cycles, EEVEE)
+  FeatureSet string           // Blender feature set to be used
+  Device string               // CPU, GPU or both?
+  ResolutionX int             // x resolution of the render result
+  ResolutionY int             // y resolution of the render result
+  TileX int                   // x resolution of tiles to be rendered
+  TileY int                   // y resolution of tiles to be rendered
+
+  OutputFilepath string       // Output path (includes file naming)
+
+}
+
+// a render job claimed for rendering on the renderhive by this node
+type RenderJob struct {
+
+  // TODO: Fill with information
+  UserID int                   // ID of the user this render job belongs to
+
+  // File data
+  BlenderFile BlenderFileData  // Data of the Blender file to be rendered
+  Document string              // content identifier (CID) of the render request document on the IPFS
+
+}
+
+// a render job that is requested by this node for rendering on the renderhive
+type RenderRequest struct {
+
+  // TODO: Fill with information
+  UserID int                   // ID of the user this request belongs to
+
+  // File data
+  BlenderFile BlenderFileData  // Data of the Blender file to be rendered
+  Document string              // content identifier (CID) of the render request document on the IPFS
+
+}
+
+// a render offer that is provided by this node for rendering on the renderhive
+type RenderOffer struct {
+
+  // TODO: Fill with information
+  UserID int                  // ID of the user this offer belongs to
+  Document string             // content identifier (CID) of the render offer document on the IPFS
+
+}
+
+
+// RENDER MANAGER
+// #############################################################################
+
 // structure for the render manager
 type PackageManager struct {
-
-  // Placeholder
-  Placeholder string
 
   // Command line interface
   Command *cobra.Command
@@ -60,9 +126,6 @@ type PackageManager struct {
 
 }
 
-
-// RENDER MANAGER
-// #############################################################################
 // create the render manager variable
 var Manager = PackageManager{}
 

@@ -46,6 +46,7 @@ import (
   // . "renderhive/globals"
   "renderhive/logger"
   "renderhive/hedera"
+  "renderhive/renderer"
 
 )
 
@@ -72,12 +73,26 @@ type NodeData struct {
 
 }
 
+// Render data of the node running this service app instance
+type RenderData struct {
+
+  // Render requests and offers
+  Offer *renderer.RenderOffer         // the render offer provided by this node (if any)
+  Requests *[]renderer.RenderRequest  // the list of render jobs requested by this node (if any)
+
+  // Job queues
+  NodeQueue *[]renderer.RenderJob     // the queue of render jobs to be performed on this node
+  NetworkQueue *[]renderer.RenderJob  // the queue of render jobs on the renderhive network
+
+}
+
 // Data required to manage the nodes
 type PackageManager struct {
 
-  // Basic data on user and node
+  // Basic data on this node and its user
   User UserData
   Node NodeData
+  Renderer RenderData
 
   // Hivc cycle management
   HiveCycle HiveCycle
