@@ -35,6 +35,7 @@ import (
 
   // standard
   "fmt"
+  "strings"
   // "os"
   // "time"
 
@@ -120,6 +121,11 @@ func (nm *PackageManager) Init() (error) {
     // log information
     logger.Manager.Package["node"].Info().Msg("Initializing the node manager ...")
 
+    // Add a Blender version to the node's render offer
+    nm.Renderer.Offer = &renderer.RenderOffer{}
+    nm.Renderer.Offer.Blender = map[string]renderer.BlenderAppData{}
+    nm.Renderer.Offer.AddBlenderVersion("3.3", "/Applications/Blender 3.30.app", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"})
+
     return err
 
 }
@@ -164,9 +170,10 @@ func (nm *PackageManager) CreateCommand() (*cobra.Command) {
 func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
 
     // flags for the info command
+    var hivecycle bool
+    var offer bool
     var this bool
     var user bool
-    var hivecycle bool
 
     // create a 'info' command for the node
     command := &cobra.Command{
@@ -175,34 +182,57 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
     	Long: "This command provides information about the node including those information retrieved or derived from external network data.",
       Run: func(cmd *cobra.Command, args []string) {
 
-        // print the user data
-        if user {
-          fmt.Println("")
-          fmt.Println("This node is registered on the following user:")
-          fmt.Printf(" [#] User ID: %v\n", nm.User.ID)
-          fmt.Printf(" [#] Username: %v\n", nm.User.Username)
-          fmt.Printf(" [#] User Account ID (Hedera): %v\n", nm.User.UserAccount.AccountID.String())
-          fmt.Println("")
+        // print the hive cycle
+        if hivecycle {
+            fmt.Println("")
+            fmt.Printf("The current hive cycle of the renderhive is %v.\n", nm.HiveCycle.Current)
+            fmt.Println("")
         }
 
         // print the node data of this node
         if this {
-          fmt.Println("")
-          fmt.Println("Available information about this node:")
-          fmt.Printf(" [#] Node ID: %v\n", nm.Node.ID)
-          fmt.Printf(" [#] Operating as client node: %v\n", nm.Node.ClientNode)
-          fmt.Printf(" [#] Operating as render node: %v\n", nm.Node.RenderNode)
-          if nm.Node.NodeAccount != nil {
-            fmt.Printf(" [#] Node Account ID (Hedera): %v\n", nm.Node.NodeAccount.AccountID.String())
-          }
-          fmt.Println("")
+            fmt.Println("")
+            fmt.Println("Available information about this node:")
+            fmt.Printf(" [#] Node ID: %v\n", nm.Node.ID)
+            fmt.Printf(" [#] Operating as client node: %v\n", nm.Node.ClientNode)
+            fmt.Printf(" [#] Operating as render node: %v\n", nm.Node.RenderNode)
+            if nm.Node.NodeAccount != nil {
+                fmt.Printf(" [#] Node Account ID (Hedera): %v\n", nm.Node.NodeAccount.AccountID.String())
+            }
+            fmt.Println("")
         }
 
-        // print the hive cycle
-        if hivecycle {
-          fmt.Println("")
-          fmt.Printf("The current hive cycle of the renderhive is %v.\n", nm.HiveCycle.Current)
-          fmt.Println("")
+        // print the render offer
+        if offer {
+            // if the node has a render offer, print it
+            if nm.Renderer.Offer != nil {
+
+                fmt.Println("")
+                fmt.Println("This node offers the following render services:")
+                fmt.Printf(" [#] Render offer document (IPFS): %v\n", nm.Renderer.Offer.Document)
+                fmt.Printf(" [#] Supported Blender versions:\n")
+                for _, Blender := range nm.Renderer.Offer.Blender {
+                  fmt.Printf("     - Blender %v (Engines: %v | Devices: %v) \n", Blender.Version, strings.Join(*Blender.Engines, ", "), strings.Join(*Blender.Devices, ", "))
+                }
+                fmt.Println("")
+
+            } else {
+
+                fmt.Println("")
+                fmt.Println("This node is not offering a render service.")
+                fmt.Println("")
+
+            }
+        }
+
+        // print the user data
+        if user {
+            fmt.Println("")
+            fmt.Println("This node is registered on the following user:")
+            fmt.Printf(" [#] User ID: %v\n", nm.User.ID)
+            fmt.Printf(" [#] Username: %v\n", nm.User.Username)
+            fmt.Printf(" [#] User Account ID (Hedera): %v\n", nm.User.UserAccount.AccountID.String())
+            fmt.Println("")
         }
 
         return
@@ -211,9 +241,10 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
     }
 
     // add command flags
-    command.Flags().BoolVarP(&user, "user", "u", false, "Print the node owner's user data")
-    command.Flags().BoolVarP(&this, "this", "t", false, "Print the available information about this node")
     command.Flags().BoolVarP(&hivecycle, "hivecycle", "c", false, "Print the current hive cycle this node calculated")
+    command.Flags().BoolVarP(&offer, "offer", "o", false, "Print the render offer of this node")
+    command.Flags().BoolVarP(&this, "this", "t", false, "Print the available information about this node")
+    command.Flags().BoolVarP(&user, "user", "u", false, "Print the node owner's user data")
 
     return command
 

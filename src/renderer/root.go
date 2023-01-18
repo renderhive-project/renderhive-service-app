@@ -30,7 +30,9 @@ render jobs, the render result, calls Blender, etc.
 import (
 
   // standard
-  // "fmt"
+  "fmt"
+  "strings"
+  "errors"
   // "os"
   // "time"
 
@@ -48,11 +50,23 @@ import (
 
 // RENDER JOBS, OFFERS, AND REQUESTS
 // #############################################################################
+// App data of supported Blender version
+type BlenderAppData struct {
+
+  Version string              // Version of this Blender app
+  Path string                 // Path to the Blender app
+
+  // Render settings supported by this node's Blender instance
+  Engines *[]string                    // Supported render engines
+  Devices *[]string                    // Supported devices
+
+}
+
 // Blender file data
 type BlenderFileData struct {
 
   // TODO: Fill with information
-  CID string                 // content identifier (CID) of the .blend file on the IPFS
+  CID string                  // content identifier (CID) of the .blend file on the IPFS
 
   // Render settings
   Settings RenderSettings     // rendering settings of this render job
@@ -95,7 +109,7 @@ type RenderRequest struct {
   UserID int                   // ID of the user this request belongs to
 
   // File data
-  BlenderFile BlenderFileData  // Data of the Blender file to be rendered
+  BlenderFile BlenderFileData  // data of the Blender file to be rendered
   Document string              // content identifier (CID) of the render request document on the IPFS
 
 }
@@ -107,7 +121,11 @@ type RenderOffer struct {
   UserID int                  // ID of the user this offer belongs to
   Document string             // content identifier (CID) of the render offer document on the IPFS
 
+  // Render offer
+  Blender map[string]BlenderAppData    // supported Blender version and render settings
+
 }
+
 
 
 // RENDER MANAGER
@@ -146,6 +164,58 @@ func (rm *PackageManager) DeInit() (error) {
 
     // log event
     logger.Manager.Package["renderer"].Debug().Msg("Deinitializing the render manager ...")
+
+    return err
+
+}
+
+
+// RENDER OFFERS
+// #############################################################################
+// Add a Blender version to the render offer
+func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[]string, devices *[]string) (error) {
+    var err error
+
+    // log event
+    logger.Manager.Package["renderer"].Trace().Msg("Add a Blender version supported by this node:")
+    logger.Manager.Package["renderer"].Trace().Msg(fmt.Sprintf(" [#] Version: %v", version))
+    logger.Manager.Package["renderer"].Trace().Msg(fmt.Sprintf(" [#] Path: %v", path))
+    logger.Manager.Package["renderer"].Trace().Msg(fmt.Sprintf(" [#] Engines: %v", strings.Join(*engines, ",")))
+    logger.Manager.Package["renderer"].Trace().Msg(fmt.Sprintf(" [#] Engines: %v", strings.Join(*devices, ",")))
+
+    // append it to the slice of supported Blender versions in the render offer
+    ro.Blender[version] = BlenderAppData{
+                            Version: version,
+                            Path: path,
+                            Engines: engines,
+                            Devices: devices,
+                          }
+
+    // dcheck if the new element exists in the map and return in error if not
+    _, ok := ro.Blender[version]
+    if ok == false {
+        err = errors.New(fmt.Sprintf("Blender version '%v' could not be added.", version))
+    }
+
+    return err
+
+}
+
+// Delete a Blender version from the render offer
+func (ro *RenderOffer) DeleteBlenderVersion(version string) (error) {
+    var err error
+
+    // log event
+    logger.Manager.Package["renderer"].Trace().Msg("Delete a Blender version from the node's render offer:")
+    logger.Manager.Package["renderer"].Trace().Msg(fmt.Sprintf(" [#] Version: %v", version))
+
+    // delete the element from the map, if it exists
+    _, ok := ro.Blender[version]
+    if ok {
+        delete(ro.Blender, version)
+    } else {
+        err = errors.New(fmt.Sprintf("Blender version '%v' could not be deleted.", version))
+    }
 
     return err
 
