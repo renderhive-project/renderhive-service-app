@@ -33,7 +33,10 @@ import (
   "fmt"
   "strings"
   "errors"
-  // "os"
+  "os"
+  "os/exec"
+  "bufio"
+  "io"
   // "time"
 
   // external
@@ -70,6 +73,14 @@ type BlenderFileData struct {
 
   // Render settings
   Settings RenderSettings     // rendering settings of this render job
+
+}
+
+// Blender benchmark
+type BlenderBenchmark struct {
+
+  Version float64             // Blender benchmark tool version
+  Points float64              // Blender benchmark points
 
 }
 
@@ -118,10 +129,12 @@ type RenderRequest struct {
 type RenderOffer struct {
 
   // TODO: Fill with information
-  UserID int                  // ID of the user this offer belongs to
-  Document string             // content identifier (CID) of the render offer document on the IPFS
+  UserID int                           // ID of the user this offer belongs to
+  Document string                      // content identifier (CID) of the render offer document on the IPFS
 
   // Render offer
+  RenderPower float64                  // render power offered by the node
+  Price float64                        // price of rendering
   Blender map[string]BlenderAppData    // supported Blender version and render settings
 
 }
@@ -216,6 +229,59 @@ func (ro *RenderOffer) DeleteBlenderVersion(version string) (error) {
     } else {
         err = errors.New(fmt.Sprintf("Blender version '%v' could not be deleted.", version))
     }
+
+    return err
+
+}
+
+
+// BLENDER CONTROL
+// #############################################################################
+// Start Blender with command line flags and render the given blend_file
+func (b *BlenderAppData) Execute(args []string) (error) {
+    var err error
+
+    // log event
+    logger.Manager.Package["renderer"].Debug().Msg("Starting Blender:")
+    logger.Manager.Package["renderer"].Debug().Msg(fmt.Sprintf(" [#] Version: %v", b.Version))
+    logger.Manager.Package["renderer"].Debug().Msg(fmt.Sprintf(" [#] Path: %v", b.Path))
+
+    // Check if path is pointing to an existing file
+    if _, err = os.Stat(b.Path); os.IsNotExist(err) {
+        return err
+    }
+
+    // Execute Blender in background mode
+    cmd := exec.Command(b.Path, append([]string{"-b"}, args...)...)
+    stdout, _ := cmd.StdoutPipe()
+    stderr, _ := cmd.StderrPipe()
+    err = cmd.Start()
+    if err != nil {
+        fmt.Println(err)
+        return err
+    }
+
+    // Print the process ID of the running Blender instance
+    logger.Manager.Package["renderer"].Debug().Msg(fmt.Sprintf(" [#] PID: %v", cmd.Process.Pid))
+
+    // check for Blender output in go routine
+    go func() {
+
+        // empty line
+        fmt.Println("")
+
+        // Create a new scanner to read the command output
+        scanner := bufio.NewScanner(io.MultiReader(stdout,stderr))
+        for scanner.Scan() {
+
+          // Print the command line output of Blender
+          fmt.Printf("(blender) > StdOut: %v \n", scanner.Text())
+
+        }
+
+
+
+    }()
 
     return err
 
