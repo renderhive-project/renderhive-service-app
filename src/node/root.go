@@ -126,7 +126,7 @@ func (nm *PackageManager) Init() (error) {
     // Add a Blender version to the node's render offer
     nm.Renderer.Offer = &RenderOffer{}
     nm.Renderer.Offer.Blender = map[string]BlenderAppData{}
-    nm.Renderer.Offer.AddBlenderVersion("3.30", "/Applications/Blender 3.30.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"})
+    nm.Renderer.Offer.AddBlenderVersion("3.00", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"})
 
     return err
 
@@ -162,6 +162,7 @@ func (nm *PackageManager) CreateCommand() (*cobra.Command) {
 
     // add the subcommands
     nm.Command.AddCommand(nm.CreateCommandInfo())
+    nm.Command.AddCommand(nm.CreateCommandBlender())
 
     return nm.Command
 

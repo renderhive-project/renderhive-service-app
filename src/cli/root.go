@@ -38,6 +38,7 @@ import (
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  "github.com/mattn/go-shellwords"
   "github.com/spf13/pflag"
   "github.com/spf13/cobra"
 
@@ -201,16 +202,16 @@ func (clim *PackageManager) StartInteractive() {
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 
-    // split the input into arguments
+    // split the input line into arguments
 		input = strings.TrimSpace(input)
-		args := strings.Split(input, " ")
+    args, err := shellwords.Parse(input)
+    if err != nil {
+      break
+    }
 
     // process the command
-    // fmt.Println(args)
     clim.Commands.Main.SetArgs(args)
     clim.Commands.Main.Execute()
-
-
 
     // reset arguments and flags for the next command
     // empty args again, so that they don't interfere with the next loop
