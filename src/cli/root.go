@@ -47,7 +47,6 @@ import (
   "renderhive/node"
   "renderhive/hedera"
   "renderhive/ipfs"
-  "renderhive/renderer"
   "renderhive/webapp"
 
 )
@@ -99,7 +98,6 @@ func (clim *PackageManager) Init() (error) {
     clim.AddPackageCommand(node.Manager.CreateCommand())
     clim.AddPackageCommand(hedera.Manager.CreateCommand())
     clim.AddPackageCommand(ipfs.Manager.CreateCommand())
-    clim.AddPackageCommand(renderer.Manager.CreateCommand())
     clim.AddPackageCommand(webapp.Manager.CreateCommand())
 
     return err

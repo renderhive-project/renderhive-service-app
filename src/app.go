@@ -43,7 +43,6 @@ import (
   "renderhive/node"
   "renderhive/hedera"
   "renderhive/ipfs"
-  "renderhive/renderer"
   "renderhive/webapp"
   "renderhive/cli"
 )
@@ -56,7 +55,6 @@ type AppManager struct {
   NodeManager *node.PackageManager
   HederaManager *hedera.PackageManager
   IPFSManager *ipfs.PackageManager
-  RenderManager *renderer.PackageManager
   WebAppManager *webapp.PackageManager
   CLIManager *cli.PackageManager
 
@@ -121,13 +119,6 @@ func (service *AppManager) Init() (error) {
     // initialize the IPFS manager
     service.IPFSManager = &ipfs.Manager
     err = service.IPFSManager.Init()
-    if err != nil {
-      return err
-    }
-
-    // initialize the render manager
-    service.RenderManager = &renderer.Manager
-    err = service.RenderManager.Init()
     if err != nil {
       return err
     }
@@ -305,12 +296,6 @@ func (service *AppManager) DeInit() (error) {
 
     // deinitialize the web app manager
     err = service.WebAppManager.DeInit()
-    if err != nil {
-      return err
-    }
-
-    // deinitialize the render manager
-    err = service.RenderManager.DeInit()
     if err != nil {
       return err
     }

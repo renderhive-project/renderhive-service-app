@@ -47,7 +47,6 @@ import (
   // . "renderhive/globals"
   "renderhive/logger"
   "renderhive/hedera"
-  "renderhive/renderer"
 
 )
 
@@ -78,15 +77,15 @@ type NodeData struct {
 type RenderData struct {
 
   // Render requests and offers
-  Offer *renderer.RenderOffer               // the render offer provided by this node (if any)
-  Requests *[]renderer.RenderRequest        // the list of render jobs requested by this node (if any)
+  Offer *RenderOffer               // the render offer provided by this node (if any)
+  Requests *[]RenderRequest        // the list of render jobs requested by this node (if any)
 
   // Job queues
-  NodeQueue *[]renderer.RenderJob           // the queue of render jobs to be performed on this node
-  NetworkQueue *[]renderer.RenderJob        // the queue of render jobs on the renderhive network
+  NodeQueue *[]RenderJob           // the queue of render jobs to be performed on this node
+  NetworkQueue *[]RenderJob        // the queue of render jobs on the renderhive network
 
   // Benchmark
-  RenderPower []renderer.BlenderBenchmark   // Blender benchmark points per Blender version
+  RenderPower []BlenderBenchmark   // Blender benchmark points per Blender version
 
 }
 
@@ -125,8 +124,8 @@ func (nm *PackageManager) Init() (error) {
     logger.Manager.Package["node"].Info().Msg("Initializing the node manager ...")
 
     // Add a Blender version to the node's render offer
-    nm.Renderer.Offer = &renderer.RenderOffer{}
-    nm.Renderer.Offer.Blender = map[string]renderer.BlenderAppData{}
+    nm.Renderer.Offer = &RenderOffer{}
+    nm.Renderer.Offer.Blender = map[string]BlenderAppData{}
     nm.Renderer.Offer.AddBlenderVersion("3.30", "/Applications/Blender 3.30.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"})
 
     return err
@@ -144,7 +143,7 @@ func (nm *PackageManager) DeInit() (error) {
 
 }
 
-// NODE MANAGER COMMAND LINE INTERFACE
+// COMMAND LINE INTERFACE – NODE MANAGER
 // #############################################################################
 // Create the command for the command line interface
 func (nm *PackageManager) CreateCommand() (*cobra.Command) {
