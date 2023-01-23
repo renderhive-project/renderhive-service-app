@@ -143,7 +143,7 @@ func GetBlenderDeviceString(enum []uint8) []string {
       case BLENDER_RENDER_DEVICE_HIP_CPU: result = append(result, "HIP+CPU")
       case BLENDER_RENDER_DEVICE_ONEAPI_CPU: result = append(result, "ONEAPI+CPU")
       case BLENDER_RENDER_DEVICE_METAL_CPU: result = append(result, "METAL+CPU")
-      case BLENDER_RENDER_DEVICE_OPTIONS: return []string{"CPU", "CUDA"}
+      case BLENDER_RENDER_DEVICE_OPTIONS: return []string{"CPU", "CUDA", "OPTIX", "HIP", "ONEAPI", "METAL"}
 
       default: fmt.Println(fmt.Errorf("Device '%v' not in enumeration.", e))
       }

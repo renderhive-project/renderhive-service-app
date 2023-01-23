@@ -214,8 +214,8 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
                 fmt.Println("This node offers the following render services:")
                 fmt.Printf(" [#] Render offer document (IPFS): %v\n", nm.Renderer.Offer.Document)
                 fmt.Printf(" [#] Supported Blender versions:\n")
-                for _, Blender := range nm.Renderer.Offer.Blender {
-                  fmt.Printf("     - Blender %v (Engines: %v | Devices: %v) \n", Blender.Version, strings.Join(*Blender.Engines, ", "), strings.Join(*Blender.Devices, ", "))
+                for _, blender := range nm.Renderer.Offer.Blender {
+                  fmt.Printf("     - Blender v%v (Engines: %v | Devices: %v) \n", blender.BuildVersion, strings.Join(blender.Engines, ", "), strings.Join(blender.Devices, ", "))
                 }
                 fmt.Println("")
 
