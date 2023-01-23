@@ -64,6 +64,7 @@ type BlenderAppData struct {
   // Render settings supported by this node's Blender instance
   Engines []string                    // Supported render engines
   Devices []string                    // Supported devices
+  Threads uint8                       // Supported number of threads
 
   // Process status
   Cmd *exec.Cmd             // pointer to the exec.Command type
@@ -159,7 +160,7 @@ type RenderOffer struct {
 // RENDER OFFERS
 // #############################################################################
 // Add a Blender version to the render offer
-func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[]string, devices *[]string) (error) {
+func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[]string, devices *[]string, threads uint8) (error) {
     var err error
 
     // log event
@@ -189,6 +190,7 @@ func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[
                   Path: path,
                   Engines: *engines,
                   Devices: *devices,
+                  Threads: threads,
                }
 
     // start this Blender version and query its version and build info
@@ -486,6 +488,7 @@ func (nm *PackageManager) CreateCommandBlender_Add() (*cobra.Command) {
     var path string
     var engines []string
     var devices []string
+    var threads uint8
 
     // create a 'blender add' command for the node
     command := &cobra.Command{
@@ -508,7 +511,7 @@ func (nm *PackageManager) CreateCommandBlender_Add() (*cobra.Command) {
                 }
 
                 // Add a new Blender version to the node's render offer
-                err := nm.Renderer.Offer.AddBlenderVersion(version, path, &engines, &devices)
+                err := nm.Renderer.Offer.AddBlenderVersion(version, path, &engines, &devices, threads)
                 if err != nil {
                     fmt.Println("")
                     fmt.Println(err)
@@ -539,6 +542,7 @@ func (nm *PackageManager) CreateCommandBlender_Add() (*cobra.Command) {
     command.Flags().StringVarP(&path, "path", "p", "", "The path to a Blender executable on this computer")
     command.Flags().StringSliceVarP(&engines, "engines", "E", GetBlenderEngineString([]uint8{BLENDER_RENDER_ENGINE_OPTIONS}), "The supported engines (only EEVEE and CYCLES)")
     command.Flags().StringSliceVarP(&devices, "devices", "D", GetBlenderDeviceString([]uint8{BLENDER_RENDER_DEVICE_OPTIONS}), "The supported devices for rendering (all GPU options may be combined with '+CPU' for hybrid rendering)")
+    command.Flags().Uint8VarP(&threads, "threads", "t", 1, "The supported number of threads rendered simultaneously by this Blender version (default: 1)")
 
     return command
 

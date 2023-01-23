@@ -126,7 +126,7 @@ func (nm *PackageManager) Init() (error) {
     // Add a Blender version to the node's render offer
     nm.Renderer.Offer = &RenderOffer{}
     nm.Renderer.Offer.Blender = map[string]BlenderAppData{}
-    nm.Renderer.Offer.AddBlenderVersion("3.00", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"})
+    nm.Renderer.Offer.AddBlenderVersion("3.00", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
 
     return err
 
