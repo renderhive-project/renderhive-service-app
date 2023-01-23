@@ -30,6 +30,7 @@ import (
   "os/exec"
   "bufio"
   "io"
+  "regexp"
   // "time"
 
   // external
@@ -51,14 +52,25 @@ import (
 type BlenderAppData struct {
 
   // App info
-  Version string              // Version of this Blender app
-  Path string                 // Path to the Blender app
-  StdOut io.ReadCloser      // Command-line standard output of the Blender app
-  StdErr io.ReadCloser      // Command-line error output of the Blender app
+  Version string            // Version of this Blender app
+  Path string               // Path to the Blender app
 
   // Render settings supported by this node's Blender instance
   Engines *[]string                    // Supported render engines
   Devices *[]string                    // Supported devices
+
+  // Process status
+  PID int                   // PID of the process
+  Running bool              // Is the process still running
+  StdOut io.ReadCloser      // Command-line standard output of the Blender app
+  StdErr io.ReadCloser      // Command-line error output of the Blender app
+
+  // Blender render status
+  Frame string              // Current frame number
+  Memory string             // Current memory usage
+  Peak string               // Peak memory usage
+  Time string               // Render time
+  Note string               // Render status note
 
 }
 
@@ -214,6 +226,10 @@ func (b *BlenderAppData) Execute(args []string) (error) {
         return err
     }
 
+    // store status information
+    b.PID = cmd.Process.Pid
+    b.Running = true
+
     // Print the process ID of the running Blender instance
     logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] PID: %v", cmd.Process.Pid))
 
@@ -229,6 +245,7 @@ func (b *BlenderAppData) Execute(args []string) (error) {
 // Start Blender with command line flags and render the given blend_file
 func (b *BlenderAppData) ProcessOutput(name string, output io.ReadCloser) (error) {
     var err error
+    var line string
 
     // empty line
     fmt.Println("")
@@ -237,8 +254,68 @@ func (b *BlenderAppData) ProcessOutput(name string, output io.ReadCloser) (error
     scanner := bufio.NewScanner(output)
     for scanner.Scan() {
 
+      // read the line
+      line = scanner.Text()
+
+      // BLENDER STATUS
+      // ***********************************************************************
+      if strings.EqualFold(line, "Blender quit") {
+
+          // log event message
+          logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf("Blender v%v process (pid: %v) finished with 'Blender quit'.", b.Version, b.PID))
+
+          // store internally that the process is finished
+          b.Running = false
+
+          // stop the loop
+          break
+      }
+
+      // RENDER STATUS
+      // ***********************************************************************
+      // separate status line into substrings
+      str := strings.Split(line, "|")
+      if len(str) == 3 {
+
+          // Compile regular expression to match the values
+          statustest := regexp.MustCompile("Fra:[0-9]+ Mem:[0-9]*\\.[0-9]+M \\(Peak [0-9]*\\.[0-9]+M\\)")
+          timetest := regexp.MustCompile("(?i)Time:\\d\\d:\\d\\d\\.\\d\\d")
+
+          for _, substr := range str {
+            // if the expression matches
+            if statustest.MatchString(substr) {
+
+                // extract the values
+                re := regexp.MustCompile("(?:([0-9]*\\.[0-9]+M)|[0-9]+)")
+                matches := re.FindAllString(substr, -1)
+                b.Frame = matches[0]
+                b.Memory = matches[1]
+                b.Peak = matches[2]
+
+            } else if timetest.MatchString(substr) {
+
+                // extract the values
+                re := regexp.MustCompile("(?i)\\d\\d:\\d\\d\\.\\d\\d")
+                matches := re.FindAllString(substr, -1)
+                b.Time = matches[0]
+            }
+          }
+
+          // extract the status note
+          b.Note = str[2]
+
+          // log event message
+          logger.Manager.Package["node"].Trace().Msg("The current render status is:")
+          logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Current frame: %v", b.Frame))
+          logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Memory usage: %v", b.Memory))
+          logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Peak memory usage: %v", b.Peak))
+          logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Render time: %v", b.Time))
+          logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Status note: %v", b.Note))
+
+      }
+
       // Print the command line output of Blender
-      fmt.Printf("(blender) > %v: %v \n", name, scanner.Text())
+      // fmt.Printf("(blender) > %v: %v \n", name, line)
 
     }
 
