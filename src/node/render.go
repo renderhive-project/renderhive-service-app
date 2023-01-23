@@ -39,7 +39,7 @@ import (
   "github.com/spf13/cobra"
 
   // internal
-  // . "renderhive/globals"
+  . "renderhive/globals"
   "renderhive/logger"
 
 )
@@ -159,7 +159,22 @@ func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[
     logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Version: %v", version))
     logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Path: %v", path))
     logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Engines: %v", strings.Join(*engines, ",")))
-    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Engines: %v", strings.Join(*devices, ",")))
+    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Devices: %v", strings.Join(*devices, ",")))
+
+    // check if the version WAS already added before
+    if _, ok := ro.Blender[version]; ok {
+      return errors.New(fmt.Sprintf("Blender version '%v' already exists. Use 'blender edit' to change parameters.", version))
+    }
+
+    // check if given engines and devices are valid
+    _, err = GetBlenderEngineEnum(*engines)
+    if err != nil {
+        return errors.New(fmt.Sprintf("At least one of the defined engines '%v' is not valid.", *engines))
+    }
+    _, err = GetBlenderDeviceEnum(*devices)
+    if err != nil {
+        return errors.New(fmt.Sprintf("At least one of the defined devices '%v' is not valid.", *devices))
+    }
 
     // append it to the slice of supported Blender versions in the render offer
     ro.Blender[version] = BlenderAppData{
@@ -169,10 +184,9 @@ func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[
                             Devices: devices,
                           }
 
-    // dcheck if the new element exists in the map and return in error if not
-    _, ok := ro.Blender[version]
-    if ok == false {
-        err = errors.New(fmt.Sprintf("Blender version '%v' could not be added.", version))
+    // dcheck if the new element exists in the map and return an error if not
+    if _, ok := ro.Blender[version]; ok == false {
+      return errors.New(fmt.Sprintf("Blender version '%v' could not be added.", version))
     }
 
     return err
@@ -215,6 +229,9 @@ func (b *BlenderAppData) Execute(args []string) (error) {
     if _, err = os.Stat(b.Path); os.IsNotExist(err) {
         return err
     }
+
+    // TODO: Validate args and DISALLOW python (for security reasons)
+    // if ...
 
     // Execute Blender in background mode
     cmd := exec.Command(b.Path, append([]string{"-b"}, args...)...)
@@ -411,10 +428,14 @@ func (nm *PackageManager) CreateCommandBlender_Add() (*cobra.Command) {
                 }
 
                 fmt.Printf("Adding the version '%v' with path '%v' to the render offer. \n", version, path)
-                fmt.Println("")
 
                 // Add a new Blender version to the node's render offer
-                nm.Renderer.Offer.AddBlenderVersion(version, path, &engines, &devices)
+                err := nm.Renderer.Offer.AddBlenderVersion(version, path, &engines, &devices)
+                if err != nil {
+                    fmt.Println("")
+                    fmt.Println(err)
+                }
+                fmt.Println("")
 
             }
 
@@ -434,8 +455,8 @@ func (nm *PackageManager) CreateCommandBlender_Add() (*cobra.Command) {
     // add command flag parameters
     command.Flags().StringVarP(&version, "version", "v", "", "The version of Blender to be used")
     command.Flags().StringVarP(&path, "path", "p", "", "The path to a Blender executable on this computer")
-    command.Flags().StringArrayVarP(&engines, "engines", "E", []string{"EEVEE", "CYCLES"}, "The supported engines (only EEVEE and CYCLES)")
-    command.Flags().StringArrayVarP(&devices, "devices", "D", []string{"CPU"}, "The supported devices (only CPU and GPU)")
+    command.Flags().StringSliceVarP(&engines, "engines", "E", nil, "The supported engines (only EEVEE and CYCLES)") // GetBlenderEngineString([]uint8{BLENDER_RENDER_ENGINE_OPTIONS})
+    command.Flags().StringSliceVarP(&devices, "devices", "D", nil, "The supported devices for rendering (all GPU options may be combined with '+CPU' for hybrid rendering)") // GetBlenderDeviceString([]uint8{BLENDER_RENDER_DEVICE_OPTIONS})
 
     return command
 
@@ -520,9 +541,8 @@ func (nm *PackageManager) CreateCommandBlender_Run() (*cobra.Command) {
             // if a version was parsed and
             if len(version) != 0 {
 
-                // if the parsed version is supported by the node
-                blender, ok := nm.Renderer.Offer.Blender[version]
-                if ok {
+                // if the parsed version is supported by this node
+                if blender, ok := nm.Renderer.Offer.Blender[version]; ok {
                     fmt.Println("")
                     fmt.Printf("Starting Blender v%v. \n", version)
                     fmt.Println("")
@@ -545,6 +565,14 @@ func (nm *PackageManager) CreateCommandBlender_Run() (*cobra.Command) {
                   fmt.Println("")
 
                 }
+
+            // if no version argument was parsed
+            } else {
+
+              fmt.Println("")
+              fmt.Println(fmt.Errorf("Cannot run Blender, because no version was passed."))
+              fmt.Println("")
+
             }
 
         } else {

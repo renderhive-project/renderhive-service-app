@@ -23,7 +23,8 @@ package globals
 import (
 
   // standard
-  // ...
+  "fmt"
+  "errors"
 
   // external
   "github.com/rs/zerolog"
@@ -53,3 +54,122 @@ const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION = "0.0.49139788"
 const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION = "0.0.49139789"
 // Render jobs
 const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.49139793"
+
+// BLENDER CONSTANTS
+// #############################################################################
+// Supported render engines
+const (
+
+    // skip the 0 value (reserved for error)
+    _ uint8 = iota
+
+    // supported engines
+    BLENDER_RENDER_ENGINE_EEVEE
+    BLENDER_RENDER_ENGINE_CYCLES
+
+    // all engine options
+    BLENDER_RENDER_ENGINE_OPTIONS
+)
+
+func GetBlenderEngineString(enum []uint8) []string {
+    var result []string
+
+    for _, e := range enum {
+      switch e {
+      case BLENDER_RENDER_ENGINE_EEVEE: result = append(result, "EEVEE")
+      case BLENDER_RENDER_ENGINE_CYCLES: result = append(result, "CYCLES")
+
+      case BLENDER_RENDER_ENGINE_OPTIONS: return []string{"EEVEE", "CYCLES"}
+
+      default: fmt.Println(fmt.Errorf("Engine '%v' not in enumeration.", e))
+      }
+    }
+    return result
+
+}
+
+func GetBlenderEngineEnum(engines []string) ([]uint8, error) {
+    var result []uint8
+
+    for _, e := range engines {
+      switch e {
+      case "EEVEE": result = append(result, BLENDER_RENDER_ENGINE_EEVEE)
+      case "CYCLES": result = append(result, BLENDER_RENDER_ENGINE_CYCLES)
+      default: return []uint8{0}, errors.New(fmt.Sprintf("Invalid engine name '%v'.", e))
+      }
+    }
+    return result, nil
+}
+
+// Supported render devices
+const (
+
+    // skip the 0 value (reserved for error)
+    _ uint8 = iota
+
+    // pure device modes
+    BLENDER_RENDER_DEVICE_CPU
+    BLENDER_RENDER_DEVICE_CUDA
+    BLENDER_RENDER_DEVICE_OPTIX
+    BLENDER_RENDER_DEVICE_HIP
+    BLENDER_RENDER_DEVICE_ONEAPI
+    BLENDER_RENDER_DEVICE_METAL
+
+    // hybrid device modes
+    BLENDER_RENDER_DEVICE_CUDA_CPU
+    BLENDER_RENDER_DEVICE_OPTIX_CPU
+    BLENDER_RENDER_DEVICE_HIP_CPU
+    BLENDER_RENDER_DEVICE_ONEAPI_CPU
+    BLENDER_RENDER_DEVICE_METAL_CPU
+
+    // all device options
+    BLENDER_RENDER_DEVICE_OPTIONS
+
+)
+
+func GetBlenderDeviceString(enum []uint8) []string {
+    var result []string
+
+    for _, e := range enum {
+      switch e {
+      case BLENDER_RENDER_DEVICE_CPU: result = append(result, "CPU")
+      case BLENDER_RENDER_DEVICE_CUDA: result = append(result, "CUDA")
+      case BLENDER_RENDER_DEVICE_OPTIX: result = append(result, "OPTIX")
+      case BLENDER_RENDER_DEVICE_HIP: result = append(result, "HIP")
+      case BLENDER_RENDER_DEVICE_ONEAPI: result = append(result, "ONEAPI")
+      case BLENDER_RENDER_DEVICE_METAL: result = append(result, "METAL")
+      case BLENDER_RENDER_DEVICE_CUDA_CPU: result = append(result, "CUDA+CPU")
+      case BLENDER_RENDER_DEVICE_OPTIX_CPU: result = append(result, "OPTIX+CPU")
+      case BLENDER_RENDER_DEVICE_HIP_CPU: result = append(result, "HIP+CPU")
+      case BLENDER_RENDER_DEVICE_ONEAPI_CPU: result = append(result, "ONEAPI+CPU")
+      case BLENDER_RENDER_DEVICE_METAL_CPU: result = append(result, "METAL+CPU")
+      case BLENDER_RENDER_DEVICE_OPTIONS: return []string{"CPU", "CUDA"}
+
+      default: fmt.Println(fmt.Errorf("Device '%v' not in enumeration.", e))
+      }
+    }
+    return result
+
+}
+
+func GetBlenderDeviceEnum(devices []string) ([]uint8, error) {
+    var result []uint8
+
+    for _, d := range devices {
+      switch d {
+      case "CPU": result = append(result, BLENDER_RENDER_DEVICE_CPU)
+      case "CUDA": result = append(result, BLENDER_RENDER_DEVICE_CUDA)
+      case "OPTIX": result = append(result, BLENDER_RENDER_DEVICE_OPTIX)
+      case "HIP": result = append(result, BLENDER_RENDER_DEVICE_HIP)
+      case "ONEAPI": result = append(result, BLENDER_RENDER_DEVICE_ONEAPI)
+      case "METAL": result = append(result, BLENDER_RENDER_DEVICE_METAL)
+      case "CUDA+CPU": result = append(result, BLENDER_RENDER_DEVICE_CUDA_CPU)
+      case "OPTIX+CPU": result = append(result, BLENDER_RENDER_DEVICE_OPTIX_CPU)
+      case "HIP+CPU": result = append(result, BLENDER_RENDER_DEVICE_HIP_CPU)
+      case "ONEAPI+CPU": result = append(result, BLENDER_RENDER_DEVICE_ONEAPI_CPU)
+      case "METAL+CPU": result = append(result, BLENDER_RENDER_DEVICE_METAL_CPU)
+      default: return []uint8{0}, errors.New(fmt.Sprintf("Invalid engine name '%v'.", d))
+      }
+    }
+    return result, nil
+}

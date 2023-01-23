@@ -44,7 +44,7 @@ import (
   "github.com/spf13/cobra"
 
   // internal
-  // . "renderhive/globals"
+  // "renderhive/globals"
   "renderhive/logger"
   "renderhive/hedera"
 

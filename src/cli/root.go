@@ -234,23 +234,52 @@ func (clim *PackageManager) ResetFlags() {
     subcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
       // fmt.Println(flag.Name, flag.DefValue)
       flag.Value.Set(flag.DefValue)
+      if val, ok := flag.Value.(pflag.SliceValue); ok {
+          _ = val.Replace(nil)
+      }
     })
 
     subcmd.Flags().VisitAll(func(flag *pflag.Flag) {
       // fmt.Println(flag.Name, flag.DefValue)
       flag.Value.Set(flag.DefValue)
+      if val, ok := flag.Value.(pflag.SliceValue); ok {
+          _ = val.Replace(nil)
+      }
     })
 
     for _, subsubcmd := range subcmd.Commands() {
       subsubcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
         // fmt.Println(flag.Name, flag.DefValue)
         flag.Value.Set(flag.DefValue)
+        if val, ok := flag.Value.(pflag.SliceValue); ok {
+            _ = val.Replace(nil)
+        }
       })
 
       subsubcmd.Flags().VisitAll(func(flag *pflag.Flag) {
         // fmt.Println(flag.Name, flag.DefValue)
         flag.Value.Set(flag.DefValue)
+        if val, ok := flag.Value.(pflag.SliceValue); ok {
+            _ = val.Replace(nil)
+        }
       })
+
+      for _, subsubsubcmd := range subsubcmd.Commands() {
+        subsubsubcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+          // fmt.Println(flag.Name, flag.DefValue)
+          flag.Value.Set(flag.DefValue)
+          if val, ok := flag.Value.(pflag.SliceValue); ok {
+              _ = val.Replace(nil)
+          }
+        })
+
+        subsubsubcmd.Flags().VisitAll(func(flag *pflag.Flag) {
+          flag.Value.Set(flag.DefValue)
+          if val, ok := flag.Value.(pflag.SliceValue); ok {
+              _ = val.Replace(nil)
+          }
+        })
+      }
     }
   }
 
