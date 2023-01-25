@@ -31,16 +31,20 @@ import (
   "bufio"
   "io"
   "regexp"
-  // "time"
+  "time"
+  "path/filepath"
+  "encoding/json"
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
   "github.com/mattn/go-shellwords"
   "github.com/spf13/cobra"
+  // "github.com/cockroachdb/apd"
   // "golang.org/x/exp/slices" <-- would be handy, but requires Go 1.18; TODO: Update possible for Hedera SDK?
 
   // internal
   . "renderhive/globals"
+  . "renderhive/utility"
   "renderhive/logger"
 
 )
@@ -52,14 +56,12 @@ import (
 // App data of supported Blender version
 type BlenderAppData struct {
 
-  // App info
-  Path string               // Path to the Blender app
-
-  // Build info
-  BuildVersion string       // Build version of this Blender app
-  BuildHash string          // Build hast of this Blender app
-  BuildDate string          // Build date of this Blender app
-  BuildTime string          // Build time of this Blender app
+  // Blender app and build info
+  Path string                         // Path to the Blender app
+  BuildVersion string                 // Build version of this Blender app
+  BuildHash string                    // Build hast of this Blender app
+  BuildDate string                    // Build date of this Blender app
+  BuildTime string                    // Build time of this Blender app
 
   // Render settings supported by this node's Blender instance
   Engines []string                    // Supported render engines
@@ -67,19 +69,22 @@ type BlenderAppData struct {
   Threads uint8                       // Supported number of threads
 
   // Process status
-  Cmd *exec.Cmd             // pointer to the exec.Command type
-  Param []string            // Command line options this Blender process was called with
-  PID int                   // PID of the process
-  Running bool              // Is the process still running
-  StdOut io.ReadCloser      // Command-line standard output of the Blender app
-  StdErr io.ReadCloser      // Command-line error output of the Blender app
+  Cmd *exec.Cmd                       // pointer to the exec.Command type
+  Param []string                      // Command line options this Blender process was called with
+  PID int                             // PID of the process
+  Running bool                        // Is the process still running
+  StdOut io.ReadCloser                // Command-line standard output of the Blender app
+  StdErr io.ReadCloser                // Command-line error output of the Blender app
 
   // Blender render status
-  Frame string              // Current frame number
-  Memory string             // Current memory usage
-  Peak string               // Peak memory usage
-  Time string               // Render time
-  Note string               // Render status note
+  Frame string                        // Current frame number
+  Memory string                       // Current memory usage
+  Peak string                         // Peak memory usage
+  Time string                         // Render time
+  Note string                         // Render status note
+
+  // Blender benchmarks
+  BenchmarkTool *BlenderBenchmarkTool // Blender benchmark results
 
 }
 
@@ -94,11 +99,73 @@ type BlenderFileData struct {
 
 }
 
-// Blender benchmark
-type BlenderBenchmark struct {
+// Blender benchmark result
+// This struct is a wrapper for the JSON schema returned by the benchmark tool
+type BlenderBenchmarkResult struct {
 
-  Version float64             // Blender benchmark tool version
-  Points float64              // Blender benchmark points
+  Timestamp time.Time `json:"timestamp"`
+  BlenderVersion struct {
+      Version string `json:"version"`
+      BuildDate string `json:"build_date"`
+      BuildTime string `json:"build_time"`
+      BuildCommitDate string `json:"build_commit_date"`
+      BuildCommitTime string `json:"build_commit_time"`
+      BuildHash string `json:"build_hash"`
+      Label string `json:"label"`
+      Checksum string `json:"checksum"`
+  } `json:"blender_version"`
+  BenchmarkLauncher struct {
+      Label string `json:"label"`
+      Checksum string `json:"checksum"`
+  } `json:"benchmark_launcher"`
+  BenchmarkScript struct {
+      Label string `json:"label"`
+      Checksum string `json:"checksum"`
+  } `json:"benchmark_script"`
+  Scene struct {
+      Label string `json:"label"`
+      Checksum string `json:"checksum"`
+  } `json:"scene"`
+  SystemInfo struct {
+      Bitness string `json:"bitness"`
+      Machine string `json:"machine"`
+      System string `json:"system"`
+      DistName string `json:"dist_name"`
+      DistVersion string `json:"dist_version"`
+      Devices []struct {
+          Type string `json:"type"`
+          Name string `json:"name"`
+      } `json:"devices"`
+      NumCpuSockets int `json:"num_cpu_sockets"`
+      NumCpuCores int `json:"num_cpu_cores"`
+      NumCpuThreads int `json:"num_cpu_threads"`
+  } `json:"system_info"`
+  DeviceInfo struct {
+      DeviceType string `json:"device_type"`
+      ComputeDevices []struct {
+          Type string `json:"type"`
+          Name string `json:"name"`
+      } `json:"compute_devices"`
+      NumCpuThreads int `json:"num_cpu_threads"`
+  } `json:"device_info"`
+  Stats struct {
+      DevicePeakMemory float64 `json:"device_peak_memory"`
+      NumberOfSamples int `json:"number_of_samples"`
+      TimeForSamples float64 `json:"time_for_samples"`
+      SamplesPerMinute float64 `json:"samples_per_minute"`
+      TotalRenderTime float64 `json:"total_render_time"`
+      RenderTimeNoSync float64 `json:"render_time_no_sync"`
+      TimeLimit float64 `json:"time_limit"`
+  } `json:"stats"`
+
+  // NOTE: The Blender Benchmark Score on OpenData is given in samples per minute
+  //       and is the sum of the SamplesPerMinute over all benchmark scenes.
+
+}
+
+type BlenderBenchmarkTool struct {
+
+  Result []BlenderBenchmarkResult
 
 }
 
@@ -148,17 +215,46 @@ type RenderOffer struct {
 
   // TODO: Fill with information
   UserID int                           // ID of the user this offer belongs to
-  Document string                      // content identifier (CID) of the render offer document on the IPFS
+  Blender map[string]BlenderAppData    // supported Blender versions and Blender render options
+  DocumentCID string                   // content identifier (CID) of the render offer document on the IPFS
+  DocumentPath string                  // local path of the render offer document on this node
 
-  // Render offer
+  // Render offer data
   RenderPower float64                  // render power offered by the node
-  Price float64                        // price of rendering
-  Blender map[string]BlenderAppData    // supported Blender version and render settings
+  Price float64                        // price threshold in cents (USD) per BBP for rendering
+                                       // TODO: needs to be implemented using Decimals (apd package or currency package)
 
 }
 
 // RENDER OFFERS
 // #############################################################################
+// Initialize the render offer for this node
+func (nm *PackageManager) InitRenderOffer() *RenderOffer {
+
+  // initialize the node's render offer
+  nm.Renderer.Offer = &RenderOffer{}
+  nm.Renderer.Offer.Blender = map[string]BlenderAppData{}
+
+  return nm.Renderer.Offer
+
+}
+
+// set the render price limit
+func (ro *RenderOffer) SetPrice(price float64, currency string) (error) {
+    var err error
+
+    return err
+
+}
+
+// get the render price limit
+func (ro *RenderOffer) GetPrice() (float64) {
+    var result float64
+
+    return result
+
+}
+
 // Add a Blender version to the render offer
 func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[]string, devices *[]string, threads uint8) (error) {
     var err error
@@ -191,6 +287,7 @@ func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[
                   Engines: *engines,
                   Devices: *devices,
                   Threads: threads,
+                  BenchmarkTool: &BlenderBenchmarkTool{},
                }
 
     // start this Blender version and query its version and build info
@@ -232,6 +329,184 @@ func (ro *RenderOffer) DeleteBlenderVersion(version string) (error) {
         delete(ro.Blender, version)
     } else {
         err = errors.New(fmt.Sprintf("Blender v'%v' could not be removed from the node's render offer.", blender.BuildVersion))
+    }
+
+    return err
+
+}
+
+
+
+
+// BLENDER BENCHMARK TOOL CONTROL
+// #############################################################################
+// Execute the command line interface for the Blender benchmark tool
+func (tool *BlenderBenchmarkTool) Execute(path string, args []string) (string, error) {
+    var err error
+
+    // Check if 'path' is pointing to an existing file
+    if _, err = os.Stat(path); os.IsNotExist(err) {
+        return "", err
+    }
+
+    // get supported blender versions
+    cmd := exec.Command(path, args...)
+    output, err := cmd.Output()
+    if err != nil {
+        fmt.Println("Error:",err)
+        return "", err
+    }
+
+    return string(output), err
+
+}
+
+// Run the Blender benchmark tool with the specified Blender version and
+// rendering device
+func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string, benchmark_device string, benchmark_scene string) (error) {
+    var err error
+    var versions []string
+    var device_names []string
+    var device_types []string
+    var scenes []string
+    var ok bool
+
+    // if the Blender version is supported by this node
+    blender, ok := ro.Blender[benchmark_version]
+    if ok {
+
+        // log event
+        logger.Manager.Package["node"].Debug().Msg("Benchmarking a supported Blender version:")
+
+        // path to te benchmark tool
+        path, _ := filepath.Abs("benchmark/benchmark-launcher-cli")
+
+        // Check if 'path' is pointing to an existing file
+        if _, err = os.Stat(path); os.IsNotExist(err) {
+            return err
+        }
+
+        // get list of Blender versions supported by this tool version
+        output, err := tool.Execute(path, []string{"blender", "list"})
+        if err != nil {
+            return errors.New(fmt.Sprintf("Could not retrieve Blender benchmark tool version list. (Error: %v)", err))
+        } else {
+
+            // scan lines
+            scanner := bufio.NewScanner(strings.NewReader(output))
+            for scanner.Scan() {
+                // get version
+                supported_version := strings.Fields(scanner.Text())
+                versions = append(versions, supported_version[0])
+            }
+        }
+
+        // check if 'benchmark_version' is supported
+        ok = InStringSlice(versions, benchmark_version)
+        if !ok {
+            return errors.New(fmt.Sprintf("Blender v%v is not supported by this Blender benchmark tool.", benchmark_version))
+        }
+
+        // download the suitable Blender version
+        output, err = tool.Execute(path, []string{"blender", "download", benchmark_version})
+        if err != nil {
+            return errors.New(fmt.Sprintf("Could not download blender version %v. (Error: %v)", benchmark_version, err))
+        }
+
+        // log trace event
+        logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Retrieving supported devices for Blender version: %v", benchmark_version))
+
+        // get list of devices
+        output, err = tool.Execute(path, []string{"devices", "--blender-version", benchmark_version, "list"})
+        if err != nil {
+            return errors.New(fmt.Sprintf("Could not retrieve Blender benchmark tool device list. (Error: %v)", err))
+        } else {
+
+          // scan lines
+          scanner := bufio.NewScanner(strings.NewReader(output))
+          for scanner.Scan() {
+
+              // get version
+              device := strings.Fields(scanner.Text())
+              device_names = append(device_names, device[:len(device)-1]...)
+              device_types = append(device_types, device[len(device)-1])
+
+              // log trace event
+              logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Supported device: %v (%v)", device[:len(device)-1], device[len(device)-1]))
+
+          }
+
+        }
+
+        // check if 'benchmark_device' is supported
+        ok = (InStringSlice(device_names, benchmark_device) || InStringSlice(device_types, benchmark_device))
+        if !ok {
+            return errors.New(fmt.Sprintf("Device '%v' is not supported by this Blender benchmark tool.", benchmark_device))
+        } else if benchmark_device == "" {
+            return errors.New(fmt.Sprintf("No device was specified for the benchmark rendering."))
+        }
+
+        // log trace event
+        logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Retrieving supported scenes for Blender version: %v", benchmark_version))
+
+        // get list of benchmark scenes
+        output, err = tool.Execute(path, []string{"scenes", "--blender-version", benchmark_version, "list"})
+        if err != nil {
+            return errors.New(fmt.Sprintf("Could not retrieve Blender benchmark tool scene list. (Error: %v)", err))
+        } else {
+
+          // scan lines
+          scanner := bufio.NewScanner(strings.NewReader(output))
+          for scanner.Scan() {
+
+            // get version
+            scene := strings.Fields(scanner.Text())
+            scenes = append(scenes, scene[0])
+
+            // log trace event
+            logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Supported scene: %v", scene[0]))
+
+          }
+        }
+
+        // check if 'benchmark_scene' is supported
+        ok = InStringSlice(scenes, benchmark_scene)
+        if !ok {
+            return errors.New(fmt.Sprintf("Scene '%v' is not supported by this Blender benchmark tool.", benchmark_scene))
+        } else if benchmark_scene == "" {
+            return errors.New(fmt.Sprintf("No scene was specified for the benchmark rendering."))
+        } else {
+
+            // download the scene
+            output, err = tool.Execute(path, []string{"scenes", "download", "--blender-version", benchmark_version, benchmark_scene})
+            if err != nil {
+                return errors.New(fmt.Sprintf("Could not download Blender benchmark scene '%v'. (Error: %v)", benchmark_scene, err))
+            }
+
+            // log trace event
+            logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Downloaded Benchmark scene '%v' and started benchmark rendering ...", benchmark_scene))
+
+            // start the benchmark
+            output, err = tool.Execute(path, []string{"benchmark", "--blender-version", benchmark_version, "--device-type", "CPU", "--json", benchmark_scene})
+            if err != nil {
+                return errors.New(fmt.Sprintf("Failed to execute benchmark rendering for scene '%v'. (Error: %v)", benchmark_scene, err))
+            } else {
+
+              // parse the benchmark result
+              json.Unmarshal([]byte(output), &tool.Result)
+
+              // log trace event
+              logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Benchmark result: %v samples / min", tool.Result[0].Stats.SamplesPerMinute))
+
+            }
+
+        }
+
+        // TODO: store the Benchmark result locally as JSON file and on IPFS
+        // ...
+
+    } else {
+        err = errors.New(fmt.Sprintf("Blender v'%v' is not in the node's render offer.", blender.BuildVersion))
     }
 
     return err
@@ -282,7 +557,6 @@ func (b *BlenderAppData) Execute(args []string) (error) {
     return err
 
 }
-
 
 // Start Blender with command line flags and render the given blend_file
 func (b *BlenderAppData) ProcessOutput(name string, output io.ReadCloser) (error) {
@@ -475,6 +749,7 @@ func (nm *PackageManager) CreateCommandBlender() (*cobra.Command) {
     command.AddCommand(nm.CreateCommandBlender_Add())
     command.AddCommand(nm.CreateCommandBlender_Remove())
     command.AddCommand(nm.CreateCommandBlender_Run())
+    command.AddCommand(nm.CreateCommandBlender_Benchmark())
 
     return command
 
@@ -677,6 +952,83 @@ func (nm *PackageManager) CreateCommandBlender_Run() (*cobra.Command) {
     // add command flag parameters
     command.Flags().StringVarP(&version, "version", "v", "", "The version of Blender to be used")
     command.Flags().StringVarP(&param, "param", "p", "", "The command line options for Blender")
+
+    return command
+
+}
+
+// Create the CLI command to run a Blender benchmark with the Blender benchmark
+// command line interface tool
+func (nm *PackageManager) CreateCommandBlender_Benchmark() (*cobra.Command) {
+
+    // flags for the 'blender benchmark' command
+    var version string
+    var use_tool bool
+    var scene string
+    var device string
+
+    // create a 'blender remove' command for the node
+    command := &cobra.Command{
+    	Use:   "benchmark",
+    	Short: "Run a Blender benchmark",
+    	Long: "This command is for starting a benchmark rendering for a particular Blender version supported by this node.",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        // if a render offer exists
+        if nm.Renderer.Offer != nil {
+
+            // if a version was parsed and
+            if len(version) != 0 {
+
+                // if the parsed version is supported by this node
+                if blender, ok := nm.Renderer.Offer.Blender[version]; ok {
+
+                    // if the official Blender benchmark tool shall be used
+                    if use_tool {
+
+                        // run the this Blender version
+                        err := blender.BenchmarkTool.Run(nm.Renderer.Offer, version, device, scene)
+                        if err  != nil {
+                            // log error event
+                            logger.Manager.Package["node"].Error().Msg(err.Error())
+                        }
+                    }
+
+                } else {
+
+                  fmt.Println("")
+                  fmt.Println(fmt.Errorf("The node does not support Blender v%v.", version))
+                  fmt.Println("")
+
+                }
+
+            // if no version argument was parsed
+            } else {
+
+              fmt.Println("")
+              fmt.Println(fmt.Errorf("Cannot run Blender, because no version was passed."))
+              fmt.Println("")
+
+            }
+
+        } else {
+
+          fmt.Println("")
+          fmt.Println(fmt.Errorf("The node has no render offer."))
+          fmt.Println("")
+
+        }
+
+        return
+
+    	},
+    }
+
+    // add command flag parameters
+    command.Flags().StringVarP(&version, "version", "v", "", "The version of Blender to be used")
+    command.Flags().BoolVarP(&use_tool, "use-official-tool", "t", true, "Use the official Blender benchmark tool (default: yes)")
+    command.Flags().StringVarP(&scene, "scene", "S", "", "The scene(s) to be used for the benchmark rendering")
+    command.Flags().StringVarP(&device, "device", "D", "", "The device(s) to be used for the benchmark rendering")
 
     return command
 

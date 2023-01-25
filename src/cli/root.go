@@ -137,7 +137,7 @@ func (clim *PackageManager) CreateMainCommand() *cobra.Command {
     }
 
     // add command flags
-    clim.Commands.Main.PersistentFlags().BoolVarP(&clim.Commands.MainFlags.Interactive, "interactive", "i", false, "Run the Renderhive Service App in an interactive session")
+    clim.Commands.Main.Flags().BoolVarP(&clim.Commands.MainFlags.Interactive, "interactive", "i", false, "Run the Renderhive Service App in an interactive session")
 
     // Create an 'exit' command for the CLI session
     clim.Commands.Exit = &cobra.Command{

@@ -77,15 +77,15 @@ type NodeData struct {
 type RenderData struct {
 
   // Render requests and offers
-  Offer *RenderOffer               // the render offer provided by this node (if any)
-  Requests *[]RenderRequest        // the list of render jobs requested by this node (if any)
+  Offer *RenderOffer                      // the render offer provided by this node (if any)
+  Requests *[]RenderRequest               // the list of render jobs requested by this node (if any)
 
   // Job queues
-  NodeQueue *[]RenderJob           // the queue of render jobs to be performed on this node
-  NetworkQueue *[]RenderJob        // the queue of render jobs on the renderhive network
+  NodeQueue *[]RenderJob                  // the queue of render jobs to be performed on this node
+  NetworkQueue *[]RenderJob               // the queue of render jobs on the renderhive network
 
   // Benchmark
-  RenderPower []BlenderBenchmark   // Blender benchmark points per Blender version
+  RenderPower []BlenderBenchmarkResult   // Blender benchmark points per Blender version
 
 }
 
@@ -123,10 +123,18 @@ func (nm *PackageManager) Init() (error) {
     // log information
     logger.Manager.Package["node"].Info().Msg("Initializing the node manager ...")
 
+    // Initialize the render offer
+    nm.InitRenderOffer()
+
     // Add a Blender version to the node's render offer
-    nm.Renderer.Offer = &RenderOffer{}
-    nm.Renderer.Offer.Blender = map[string]BlenderAppData{}
-    nm.Renderer.Offer.AddBlenderVersion("3.00", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
+    nm.Renderer.Offer.AddBlenderVersion("3.2.1", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
+
+    // // start a benchmark with this version
+    // err = nm.Renderer.Offer.Blender["3.2.1"].BenchmarkTool.Run(nm.Renderer.Offer, "3.2.1", "CPU")
+    // if err  != nil {
+    //     // log error event
+    //     logger.Manager.Package["node"].Error().Msg(err.Error())
+    // }
 
     return err
 
@@ -212,7 +220,7 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
 
                 fmt.Println("")
                 fmt.Println("This node offers the following render services:")
-                fmt.Printf(" [#] Render offer document (IPFS): %v\n", nm.Renderer.Offer.Document)
+                fmt.Printf(" [#] Render offer document (CID): %v\n", nm.Renderer.Offer.DocumentCID)
                 fmt.Printf(" [#] Supported Blender versions:\n")
                 for _, blender := range nm.Renderer.Offer.Blender {
                   fmt.Printf("     - Blender v%v (Engines: %v | Devices: %v) \n", blender.BuildVersion, strings.Join(blender.Engines, ", "), strings.Join(blender.Devices, ", "))
