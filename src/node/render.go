@@ -1026,7 +1026,7 @@ func (nm *PackageManager) CreateCommandBlender_Benchmark() (*cobra.Command) {
 
     // add command flag parameters
     command.Flags().StringVarP(&version, "version", "v", "", "The version of Blender to be used")
-    command.Flags().BoolVarP(&use_tool, "use-official-tool", "t", true, "Use the official Blender benchmark tool (default: yes)")
+    command.Flags().BoolVarP(&use_tool, "blender-benchmark", "B", true, "Use the official Blender benchmark tool (default: yes)")
     command.Flags().StringVarP(&scene, "scene", "S", "", "The scene(s) to be used for the benchmark rendering")
     command.Flags().StringVarP(&device, "device", "D", "", "The device(s) to be used for the benchmark rendering")
 
