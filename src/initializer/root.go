@@ -18,7 +18,7 @@
  * ************************** END LICENSE BLOCK ********************************
  */
 
-package initializer
+package main
 
 /*
 
@@ -32,6 +32,7 @@ import (
 
   // standard
   "fmt"
+  "sync"
   "os"
   "time"
   "encoding/json"
@@ -41,14 +42,39 @@ import (
 
   // internal
   . "renderhive/globals"
-  // "renderhive/logger"
-  // "renderhive/hedera"
-  // "renderhive/node"
+  "renderhive/logger"
+  "renderhive/hedera"
+  "renderhive/node"
 
 )
 
 // is this a test run? (if so, all topics are deleted afterwards)
 const testRun = false
+
+// error value
+var err error
+var ServiceApp AppManager
+
+// INITIALIZE APP
+// #############################################################################
+func init() {
+
+  // INITIALIZE SERVICE APP
+  // ***************************************************************************
+  // TODO: use the signal library to catch interrupts, so that the app still
+  //       shuts down decently?
+  ServiceApp = AppManager{}
+  ServiceApp.Quit = make(chan bool, 1)
+  ServiceApp.WG = sync.WaitGroup{}
+
+  // initialize service app
+  err = ServiceApp.Init()
+  if err != nil {
+    fmt.Println(err)
+    os.Exit(1)
+  }
+
+}
 
 // MAIN LOOP
 // #############################################################################
@@ -57,17 +83,11 @@ func main () {
   // prepare end of program
   defer os.Exit(0)
 
-  // error value
-  var err error
+  // deinitialize the service app at the end of the main function
+  defer ServiceApp.DeInit()
 
   // LOGGER SYSTEM
   // ***************************************************************************
-  // initialize the logger system
-  logger.Init()
-
-  // add the package loggers
-  logger.AddPackageLogger("hedera")
-
   // log the start of the renderhive service
   logger.Manager.Main.Info().Msg("Renderhive initialization started.")
 
@@ -81,11 +101,7 @@ func main () {
   var receipt *hederasdk.TransactionReceipt
 
   // initialize the Hedera Manager
-  HederaManager, err := hedera.InitHederaManager(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
-  if err != nil {
-    logger.Manager.Package["hedera"].Error().Err(err).Msg("")
-    os.Exit(1)
-  }
+  HederaManager := *ServiceApp.HederaManager
 
 
 
@@ -202,7 +218,7 @@ func main () {
     message := node.HiveCycleConfigurationMessage{
       Iteration: 1,
       Duration:  300,
-      Created: time.Now(),
+      Timestamp: time.Now(),
     }
     // Encode the message as JSON
     jsonMessage, err := json.Marshal(message)

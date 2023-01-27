@@ -45,15 +45,15 @@ const HEDERA_TESTNET_MIRROR_NODE_URL = "https://testnet.mirrornode.hedera.com:44
 // RENDERHIVE CONSTANTS
 // #############################################################################
 // Account ID of the Renderhive smart contract
-const RENDERHIVE_TESTNET_SMART_CONTRACT = "0.0.49230883"
+const RENDERHIVE_TESTNET_SMART_CONTRACT = "0.0.4506"
 
 // Account IDs of the Hedera Consensus Service topics
 // Hive cycle
-const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION = "0.0.49139787"
-const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION = "0.0.49139788"
-const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION = "0.0.49139789"
+const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION = "0.0.4399"
+const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION = "0.0.4403"
+const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION = "0.0.4407"
 // Render jobs
-const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.49139793"
+const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.4409"
 
 // BLENDER CONSTANTS
 // #############################################################################

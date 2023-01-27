@@ -27,7 +27,7 @@ go 1.16
 // The follow snippet can be used in go.mod to force the project to use v1.26.1
 replace google.golang.org/protobuf v1.27.1 => google.golang.org/protobuf v1.26.1-0.20210525005349-febffdd88e85
 
-require github.com/hashgraph/hedera-sdk-go/v2 v2.17.7
+require github.com/hashgraph/hedera-sdk-go/v2 v2.20.0
 
 require github.com/rs/zerolog v1.28.0
 

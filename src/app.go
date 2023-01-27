@@ -140,109 +140,118 @@ func (service *AppManager) Init() (error) {
     // READ HCS TOPIC INFORMATION & SUBSCRIBE
     // *************************************************************************
     // render job queue
-    topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_RENDER_JOB_QUEUE)
-    if err != nil {
-      return err
-    }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+    if RENDERHIVE_TESTNET_RENDER_JOB_QUEUE != "" {
+        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_RENDER_JOB_QUEUE)
+        if err != nil {
+          return err
+        }
+        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
-      logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+          logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
-    })
-    if err != nil {
-      return err
+        })
+        if err != nil {
+          return err
+        }
     }
 
     // hive cycle synchronization topic
-    topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION)
-    if err != nil {
-      return err
-    }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), service.NodeManager.HiveCycle.MessageCallback())
-    if err != nil {
-      return err
+    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION != "" {
+        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION)
+        if err != nil {
+          return err
+        }
+        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), service.NodeManager.HiveCycle.MessageCallback())
+        if err != nil {
+          return err
+        }
     }
 
     // hive cycle application topic
-    topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION)
-    if err != nil {
-      return err
-    }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION != "" {
+        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION)
+        if err != nil {
+          return err
+        }
+        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
-      logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+          logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
-    })
-    if err != nil {
-      return err
+        })
+        if err != nil {
+          return err
+        }
     }
 
     // hive cycle validation topic
-    topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION)
-    if err != nil {
-      return err
-    }
-    err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION != "" {
+        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION)
+        if err != nil {
+          return err
+        }
+        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
-      logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+          logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
-    })
-    if err != nil {
-      return err
+        })
+        if err != nil {
+          return err
+        }
     }
 
 
 
     // HIVE CYCLE
     // *************************************************************************
-    // synchronize with the render hive
-    service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
+    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION != "" {
+        // synchronize with the render hive
+        service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
 
-    go func() {
+        go func() {
 
-      // time variable
-      last_execution_time := time.Now()
+          // time variable
+          last_execution_time := time.Now()
 
-      // set duration to 1/10 of the cycle duration
-      configurations := service.NodeManager.HiveCycle.Configurations
-      check_duration := time.Duration(configurations[len(configurations) - 1].Duration / 10)
+          // set duration to 1/10 of the cycle duration
+          configurations := service.NodeManager.HiveCycle.Configurations
+          check_duration := time.Duration(configurations[len(configurations) - 1].Duration / 10)
 
-      // add call to wait group
-      service.WG.Add(1)
+          // add call to wait group
+          service.WG.Add(1)
 
-      // loop forever
-      for {
+          // loop forever
+          for {
 
-        select {
+            select {
 
-        // app is quitting
-        case <-service.Quit:
-          logger.Manager.Main.Debug().Msg("Stopped hive cycle synchronization loop.")
-          service.WG.Done()
-          return
+            // app is quitting
+            case <-service.Quit:
+              logger.Manager.Main.Debug().Msg("Stopped hive cycle synchronization loop.")
+              service.WG.Done()
+              return
 
-        // app is running
-        default:
+            // app is running
+            default:
 
-          // if the duration for next check has expired
-          if time.Now().Sub(last_execution_time) > check_duration {
+              // if the duration for next check has expired
+              if time.Now().Sub(last_execution_time) > check_duration {
 
-            // synchronize the hive cycle
-            service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
+                // synchronize the hive cycle
+                service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
 
-            // get configuration and update the checking duration
-            configurations = service.NodeManager.HiveCycle.Configurations
-            check_duration = time.Duration(configurations[len(configurations) - 1].Duration / 10)
+                // get configuration and update the checking duration
+                configurations = service.NodeManager.HiveCycle.Configurations
+                check_duration = time.Duration(configurations[len(configurations) - 1].Duration / 10)
 
+              }
+
+              // wait for 100 milliseconds to next check
+              time.Sleep(100 * time.Millisecond)
+
+            }
           }
-
-          // wait for 100 milliseconds to next check
-          time.Sleep(100 * time.Millisecond)
-
-        }
-      }
-    }()
-
+        }()
+    }
 
 
     // STATE CHECKS
