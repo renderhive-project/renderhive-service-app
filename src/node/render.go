@@ -214,17 +214,29 @@ type RenderRequest struct {
 type RenderOffer struct {
 
   // TODO: Fill with information
+  // General offer information
   UserID int                           // ID of the user this offer belongs to
-  Blender map[string]BlenderAppData    // supported Blender versions and Blender render options
   DocumentCID string                   // content identifier (CID) of the render offer document on the IPFS
   DocumentPath string                  // local path of the render offer document on this node
 
   // Render offer data
-  RenderPower float64                  // render power offered by the node
+  // TODO: Prices need to be implemented using Decimals instead float ("apd" package or "currency" package?)
+  Blender map[string]BlenderAppData    // supported Blender versions and Blender render options (includes benchmark results, i.e. "offered render power" per version)
   Price float64                        // price threshold in cents (USD) per BBP for rendering
-                                       // TODO: needs to be implemented using Decimals (apd package or currency package)
+  Tax []struct {                       // Some jurisdictions may require taxation for the services offered on the render hive by a node
+
+    Name string                        // Name of the tax (e.g., Sales Tax, VAT, etc.)
+    Description string                 // Description of the text
+    Value float64                      // Tax value in %
+
+  }
+
+  // Terms of Service
+  // Each node can allow/disallow certain
 
 }
+
+
 
 // RENDER OFFERS
 // #############################################################################
@@ -239,19 +251,21 @@ func (nm *PackageManager) InitRenderOffer() *RenderOffer {
 
 }
 
-// set the render price limit
+// Set the render price limit
 func (ro *RenderOffer) SetPrice(price float64, currency string) (error) {
     var err error
+
+    // Set the new price
+    ro.Price = price
 
     return err
 
 }
 
-// get the render price limit
+// Get the render price limit
 func (ro *RenderOffer) GetPrice() (float64) {
-    var result float64
 
-    return result
+    return ro.Price
 
 }
 
@@ -335,13 +349,33 @@ func (ro *RenderOffer) DeleteBlenderVersion(version string) (error) {
 
 }
 
+// create a new render offer document (locally) and pin it to the local IPFS node
+// NOTE: This document will be downloaded by all render nodes
+func (ro *RenderOffer) Publish() (error) {
+  var err error
+
+  // log event
+  logger.Manager.Package["node"].Trace().Msg("Remove a Blender version from the node's render offer:")
+
+  // Create the render offer document JSON file
+  // ...
+
+  // Pin the file on the local IPFS
+  // ...
+
+  // Update the internal CID
+  ro.DocumentCID = ""
+
+  return err
+
+}
 
 
 
 // BLENDER BENCHMARK TOOL CONTROL
 // #############################################################################
 // Execute the command line interface for the Blender benchmark tool
-func (tool *BlenderBenchmarkTool) Execute(path string, args []string) (string, error) {
+func (tool *BlenderBenchmarkTool) _execute(path string, args []string) (string, error) {
     var err error
 
     // Check if 'path' is pointing to an existing file
@@ -387,7 +421,7 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
         }
 
         // get list of Blender versions supported by this tool version
-        output, err := tool.Execute(path, []string{"blender", "list"})
+        output, err := tool._execute(path, []string{"blender", "list"})
         if err != nil {
             return errors.New(fmt.Sprintf("Could not retrieve Blender benchmark tool version list. (Error: %v)", err))
         } else {
@@ -408,7 +442,7 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
         }
 
         // download the suitable Blender version
-        output, err = tool.Execute(path, []string{"blender", "download", benchmark_version})
+        output, err = tool._execute(path, []string{"blender", "download", benchmark_version})
         if err != nil {
             return errors.New(fmt.Sprintf("Could not download blender version %v. (Error: %v)", benchmark_version, err))
         }
@@ -417,7 +451,7 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
         logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Retrieving supported devices for Blender version: %v", benchmark_version))
 
         // get list of devices
-        output, err = tool.Execute(path, []string{"devices", "--blender-version", benchmark_version, "list"})
+        output, err = tool._execute(path, []string{"devices", "--blender-version", benchmark_version, "list"})
         if err != nil {
             return errors.New(fmt.Sprintf("Could not retrieve Blender benchmark tool device list. (Error: %v)", err))
         } else {
@@ -450,7 +484,7 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
         logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Retrieving supported scenes for Blender version: %v", benchmark_version))
 
         // get list of benchmark scenes
-        output, err = tool.Execute(path, []string{"scenes", "--blender-version", benchmark_version, "list"})
+        output, err = tool._execute(path, []string{"scenes", "--blender-version", benchmark_version, "list"})
         if err != nil {
             return errors.New(fmt.Sprintf("Could not retrieve Blender benchmark tool scene list. (Error: %v)", err))
         } else {
@@ -478,7 +512,7 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
         } else {
 
             // download the scene
-            output, err = tool.Execute(path, []string{"scenes", "download", "--blender-version", benchmark_version, benchmark_scene})
+            output, err = tool._execute(path, []string{"scenes", "download", "--blender-version", benchmark_version, benchmark_scene})
             if err != nil {
                 return errors.New(fmt.Sprintf("Could not download Blender benchmark scene '%v'. (Error: %v)", benchmark_scene, err))
             }
@@ -487,7 +521,7 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
             logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Downloaded Benchmark scene '%v' and started benchmark rendering ...", benchmark_scene))
 
             // start the benchmark
-            output, err = tool.Execute(path, []string{"benchmark", "--blender-version", benchmark_version, "--device-type", "CPU", "--json", benchmark_scene})
+            output, err = tool._execute(path, []string{"benchmark", "--blender-version", benchmark_version, "--device-type", "CPU", "--json", benchmark_scene})
             if err != nil {
                 return errors.New(fmt.Sprintf("Failed to execute benchmark rendering for scene '%v'. (Error: %v)", benchmark_scene, err))
             } else {
