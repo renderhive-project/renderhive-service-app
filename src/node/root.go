@@ -78,11 +78,11 @@ type RenderData struct {
 
   // Render requests and offers
   Offer *RenderOffer                      // the render offer provided by this node (if any)
-  Requests map[int]RenderRequest          // the render jobs requested by this node (if any)
+  Requests map[int]*RenderRequest          // the render jobs requested by this node (if any)
 
   // Job queues
   NodeQueue *[]RenderJob                  // the queue of render jobs to be performed on this node
-  NetworkQueue *[]RenderJob               // the queue of render jobs on the renderhive network
+  NetworkQueue *[]RenderJob               // the queue of render jobs on the render hive network
 
   // Benchmark
   RenderPower []BlenderBenchmarkResult   // Blender benchmark points per Blender version
@@ -137,7 +137,7 @@ func (nm *PackageManager) Init() (error) {
     nm.InitRenderOffer()
 
     // initialized the render requests
-    nm.Renderer.Requests = map[int]RenderRequest{}
+    nm.Renderer.Requests = make(map[int]*RenderRequest)
 
     // Add a Blender version to the node's render offer
     nm.Renderer.Offer.AddBlenderVersion("3.2.1", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
@@ -210,7 +210,7 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
         // print the hive cycle
         if hivecycle {
             fmt.Println("")
-            fmt.Printf("The current hive cycle of the renderhive is %v.\n", nm.HiveCycle.Current)
+            fmt.Printf("The current hive cycle of the render hive is %v.\n", nm.HiveCycle.Current)
             fmt.Println("")
         }
 

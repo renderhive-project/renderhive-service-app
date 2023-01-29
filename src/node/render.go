@@ -37,7 +37,7 @@ import (
 	"sort"
 
   // external
-  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+  hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
   "github.com/mattn/go-shellwords"
   "github.com/spf13/cobra"
   // "github.com/cockroachdb/apd"
@@ -47,6 +47,7 @@ import (
   . "renderhive/globals"
   . "renderhive/utility"
   "renderhive/logger"
+  // "renderhive/hedera"
 
 )
 
@@ -189,7 +190,7 @@ type RenderSettings struct {
 
 }
 
-// a render job claimed for rendering on the renderhive by this node
+// a render job claimed for rendering on the render hive by this node
 type RenderJob struct {
 
   // TODO: Fill with information
@@ -201,7 +202,7 @@ type RenderJob struct {
 
 }
 
-// a render job that is requested by this node for rendering on the renderhive
+// a render job that is requested by this node for rendering on the render hive
 type RenderRequest struct {
 
   // TODO: Fill with information
@@ -211,7 +212,7 @@ type RenderRequest struct {
   DocumentPath string                  // local path of the render request document on this node
   CreatedTimestamp time.Time           // The datetime this request was created
   ModifiedTimestamp time.Time          // The datetime this request was last modified
-  PublishedTimestamp time.Time         // The datetime this request was published to the render hive
+  SubmittedTimestamp time.Time         // The datetime this request was published to the render hive
   FinishedTimestamp time.Time          // The datetime this request was completely rendered by the render hive
 
   // File data
@@ -223,9 +224,22 @@ type RenderRequest struct {
   Price float64                        // Price maximum in cents (USD) per BBP
   ThisNode bool                        // True, if this node participates in rendering this job
 
+  // Hedera data
+  Receipt *hederasdk.TransactionReceipt
+
 }
 
-// a render offer that is provided by this node for rendering on the renderhive
+// Representation of the JSON message for the Job Queue Topic
+type RenderRequestMessage struct {
+
+  UserID int `json:"user_id"`                     // Renderhive User ID of the user this request belongs to
+  NodeID int `json:"node_id"`                     // Renderhive Node ID of the node this request belongs to
+  DocumentCID string `json:"document_cid"`        // Render request document CID
+  BlenderFileCID string `json:"blender_file_cid"` // Blender file CID
+
+}
+
+// a render offer that is provided by this node for rendering on the render hive
 type RenderOffer struct {
 
   // TODO: Fill with information
@@ -392,7 +406,7 @@ func (ro *RenderOffer) Publish() (error) {
 
 // RENDER REQUEST
 // #############################################################################
-// Create a new render render request from this node
+// Create a new render request for this node
 func (nm *PackageManager) AddRenderRequest(request *RenderRequest) (int, error) {
   var err error
   var newID int
@@ -425,7 +439,7 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest) (int, error) 
   } else {
 
       // initialized the map first
-      nm.Renderer.Requests = map[int]RenderRequest{}
+      nm.Renderer.Requests = make(map[int]*RenderRequest)
 
   }
 
@@ -433,7 +447,10 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest) (int, error) 
   request.ID = newID
 
   // Append the request to the list of requests of this node
-  nm.Renderer.Requests[newID] = *request
+  nm.Renderer.Requests[newID] = request
+
+  // TODO: Create a local render request document
+  // ...
 
   return newID, err
 
@@ -453,6 +470,73 @@ func (nm *PackageManager) RemoveRenderRequest(id int) (error) {
         delete(nm.Renderer.Requests, id)
     } else {
         err = errors.New(fmt.Sprintf("Render request %v could not be removed from the node.", id))
+    }
+
+    return err
+
+}
+
+// Submit a render request from this node to the render hive network
+func (nm *PackageManager) SubmitRenderRequest(id int) (error) {
+    var err error
+    var request *RenderRequest
+
+    // log event
+    logger.Manager.Package["node"].Trace().Msg("Submitting a render request for this node to the render hive:")
+
+    // if the render request exists
+    request, ok := nm.Renderer.Requests[id]
+    if ok {
+
+        // log trace event
+        logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] ID: %v", request.ID))
+
+        // TODO: Store the Blender file via IPFS/Filecoin
+        // ...
+
+        // TODO: Call the smart contract and add the transaction hash to the
+        //       render request document
+        // ...
+
+        // TODO: Pin the render request document to the local IPFS node
+        // ...
+
+        // Submit the render request message to the job queue topic
+        // Prepare the HCS message
+        message := RenderRequestMessage{
+
+          UserID: nm.User.ID,
+          NodeID: nm.Node.ID,
+          DocumentCID: "",
+          BlenderFileCID: "",
+
+        }
+
+        // Encode the message as JSON
+        jsonMessage, err := json.Marshal(message)
+        if err != nil {
+            return err
+        } else {
+
+          // send it to the Renderhive Job Queue topic on Hedera
+          request.Receipt, err = nm.JobQueueTopic.SubmitMessage(string(jsonMessage), nil, false, nil, false)
+          if err != nil {
+            logger.Manager.Package["hedera"].Error().Err(err).Msg("")
+            return errors.New(fmt.Sprintf("Render request %v could not be submitted: %v.", id, err.Error()))
+          }
+          if request.Receipt != nil {
+            logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] [*] Receipt: %s (Status: %s)", request.Receipt.TransactionID.String(), request.Receipt.Status))
+            if !strings.EqualFold(request.Receipt.Status.String(), "SUCCESS") {
+                err = errors.New(fmt.Sprintf("Render request %v could not be submitted to Hedera: Receipt status '%v'.", id, request.Receipt.Status.String()))
+                return err
+            }
+          }
+
+        }
+
+    } else {
+        err = errors.New(fmt.Sprintf("Render request could not be submitted: Request ID %v does not exist.", id))
+        return err
     }
 
     return err
@@ -844,7 +928,7 @@ func (nm *PackageManager) CreateCommandRequest() (*cobra.Command) {
       Run: func(cmd *cobra.Command, args []string) {
 
         // if a render offer exists
-        if nm.Renderer.Requests != nil {
+        if nm.Renderer.Requests != nil && len(nm.Renderer.Requests) > 0 {
 
             // list all Blender versions
             if list {
@@ -854,7 +938,7 @@ func (nm *PackageManager) CreateCommandRequest() (*cobra.Command) {
 
                 // find each Blender version added to the node
                 for _, request := range nm.Renderer.Requests {
-                  fmt.Printf(" [#] ID: %v for %v \n", request.ID, request.BlenderFile.Path)
+                  fmt.Printf(" [#] ID: %v for Blender file '%v' (Submitted: %v) \n", request.ID, request.BlenderFile.Path, (request.Receipt != nil))
                 }
                 fmt.Println("")
 
@@ -879,7 +963,7 @@ func (nm *PackageManager) CreateCommandRequest() (*cobra.Command) {
     // add the subcommands
     command.AddCommand(nm.CreateCommandRequest_Add())
     command.AddCommand(nm.CreateCommandRequest_Remove())
-    // command.AddCommand(nm.CreateCommandRequest_Publish())
+    command.AddCommand(nm.CreateCommandRequest_Submit())
     // command.AddCommand(nm.CreateCommandRequest_Pause())
     // command.AddCommand(nm.CreateCommandRequest_Revoke())
 
@@ -917,15 +1001,18 @@ func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
                 }
 
                 // Create a new render request
-                request := RenderRequest{
-                              BlenderFile: BlenderFileData{Path: blender_file},
-                              Version: blender_version,
-                              Price: render_price,
-                              ThisNode: this_node,
+                request := &RenderRequest{
+                            CreatedTimestamp: time.Now(),
+                            ModifiedTimestamp: time.Now(),
+
+                            BlenderFile: BlenderFileData{Path: blender_file},
+                            Version: blender_version,
+                            Price: render_price,
+                            ThisNode: this_node,
                            }
 
                 // Add the render request to the node
-                id, err := nm.AddRenderRequest(&request)
+                id, err := nm.AddRenderRequest(request)
 
                 if err != nil {
                     fmt.Println("")
@@ -975,7 +1062,6 @@ func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
     return command
 
 }
-
 
 // Create the CLI command to remove a previously created render request from this node
 func (nm *PackageManager) CreateCommandRequest_Remove() (*cobra.Command) {
@@ -1028,6 +1114,82 @@ func (nm *PackageManager) CreateCommandRequest_Remove() (*cobra.Command) {
 
               fmt.Println("")
               fmt.Println(fmt.Errorf("Failed to remove the render request."))
+              if id == -1 { fmt.Println(fmt.Errorf(" [#] Missing a required parameter: Request ID (--request-id).")) }
+              fmt.Println("")
+
+            }
+
+        } else {
+
+          fmt.Println("")
+          fmt.Println(fmt.Errorf("The node has no render requests."))
+          fmt.Println("")
+
+        }
+
+        return
+
+    	},
+    }
+
+    // add command flag parameters
+    command.Flags().IntVarP(&id, "request-id", "i", -1, "The ID of the render request to remove")
+
+    return command
+
+}
+
+// Create the CLI command to remove a previously created render request from this node
+func (nm *PackageManager) CreateCommandRequest_Submit() (*cobra.Command) {
+
+    // flags for the 'submit remove' command
+    var id int
+
+    // create a 'request submit' command for the node
+    command := &cobra.Command{
+    	Use:   "submit",
+    	Short: "Submit a render request from this node to the render hve",
+    	Long: "This command is for submitting a render request from this node to the render hive network for rendering. Several transactions will be performed to inform the smart contract and to announce the new render request on the HCS topics.",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        // if render requests exists
+        if nm.Renderer.Requests != nil {
+
+            // was a valid ID passed?
+            if (id != -1) {
+
+                // if the parsed version is supported by the node
+                _, ok := nm.Renderer.Requests[id]
+                if ok {
+
+                    // Submit the render request
+                    err := nm.SubmitRenderRequest(id)
+                    if err != nil {
+
+                      fmt.Println("")
+                      fmt.Println(fmt.Errorf(err.Error()))
+                      fmt.Println("")
+
+                      return
+
+                    }
+
+                    fmt.Println("")
+                    fmt.Printf("Submitted render request with ID %v to the render hive. \n", id)
+                    fmt.Println("")
+
+                } else {
+
+                  fmt.Println("")
+                  fmt.Println(fmt.Errorf("There is no render request with ID %v.", id))
+                  fmt.Println("")
+
+                }
+
+            } else {
+
+              fmt.Println("")
+              fmt.Println(fmt.Errorf("Failed to submit the render request."))
               if id == -1 { fmt.Println(fmt.Errorf(" [#] Missing a required parameter: Request ID (--request-id).")) }
               fmt.Println("")
 

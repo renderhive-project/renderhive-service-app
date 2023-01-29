@@ -56,7 +56,7 @@ type HederaAccount struct {
 // ACCOUNT MANAGEMENT
 // #############################################################################
 // Create a new account
-func (h *HederaAccount) New(m *PackageManager, InitialBalance float64) (*hederasdk.TransactionReceipt, error) {
+func (h *HederaAccount) New(InitialBalance float64) (*hederasdk.TransactionReceipt, error) {
     var err error
 
     // log information
@@ -77,10 +77,10 @@ func (h *HederaAccount) New(m *PackageManager, InitialBalance float64) (*hederas
     newAccountTransaction, err := hederasdk.NewAccountCreateTransaction().
         SetKey(h.PublicKey).
         SetInitialBalance(hederasdk.HbarFrom(InitialBalance, hederasdk.HbarUnits.Tinybar)).
-        Execute(m.NetworkClient)
+        Execute(Manager.NetworkClient)
 
     // Request the receipt of the account creation transaction
-    transactionReceipt, err := newAccountTransaction.GetReceipt(m.NetworkClient)
+    transactionReceipt, err := newAccountTransaction.GetReceipt(Manager.NetworkClient)
     if err != nil {
       return nil, err
     }
@@ -126,7 +126,7 @@ func (h *HederaAccount) FromFile(filepath string) error {
 }
 
 // Update the public key of a Hedera account
-func (h *HederaAccount) UpdateKey(m *PackageManager, newKey *hederasdk.PrivateKey) (string, error) {
+func (h *HederaAccount) UpdateKey(newKey *hederasdk.PrivateKey) (string, error) {
     var err error
 
     // Updating the account with the new key
@@ -134,7 +134,7 @@ func (h *HederaAccount) UpdateKey(m *PackageManager, newKey *hederasdk.PrivateKe
   		SetAccountID(h.AccountID).
   		// The new key
   		SetKey(newKey.PublicKey()).
-  		FreezeWith(m.NetworkClient)
+  		FreezeWith(Manager.NetworkClient)
   	if err != nil {
   		return "", err
   	}
@@ -142,11 +142,11 @@ func (h *HederaAccount) UpdateKey(m *PackageManager, newKey *hederasdk.PrivateKe
     println(newKey.String())
 
   	// Have to sign with both keys, the initial key first
-  	newAccountUpdateTransaction.Sign(m.Operator.PrivateKey)
+  	newAccountUpdateTransaction.Sign(Manager.Operator.PrivateKey)
   	newAccountUpdateTransaction.Sign(*newKey)
 
     // Sign with client operator private key and submit the transaction to the Hedera network
-    _, err = newAccountUpdateTransaction.Execute(m.NetworkClient)
+    _, err = newAccountUpdateTransaction.Execute(Manager.NetworkClient)
     if err != nil {
         return "", err
     }
@@ -168,13 +168,13 @@ func (h *HederaAccount) QueryInfo(m *PackageManager) (string, error) {
          SetAccountID(h.AccountID)
 
     // get cost of this query
-    cost, err := newAccountInfoQuery.GetCost(m.NetworkClient)
+    cost, err := newAccountInfoQuery.GetCost(Manager.NetworkClient)
     if err != nil {
         return "", err
     }
 
     //Sign with client operator private key and submit the query to a Hedera network
-    h.Info, err = newAccountInfoQuery.Execute(m.NetworkClient)
+    h.Info, err = newAccountInfoQuery.Execute(Manager.NetworkClient)
     if err != nil {
         return "", err
     }
@@ -192,13 +192,13 @@ func (h *HederaAccount) QueryBalance(m *PackageManager) (string, error) {
          SetAccountID(h.AccountID)
 
     // get cost of this query
-    cost, err := newAccountBalanceQuery.GetCost(m.NetworkClient)
+    cost, err := newAccountBalanceQuery.GetCost(Manager.NetworkClient)
     if err != nil {
         return "", err
     }
 
     //Sign with client operator private key and submit the query to a Hedera network
-    accountBalance, err := newAccountBalanceQuery.Execute(m.NetworkClient)
+    accountBalance, err := newAccountBalanceQuery.Execute(Manager.NetworkClient)
     if err != nil {
         return "", err
     }

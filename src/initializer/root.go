@@ -88,7 +88,7 @@ func main () {
 
   // LOGGER SYSTEM
   // ***************************************************************************
-  // log the start of the renderhive service
+  // log the start of the Renderhive Service App
   logger.Manager.Main.Info().Msg("Renderhive initialization started.")
 
   // make sure the end of the program is logged
@@ -173,7 +173,7 @@ func main () {
   // ***************************************************************************
   logger.Manager.Main.Info().Msg("Creating the required Hedera Consensus Service topics ...")
 
-  // define the renderhive version for the topic names
+  // define the Renderhive version for the topic names
   const renderhive_topic_main_version = "0"
   const renderhive_topic_sub_version = "1"
   const renderhive_topic_patch_version = "0"

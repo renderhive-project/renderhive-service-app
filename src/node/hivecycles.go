@@ -117,7 +117,7 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     var transactions *[]hedera.TransactionInfo
 
     // Get the last transaction on the Hedera mirror node
-    transactions, err = hm.MirrorNode.Transactions(hm, "", 1, "desc", "", "", "")
+    transactions, err = hm.MirrorNode.Transactions("", 1, "desc", "", "", "")
     if err != nil {
       return err
     }

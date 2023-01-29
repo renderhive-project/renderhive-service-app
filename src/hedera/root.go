@@ -191,7 +191,7 @@ func (hm *PackageManager) TopicSubscribe(topic *HederaTopic, startTime time.Time
   logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("Subscribe to topic with ID %v.", topic.ID))
 
   // subscribe to the topic
-  err = topic.Subscribe(hm, startTime, onNext)
+  err = topic.Subscribe(startTime, onNext)
   if err != nil {
     return err
   }

@@ -22,7 +22,7 @@ package cli
 
 /*
 
-  This package contains the command-line interface of the Renderhive service app.
+  This package contains the command-line interface of the Renderhive Service App.
   It is mainly usefull for the development phase, where no GUI is available, but
   it will also enable to run the service app in headless mode later.
 
