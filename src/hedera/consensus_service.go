@@ -46,6 +46,16 @@ type HederaTopic struct {
 
 
 
+// TODO
+// #############################################################################
+//
+// (1) It would be better to make the query calls to a mirror node most of the time
+//     unless in situations where we cannot cope with the time delay of mirror nodes.
+//     (this would lower costs for users)
+//
+//
+
+
 // TOPIC MANAGEMENT - LOWER LEVEL FUNCTIONS
 // #############################################################################
 // This section contains the lower level functions for the topic management.

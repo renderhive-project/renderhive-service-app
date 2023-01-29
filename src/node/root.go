@@ -100,6 +100,16 @@ type PackageManager struct {
   // Hivc cycle management
   HiveCycle HiveCycle
 
+  // Hedera consensus service topics
+  // Hive cycle topics
+  HiveCycleSynchronizationTopic *hedera.HederaTopic
+  HiveCycleApplicationTopic *hedera.HederaTopic
+  HiveCycleValidationTopic *hedera.HederaTopic
+
+  // Render job topics
+  JobQueueTopic *hedera.HederaTopic
+  JobTopics *[]hedera.HederaTopic
+
   // Command line interface
   Command *cobra.Command
   CommandFlags struct {
@@ -125,7 +135,7 @@ func (nm *PackageManager) Init() (error) {
 
     // Initialize the render offer
     nm.InitRenderOffer()
-    
+
     // initialized the render requests
     nm.Renderer.Requests = map[int]RenderRequest{}
 

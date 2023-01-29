@@ -58,16 +58,6 @@ type AppManager struct {
   WebAppManager *webapp.PackageManager
   CLIManager *cli.PackageManager
 
-  // Hedera consensus service topics
-  // Hive cycle topics
-  HiveCycleSynchronizationTopic hedera.HederaTopic
-  HiveCycleApplicationTopic hedera.HederaTopic
-  HiveCycleValidationTopic hedera.HederaTopic
-
-  // Render job topics
-  JobQueueTopic hedera.HederaTopic
-  JobTopics []hedera.HederaTopic
-
   // Signaling channels
   Quit chan bool
   WG sync.WaitGroup
@@ -79,7 +69,6 @@ type AppManager struct {
 // Initialize the Renderhive Service App session
 func (service *AppManager) Init() (error) {
     var err error
-    var topic *hedera.HederaTopic
 
     // INITIALIZE LOGGER
     // *************************************************************************
@@ -141,11 +130,11 @@ func (service *AppManager) Init() (error) {
     // *************************************************************************
     // render job queue
     if RENDERHIVE_TESTNET_RENDER_JOB_QUEUE != "" {
-        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_RENDER_JOB_QUEUE)
+        service.NodeManager.JobQueueTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_RENDER_JOB_QUEUE)
         if err != nil {
           return err
         }
-        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+        err = service.HederaManager.TopicSubscribe(service.NodeManager.JobQueueTopic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
           logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
@@ -157,11 +146,11 @@ func (service *AppManager) Init() (error) {
 
     // hive cycle synchronization topic
     if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION != "" {
-        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION)
+        service.NodeManager.HiveCycleSynchronizationTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION)
         if err != nil {
           return err
         }
-        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), service.NodeManager.HiveCycle.MessageCallback())
+        err = service.HederaManager.TopicSubscribe(service.NodeManager.HiveCycleSynchronizationTopic, time.Unix(0, 0), service.NodeManager.HiveCycle.MessageCallback())
         if err != nil {
           return err
         }
@@ -169,11 +158,11 @@ func (service *AppManager) Init() (error) {
 
     // hive cycle application topic
     if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION != "" {
-        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION)
+        service.NodeManager.HiveCycleApplicationTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION)
         if err != nil {
           return err
         }
-        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+        err = service.HederaManager.TopicSubscribe(service.NodeManager.HiveCycleApplicationTopic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
           logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
@@ -185,11 +174,11 @@ func (service *AppManager) Init() (error) {
 
     // hive cycle validation topic
     if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION != "" {
-        topic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION)
+        service.NodeManager.HiveCycleValidationTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION)
         if err != nil {
           return err
         }
-        err = service.HederaManager.TopicSubscribe(topic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+        err = service.HederaManager.TopicSubscribe(service.NodeManager.HiveCycleValidationTopic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
 
           logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
 
