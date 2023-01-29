@@ -34,6 +34,7 @@ import (
   "fmt"
   "encoding/json"
   // "os"
+  "errors"
   "math"
   "time"
 
@@ -116,6 +117,9 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     var err error
     var transactions *[]hedera.TransactionInfo
 
+    // TODO: It is not economic to query the mirror node so often. Probably we
+    //       should restrict this to once per day or hour to synchronize the
+    //       local time with the network time and use a local timer afterwards?
     // Get the last transaction on the Hedera mirror node
     transactions, err = hm.MirrorNode.Transactions("", 1, "desc", "", "", "")
     if err != nil {
@@ -134,10 +138,11 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     // Add the duration to the Unix epoch to obtain a time.Time value
     hc.NetworkClock.NetworkTime = time.Unix(0, 0).Add(duration)
 
-    // calculate the difference between the local node time
+    // calculate the difference between the local node time and the network time
     hc.NetworkClock.Difference = hc.NetworkClock.LocalTime.Sub(hc.NetworkClock.NetworkTime)
 
     // reset hive cycle value
+    oldCycle := hc.Current
     hc.Current = 0
 
     // iterate through all configurations messages to calculate the current
@@ -168,6 +173,56 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Consensus time: %v", hc.NetworkClock.NetworkTime))
     logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Difference to local time: %v", hc.NetworkClock.Difference))
     logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Current hive cycle: %v", hc.Current))
+
+    // if the hive cycle just changed
+    if hc.Current != oldCycle {
+
+        // log trace event
+        logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf("New hive cycle %v detected at consensus time %v / local time %v", hc.Current, hc.NetworkClock.NetworkTime, hc.NetworkClock.LocalTime))
+
+        // Enter the hive cycle application phase
+        err = hc.ApplicationPhase(hm)
+        if err != nil {
+            return err
+        }
+
+        // TODO: Enter the hive cycle distribution phase
+        // ...
+
+        // TODO: Enter hive cycle render contract phase
+        // ...
+
+        // TODO: Enter hive cycle validation phase
+        // ...
+
+        // TODO: Enter hive cycle claiming phase
+        // ...
+
+    }
+
+    return err
+
+}
+
+// Enter the application phase for this hive cycle
+func (hc *HiveCycle) ApplicationPhase(hm *hedera.PackageManager) (error) {
+    var err error
+    // var transactions *[]hedera.TransactionInfo
+
+    // // Get the last transaction on the Hedera mirror node
+    // transactions, err = hm.MirrorNode.Transactions("", 1, "desc", "", "", "")
+    // if err != nil {
+    //   return err
+    // }
+    //
+
+    // if the node is busy rendering, skip this cycle
+    if Manager.Renderer.Busy {
+        return errors.New(fmt.Sprintf("The node is busy rendering and will skip the hive cycle %v.", hc.Current))
+    }
+
+    // TODO: Check if the hive cycle is still in the application phase
+    // ...
 
     return err
 

@@ -83,6 +83,9 @@ type RenderData struct {
   // Job queues
   NodeQueue []*RenderJob                  // Queue of render jobs to be performed on this node
 
+  // Node status
+  Busy bool                               // True, if the node is already rendering
+
 }
 
 // Data required to manage the nodes
