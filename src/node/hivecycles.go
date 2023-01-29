@@ -50,9 +50,14 @@ import (
 // structure for the time synchronization
 type HiveClock struct {
 
+  // Current time on the Hedera (mirror node) network and this Renderhive node
   NetworkTime time.Time
   LocalTime time.Time
   Difference time.Duration
+
+  // Start time of the current cycle
+  NetworkStartTime time.Time
+  LocalStartTime time.Time
 
 }
 
@@ -69,7 +74,7 @@ type HiveCycle struct {
 type HiveCycleConfigurationMessage struct {
     Iteration   int `json:"iteration"`       // hive cycle iteration (how many times was the configuration changed)
     Duration    int `json:"duration"`        // hive cycle duration in seconds
-    Timestamp   time.Time `json:"timestamp"` // timestamp of the creator's clock when creating the message
+    Timestamp   time.Time `json:"timestamp"` // consensus timestamp of this configuration message
 }
 
 
@@ -145,9 +150,17 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     oldCycle := hc.Current
     hc.Current = 0
 
+    // reset start time to configuration message's consensus timestamp
+    hc.NetworkClock.NetworkStartTime = hc.Configurations[0].Timestamp
+
     // iterate through all configurations messages to calculate the current
     // hive cycle
     for _, configuration := range hc.Configurations {
+
+      // log trace event
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf("Configuration message (iteration: %v):", configuration.Iteration))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Consensus time: %v", configuration.Timestamp))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Duration: %v", configuration.Duration))
 
       // if there is more than one configuration message
       if len(hc.Configurations) > 1 {
@@ -162,11 +175,13 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
 
       }
 
-      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf("Configuration message (iteration: %v):", configuration.Iteration))
-      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Consensus time: %v", configuration.Timestamp))
-      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Duration: %v", configuration.Duration))
+      // calculate the start time of this cycle (in Consensus Time)
+      hc.NetworkClock.NetworkStartTime = hc.NetworkClock.NetworkStartTime.Add(time.Duration(hc.Current * configuration.Duration) * time.Second)
 
     }
+
+    // calculate the start time of this hive cycle in the local time of the node
+    hc.NetworkClock.LocalStartTime = hc.NetworkClock.NetworkStartTime.Add(hc.NetworkClock.Difference)
 
     // log information
     logger.Manager.Package["node"].Trace().Msg("Synchronized with HCS time and calculated hive cycle:")

@@ -211,6 +211,8 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
         if hivecycle {
             fmt.Println("")
             fmt.Printf("The current hive cycle of the render hive is %v.\n", nm.HiveCycle.Current)
+            fmt.Printf(" [#] Started at consensus time: %v\n", nm.HiveCycle.NetworkClock.NetworkStartTime)
+            fmt.Printf(" [#] Started at local time: %v\n", nm.HiveCycle.NetworkClock.LocalStartTime)
             fmt.Println("")
         }
 
@@ -266,7 +268,7 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
     }
 
     // add command flags
-    command.Flags().BoolVarP(&hivecycle, "hivecycle", "c", false, "Print the current hive cycle this node calculated")
+    command.Flags().BoolVarP(&hivecycle, "hive-cycle", "c", false, "Print the current hive cycle this node calculated")
     command.Flags().BoolVarP(&offer, "offer", "o", false, "Print the render offer of this node")
     command.Flags().BoolVarP(&this, "this", "t", false, "Print the available information about this node")
     command.Flags().BoolVarP(&user, "user", "u", false, "Print the node owner's user data")

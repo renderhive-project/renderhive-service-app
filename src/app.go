@@ -195,11 +195,14 @@ func (service *AppManager) Init() (error) {
         go func() {
 
           // time variable
-          last_execution_time := time.Now()
+          var last_execution_time time.Time
 
           // set duration to 1/10 of the cycle duration
           configurations := service.NodeManager.HiveCycle.Configurations
-          check_duration := time.Duration(configurations[len(configurations) - 1].Duration / 10)
+          check_duration := time.Duration(configurations[len(configurations) - 1].Duration / 100) * time.Second
+
+          // update last execution time
+          last_execution_time = time.Now()
 
           // add call to wait group
           service.WG.Add(1)
@@ -226,7 +229,10 @@ func (service *AppManager) Init() (error) {
 
                 // get configuration and update the checking duration
                 configurations = service.NodeManager.HiveCycle.Configurations
-                check_duration = time.Duration(configurations[len(configurations) - 1].Duration / 10)
+                check_duration = time.Duration(configurations[len(configurations) - 1].Duration / 100) * time.Second
+
+                // update last execution time
+                last_execution_time = time.Now()
 
               }
 
