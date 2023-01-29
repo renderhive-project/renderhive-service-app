@@ -1058,13 +1058,15 @@ func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
                 fmt.Println("")
 
                 // Check if path is pointing to an existing blender file
-                if _, err := os.Stat(blender_file); os.IsNotExist(err) {
-                    fmt.Println(fmt.Errorf("The given path '%v' is not a valid path.", blender_file))
+                fileInfo, err := os.Stat(blender_file)
+                if os.IsNotExist(err) || !fileInfo.Mode().IsRegular() || !strings.HasSuffix(fileInfo.Name(), ".blend") {
+                    fmt.Println(fmt.Errorf("The given file path '%v' is not pointing to a regular '.blend' file.", blender_file))
                     return
                 }
 
                 // Create a new render request
                 request := &RenderRequest{
+
                             CreatedTimestamp: time.Now(),
                             ModifiedTimestamp: time.Now(),
 
@@ -1072,6 +1074,7 @@ func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
                             Version: blender_version,
                             Price: render_price,
                             ThisNode: this_node,
+
                            }
 
                 // Add the render request to the node
