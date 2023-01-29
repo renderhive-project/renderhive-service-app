@@ -134,11 +134,7 @@ func (service *AppManager) Init() (error) {
         if err != nil {
           return err
         }
-        err = service.HederaManager.TopicSubscribe(service.NodeManager.JobQueueTopic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
-
-          logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
-
-        })
+        err = service.HederaManager.TopicSubscribe(service.NodeManager.JobQueueTopic, time.Unix(0, 0), service.NodeManager.JobQueueMessageCallback())
         if err != nil {
           return err
         }

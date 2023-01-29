@@ -77,15 +77,11 @@ type NodeData struct {
 type RenderData struct {
 
   // Render requests and offers
-  Offer *RenderOffer                      // the render offer provided by this node (if any)
-  Requests map[int]*RenderRequest          // the render jobs requested by this node (if any)
+  Offer *RenderOffer                      // Render offer provided by this node (if any)
+  Requests map[int]*RenderRequest         // Render jobs requested by this node (if any)
 
   // Job queues
-  NodeQueue *[]RenderJob                  // the queue of render jobs to be performed on this node
-  NetworkQueue *[]RenderJob               // the queue of render jobs on the render hive network
-
-  // Benchmark
-  RenderPower []BlenderBenchmarkResult   // Blender benchmark points per Blender version
+  NodeQueue []*RenderJob                  // Queue of render jobs to be performed on this node
 
 }
 
@@ -97,8 +93,9 @@ type PackageManager struct {
   Node NodeData
   Renderer RenderData
 
-  // Hivc cycle management
+  // Network data
   HiveCycle HiveCycle
+  NetworkQueue []*RenderJob             // Queue of render jobs on the render hive
 
   // Hedera consensus service topics
   // Hive cycle topics
@@ -108,7 +105,7 @@ type PackageManager struct {
 
   // Render job topics
   JobQueueTopic *hedera.HederaTopic
-  JobTopics *[]hedera.HederaTopic
+  JobTopics []*hedera.HederaTopic
 
   // Command line interface
   Command *cobra.Command

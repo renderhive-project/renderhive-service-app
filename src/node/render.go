@@ -195,10 +195,12 @@ type RenderJob struct {
 
   // TODO: Fill with information
   UserID int                   // ID of the user this render job belongs to
+  NodeID int                   // ID of the node this render job belongs to
 
-  // File data
-  BlenderFile BlenderFileData  // Data of the Blender file to be rendered
-  Document string              // content identifier (CID) of the render request document on the IPFS
+  // Request data
+  Request *RenderRequest       // Render request
+  // Job status
+  // ...
 
 }
 
@@ -232,6 +234,7 @@ type RenderRequest struct {
 // Representation of the JSON message for the Job Queue Topic
 type RenderRequestMessage struct {
 
+  // General info
   UserID int `json:"user_id"`                     // Renderhive User ID of the user this request belongs to
   NodeID int `json:"node_id"`                     // Renderhive Node ID of the node this request belongs to
   DocumentCID string `json:"document_cid"`        // Render request document CID
@@ -270,7 +273,7 @@ type RenderOffer struct {
 
 
 
-// RENDER OFFERS
+// RENDER OFFER
 // #############################################################################
 // Initialize the render offer for this node
 func (nm *PackageManager) InitRenderOffer() *RenderOffer {
@@ -404,7 +407,7 @@ func (ro *RenderOffer) Publish() (error) {
 
 
 
-// RENDER REQUEST
+// RENDER REQUESTS
 // #############################################################################
 // Create a new render request for this node
 func (nm *PackageManager) AddRenderRequest(request *RenderRequest) (int, error) {
@@ -481,7 +484,7 @@ func (nm *PackageManager) SubmitRenderRequest(id int) (error) {
     var err error
     var request *RenderRequest
 
-    // log event
+    // log trace event
     logger.Manager.Package["node"].Trace().Msg("Submitting a render request for this node to the render hive:")
 
     // if the render request exists
@@ -542,6 +545,66 @@ func (nm *PackageManager) SubmitRenderRequest(id int) (error) {
     return err
 
 }
+
+
+
+// RENDER QUEUE
+// #############################################################################
+// Message callback to receive the job queue data from the render hive
+func (nm *PackageManager) JobQueueMessageCallback() (func(message hederasdk.TopicMessage)) {
+
+    return func(message hederasdk.TopicMessage) {
+      var err error
+
+      //
+      // Import and parse the compiled contract from the contract file
+    	jsonData := message.Contents
+
+      // Parse the HiveCycleConfigurationMessage from the JSON string
+      var request RenderRequestMessage
+    	err = json.Unmarshal(jsonData, &request)
+    	if err != nil {
+
+        logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Message received but not processed: %s", string(message.Contents)))
+        return
+
+    	}
+
+      // TODO: Validate that the message was from a valid source.
+      // ...
+
+      // TODO: Download render request document and blender file
+      // ...
+
+      // TODO: Extract render job data from the render request document
+      // ...
+
+      // create the RenderJob element for the internal job management
+      job := &RenderJob{
+                UserID: request.UserID,
+                NodeID: request.NodeID,
+                Request: &RenderRequest{
+                   DocumentCID: request.DocumentCID,
+                   SubmittedTimestamp: message.ConsensusTimestamp,
+                },
+              }
+
+      // add the request to the slice of render jobs for the internal job management
+      nm.NetworkQueue = append(nm.NetworkQueue, job)
+
+      // log trace event
+      logger.Manager.Package["node"].Trace().Msg("Detected a new render job request:")
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] UserID: %v", job.UserID))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] NodeID: %v", job.NodeID))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Request document: %v", job.Request.DocumentCID))
+      logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Submitted: %v", job.Request.SubmittedTimestamp))
+
+      return
+
+    }
+
+}
+
 
 
 // BLENDER BENCHMARK TOOL CONTROL
