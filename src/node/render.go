@@ -34,6 +34,7 @@ import (
   "time"
   "path/filepath"
   "encoding/json"
+	"sort"
 
   // external
   // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
@@ -92,10 +93,12 @@ type BlenderAppData struct {
 type BlenderFileData struct {
 
   // TODO: Fill with information
-  CID string                  // content identifier (CID) of the .blend file on the IPFS
+  // General info
+  CID string                  // Content identifier (CID) of the .blend file on the IPFS
+  Path string                 // Local path to the Blender file
 
   // Render settings
-  Settings RenderSettings     // rendering settings of this render job
+  Settings RenderSettings     // Render settings of this Blender file
 
 }
 
@@ -202,11 +205,23 @@ type RenderJob struct {
 type RenderRequest struct {
 
   // TODO: Fill with information
-  UserID int                   // ID of the user this request belongs to
+  // General info
+  ID int                               // Internal ID for the render request management
+  DocumentCID string                   // content identifier (CID) of the render request document on the IPFS
+  DocumentPath string                  // local path of the render request document on this node
+  CreatedTimestamp time.Time           // The datetime this request was created
+  ModifiedTimestamp time.Time          // The datetime this request was last modified
+  PublishedTimestamp time.Time         // The datetime this request was published to the render hive
+  FinishedTimestamp time.Time          // The datetime this request was completely rendered by the render hive
 
   // File data
-  BlenderFile BlenderFileData  // data of the Blender file to be rendered
-  Document string              // content identifier (CID) of the render request document on the IPFS
+  BlenderFile BlenderFileData          // data of the Blender file to be rendered
+
+  // Render request data
+  // TODO: Prices need to be implemented using Decimals instead float ("apd" package or "currency" package?)
+  Version string                       // Blender version the job should be rendered on
+  Price float64                        // Price maximum in cents (USD) per BBP
+  ThisNode bool                        // True, if this node participates in rendering this job
 
 }
 
@@ -218,6 +233,9 @@ type RenderOffer struct {
   UserID int                           // ID of the user this offer belongs to
   DocumentCID string                   // content identifier (CID) of the render offer document on the IPFS
   DocumentPath string                  // local path of the render offer document on this node
+  ModifiedTimestamp time.Time          // The datetime this request was last modified
+  PublishedTimestamp time.Time         // The datetime this request was published to the render hive
+  Paused bool                          // True, if the offer is currently paused and no new render jobs are accepted
 
   // Render offer data
   // TODO: Prices need to be implemented using Decimals instead float ("apd" package or "currency" package?)
@@ -370,6 +388,76 @@ func (ro *RenderOffer) Publish() (error) {
 
 }
 
+
+
+// RENDER REQUEST
+// #############################################################################
+// Create a new render render request from this node
+func (nm *PackageManager) AddRenderRequest(request *RenderRequest) (int, error) {
+  var err error
+  var newID int
+
+  // initialize ID
+  newID = 0
+
+  // if no request was passed
+  if request == nil {
+      return 0, errors.New(fmt.Sprintf("No request was passed."))
+  }
+
+  // if the node has any render requests
+  if nm.Renderer.Requests != nil {
+
+    	// convert map to slice of keys
+    	ids := make([]int, 0, len(nm.Renderer.Requests))
+    	for id, _ := range nm.Renderer.Requests {
+    		ids = append(ids, id)
+    	}
+
+    	// sort the slice of IDs
+    	sort.Ints(ids)
+
+      // Get the ID assigned to the last render request and add 1 for the new ID
+      if len(ids) > 0 {
+          newID = ids[len(ids) - 1] + 1
+      }
+
+  } else {
+
+      // initialized the map first
+      nm.Renderer.Requests = map[int]RenderRequest{}
+
+  }
+
+  // Update the ID
+  request.ID = newID
+
+  // Append the request to the list of requests of this node
+  nm.Renderer.Requests[newID] = *request
+
+  return newID, err
+
+}
+
+// Remove a render request from the node
+func (nm *PackageManager) RemoveRenderRequest(id int) (error) {
+    var err error
+
+    // log event
+    logger.Manager.Package["node"].Trace().Msg("Removing a render request from the node:")
+
+    // delete the element from the map, if it exists
+    request, ok := nm.Renderer.Requests[id]
+    if ok {
+        logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] ID: %v", request.ID))
+        delete(nm.Renderer.Requests, id)
+    } else {
+        err = errors.New(fmt.Sprintf("Render request %v could not be removed from the node.", id))
+    }
+
+    return err
+
+}
 
 
 // BLENDER BENCHMARK TOOL CONTROL
@@ -550,6 +638,14 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
 
 // BLENDER CONTROL
 // #############################################################################
+// TODO: Some notes on things to implement
+//
+//       1) A set of Python scripts could be stored on IPFS (immutability
+//          guarenteed by CID), which nodes can execute with the "--python" flag
+//          of Blender. These could be things like a script to set the region to
+//          render.
+//
+
 // Start Blender with command line flags and render the given blend_file
 func (b *BlenderAppData) Execute(args []string) (error) {
     var err error
@@ -731,6 +827,233 @@ func (b *BlenderAppData) ProcessOutput(name string, output io.ReadCloser) (error
     return err
 
 }
+
+// COMMAND LINE INTERFACE - RENDER REQUESTS & OFFERS
+// #############################################################################
+// Create the CLI command to manage the render requests of this node
+func (nm *PackageManager) CreateCommandRequest() (*cobra.Command) {
+
+    // flags for the 'request' command
+    var list bool
+
+    // create a 'blender' command for the node
+    command := &cobra.Command{
+    	Use:   "request",
+    	Short: "Manage the node's render requests",
+    	Long: "This command is for adding/removing/editing the render requests of this node.",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        // if a render offer exists
+        if nm.Renderer.Requests != nil {
+
+            // list all Blender versions
+            if list {
+
+                fmt.Println("")
+                fmt.Println("The node has the following render requests:")
+
+                // find each Blender version added to the node
+                for _, request := range nm.Renderer.Requests {
+                  fmt.Printf(" [#] ID: %v for %v \n", request.ID, request.BlenderFile.Path)
+                }
+                fmt.Println("")
+
+            }
+
+        } else {
+
+          fmt.Println("")
+          fmt.Println(fmt.Errorf("The node has no render requests."))
+          fmt.Println("")
+        }
+
+        return
+
+    	},
+    }
+
+    // add command flags
+    command.Flags().BoolVarP(&list, "list", "l", false, "List all the render requests of the node")
+
+
+    // add the subcommands
+    command.AddCommand(nm.CreateCommandRequest_Add())
+    command.AddCommand(nm.CreateCommandRequest_Remove())
+    // command.AddCommand(nm.CreateCommandRequest_Publish())
+    // command.AddCommand(nm.CreateCommandRequest_Pause())
+    // command.AddCommand(nm.CreateCommandRequest_Revoke())
+
+    return command
+
+}
+
+// Create the CLI command to add a new render request for this node
+func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
+
+    // flags for the 'request add' command
+    var blender_version string
+    var blender_file string
+    var render_price float64
+    var this_node bool
+
+    // create a 'request add' command for the node
+    command := &cobra.Command{
+    	Use:   "add",
+    	Short: "Add a Blender version to the node's render offer",
+    	Long: "This command is for adding a Blender version to the node's render offer.",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        // if the map was not correctly initialized
+        if nm.Renderer.Requests != nil {
+
+            // add a Blender version
+            if (blender_version != "" && blender_file != "" && render_price > 0) {
+                fmt.Println("")
+
+                // Check if path is pointing to an existing blender file
+                if _, err := os.Stat(blender_file); os.IsNotExist(err) {
+                    fmt.Println(fmt.Errorf("The given path '%v' is not a valid path.", blender_file))
+                    return
+                }
+
+                // Create a new render request
+                request := RenderRequest{
+                              BlenderFile: BlenderFileData{Path: blender_file},
+                              Version: blender_version,
+                              Price: render_price,
+                              ThisNode: this_node,
+                           }
+
+                // Add the render request to the node
+                id, err := nm.AddRenderRequest(&request)
+
+                if err != nil {
+                    fmt.Println("")
+                    fmt.Println(err)
+                } else {
+
+                    fmt.Println("Added a new render request to the node:")
+                    fmt.Printf(" [#] ID: %v\n", id)
+                    fmt.Printf(" [#] Blender file: %v\n", blender_file)
+                    fmt.Printf(" [#] Requested Blender version: %v\n", blender_version)
+                    fmt.Printf(" [#] Maximum price: %v USD / BBP \n", render_price)
+                    fmt.Printf(" [#] Node participates: %v \n", this_node)
+
+                }
+                fmt.Println("")
+
+            } else {
+
+              fmt.Println("")
+              fmt.Println(fmt.Errorf("Failed to create the render request."))
+              if blender_version == "" { fmt.Println(fmt.Errorf(" [#] Missing a required parameter: Blender version (--blender-version).")) }
+              if blender_file == "" { fmt.Println(fmt.Errorf(" [#] Missing a required parameter: Blender file (--blender-file).")) }
+              if render_price == 0 { fmt.Println(fmt.Errorf(" [#] Missing a required parameter: Maximum render price (--render-price).")) }
+              fmt.Println("")
+
+            }
+
+        } else {
+
+          fmt.Println("")
+          fmt.Println(fmt.Errorf("There was an error in initializing the render requests."))
+          fmt.Println("")
+
+        }
+
+        return
+
+    	},
+    }
+
+    // add command flag parameters
+    command.Flags().StringVarP(&blender_version, "blender-version", "v", "", "The Blender version to be used for rendering")
+    command.Flags().StringVarP(&blender_file, "blender-file", "f", "", "The path to the Blender file to be rendered")
+    command.Flags().Float64VarP(&render_price, "render-price", "p", 0, "The maximum price the node will pay for rendering")
+    command.Flags().BoolVarP(&this_node, "this-node", "t", false, "Set if this node shall participate in rendering its own request")
+
+    return command
+
+}
+
+
+// Create the CLI command to remove a previously created render request from this node
+func (nm *PackageManager) CreateCommandRequest_Remove() (*cobra.Command) {
+
+    // flags for the 'request remove' command
+    var id int
+
+    // create a 'request remove' command for the node
+    command := &cobra.Command{
+    	Use:   "remove",
+    	Short: "Remove a render request from this node",
+    	Long: "This command is for removing a render request from this node. In case it was submitted to the network, it will be cancelled and revoked.",
+      Run: func(cmd *cobra.Command, args []string) {
+
+        // if render requests exists
+        if nm.Renderer.Requests != nil {
+
+            // was a valid ID passed?
+            if (id != -1) {
+
+                // if the parsed version is supported by the node
+                _, ok := nm.Renderer.Requests[id]
+                if ok {
+
+                    // Remove the render request
+                    err := nm.RemoveRenderRequest(id)
+                    if err != nil {
+
+                      fmt.Println("")
+                      fmt.Println(fmt.Errorf(err.Error()))
+                      fmt.Println("")
+
+                      return
+
+                    }
+
+                    fmt.Println("")
+                    fmt.Printf("Removed render request with ID %v from this node. \n", id)
+                    fmt.Println("")
+
+                } else {
+
+                  fmt.Println("")
+                  fmt.Println(fmt.Errorf("There is no render request with ID %v.", id))
+                  fmt.Println("")
+
+                }
+
+            } else {
+
+              fmt.Println("")
+              fmt.Println(fmt.Errorf("Failed to remove the render request."))
+              if id == -1 { fmt.Println(fmt.Errorf(" [#] Missing a required parameter: Request ID (--request-id).")) }
+              fmt.Println("")
+
+            }
+
+        } else {
+
+          fmt.Println("")
+          fmt.Println(fmt.Errorf("The node has no render requests."))
+          fmt.Println("")
+
+        }
+
+        return
+
+    	},
+    }
+
+    // add command flag parameters
+    command.Flags().IntVarP(&id, "request-id", "i", -1, "The ID of the render request to remove")
+
+    return command
+
+}
+
+
 
 // COMMAND LINE INTERFACE - BLENDER AND RENDERING
 // #############################################################################
