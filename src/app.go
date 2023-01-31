@@ -194,16 +194,6 @@ func (service *AppManager) Init() (error) {
 
         go func() {
 
-          // time variable
-          var last_execution_time time.Time
-
-          // set duration to 1/10 of the cycle duration
-          configurations := service.NodeManager.HiveCycle.Configurations
-          check_duration := time.Duration(configurations[len(configurations) - 1].Duration / 100) * time.Second
-
-          // update last execution time
-          last_execution_time = time.Now()
-
           // add call to wait group
           service.WG.Add(1)
 
@@ -221,20 +211,8 @@ func (service *AppManager) Init() (error) {
             // app is running
             default:
 
-              // if the duration for next check has expired
-              if time.Now().Sub(last_execution_time) > check_duration {
-
-                // synchronize the hive cycle
-                service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
-
-                // get configuration and update the checking duration
-                configurations = service.NodeManager.HiveCycle.Configurations
-                check_duration = time.Duration(configurations[len(configurations) - 1].Duration / 100) * time.Second
-
-                // update last execution time
-                last_execution_time = time.Now()
-
-              }
+              // synchronize the hive cycle
+              service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
 
               // wait for 100 milliseconds to next check
               time.Sleep(100 * time.Millisecond)

@@ -25,6 +25,7 @@ import (
   // standard
   "fmt"
   "errors"
+  "time"
 
   // external
   "github.com/rs/zerolog"
@@ -39,7 +40,8 @@ import (
 const COMPILER_RENDERHIVE_LOGGER_LEVEL = zerolog.DebugLevel
 
 // HEDERA CONSTANTS
-//
+// #############################################################################
+// Mirror node URL
 const HEDERA_TESTNET_MIRROR_NODE_URL = "https://testnet.mirrornode.hedera.com:443"
 
 // RENDERHIVE CONSTANTS
@@ -54,6 +56,9 @@ const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION = "0.0.4403"
 const RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION = "0.0.4407"
 // Render jobs
 const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.4409"
+
+// Hive cycle synchronization interval
+const RENDERHIVE_CONFIG_HIVE_CYCLE_SYNCHRONIZATION_INTERVAL = 1 * time.Hour
 
 // BLENDER CONSTANTS
 // #############################################################################

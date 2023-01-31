@@ -211,8 +211,8 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
         if hivecycle {
             fmt.Println("")
             fmt.Printf("The current hive cycle of the render hive is %v.\n", nm.HiveCycle.Current)
-            fmt.Printf(" [#] Started at consensus time: %v\n", nm.HiveCycle.NetworkClock.NetworkStartTime)
-            fmt.Printf(" [#] Started at local time: %v\n", nm.HiveCycle.NetworkClock.LocalStartTime)
+            fmt.Printf(" [#] Started at consensus time: %v\n", nm.HiveCycle.Clock.NetworkStartTime)
+            fmt.Printf(" [#] Started at local time: %v\n", nm.HiveCycle.Clock.LocalStartTime)
             fmt.Println("")
         }
 

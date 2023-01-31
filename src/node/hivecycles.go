@@ -42,7 +42,7 @@ import (
   hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
   // internal
-  // . "renderhive/globals"
+  . "renderhive/globals"
   "renderhive/logger"
   "renderhive/hedera"
 )
@@ -50,7 +50,8 @@ import (
 // structure for the time synchronization
 type HiveClock struct {
 
-  // Current time on the Hedera (mirror node) network and this Renderhive node
+  // Time on the Hedera (mirror node) network and this Renderhive node during
+  // the last synchronization
   NetworkTime time.Time
   LocalTime time.Time
   Difference time.Duration
@@ -65,8 +66,9 @@ type HiveClock struct {
 type HiveCycle struct {
 
   Configurations []HiveCycleConfigurationMessage
-  NetworkClock HiveClock
+  Clock HiveClock
   Current int
+  LastSyncTime time.Time
 
 }
 
@@ -122,36 +124,54 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     var err error
     var transactions *[]hedera.TransactionInfo
 
-    // TODO: It is not economic to query the mirror node so often. Probably we
-    //       should restrict this to once per day or hour to synchronize the
-    //       local time with the network time and use a local timer afterwards?
-    // Get the last transaction on the Hedera mirror node
-    transactions, err = hm.MirrorNode.Transactions("", 1, "desc", "", "", "")
-    if err != nil {
-      return err
+    // Only synchronize with the mirror node once per hour
+    // NOTE: We use a local time between the synchronizations to lower the amount
+    //       of mirror node calls
+    if hc.LastSyncTime.IsZero() || time.Now().Sub(hc.LastSyncTime) > RENDERHIVE_CONFIG_HIVE_CYCLE_SYNCHRONIZATION_INTERVAL {
+
+        // Get the last transaction on the Hedera mirror node
+        transactions, err = hm.MirrorNode.Transactions("", 1, "desc", "", "", "")
+        if err != nil {
+          return err
+        }
+
+        // local time
+        hc.Clock.LocalTime = time.Now()
+
+        // Parse the duration represented by the input string
+        duration, err := time.ParseDuration((*transactions)[0].ConsensusTimestamp + "s")
+        if err != nil {
+            return err
+        }
+
+        // Add the duration to the Unix epoch to obtain a time.Time value
+        hc.Clock.NetworkTime = time.Unix(0, 0).Add(duration)
+
+        // calculate the difference between the local node time and the network time
+        hc.Clock.Difference = hc.Clock.LocalTime.Sub(hc.Clock.NetworkTime)
+
+        // remember the time of the last synchronization
+        hc.LastSyncTime = time.Now()
+
+        // log trace event
+        logger.Manager.Package["node"].Trace().Msg("Synchronized with mirror node consensus time.")
+
+    } else {
+
+        // local time
+        hc.Clock.LocalTime = time.Now()
+
+        // network time
+        hc.Clock.NetworkTime = hc.Clock.LocalTime.Add(-hc.Clock.Difference)
+
     }
-
-    // local time
-    hc.NetworkClock.LocalTime = time.Now()
-
-    // Parse the duration represented by the input string
-    duration, err := time.ParseDuration((*transactions)[0].ConsensusTimestamp + "s")
-    if err != nil {
-        return err
-    }
-
-    // Add the duration to the Unix epoch to obtain a time.Time value
-    hc.NetworkClock.NetworkTime = time.Unix(0, 0).Add(duration)
-
-    // calculate the difference between the local node time and the network time
-    hc.NetworkClock.Difference = hc.NetworkClock.LocalTime.Sub(hc.NetworkClock.NetworkTime)
 
     // reset hive cycle value
     oldCycle := hc.Current
     hc.Current = 0
 
     // reset start time to configuration message's consensus timestamp
-    hc.NetworkClock.NetworkStartTime = hc.Configurations[0].Timestamp
+    hc.Clock.NetworkStartTime = hc.Configurations[0].Timestamp
 
     // iterate through all configurations messages to calculate the current
     // hive cycle
@@ -166,34 +186,34 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
       if len(hc.Configurations) > 1 {
 
           // calculate the hive cycles in this iteration (i)
-          hc.Current += int(math.Ceil(float64(hc.NetworkClock.NetworkTime.Sub(configuration.Timestamp) / (time.Duration(configuration.Duration) * time.Second))))
+          hc.Current += int(math.Ceil(float64(hc.Clock.NetworkTime.Sub(configuration.Timestamp) / (time.Duration(configuration.Duration) * time.Second))))
 
       } else {
 
           // calculate the hive cycles
-          hc.Current += int(math.Ceil(float64(hc.NetworkClock.NetworkTime.Sub(configuration.Timestamp) / (time.Duration(configuration.Duration) * time.Second))))
+          hc.Current += int(math.Ceil(float64(hc.Clock.NetworkTime.Sub(configuration.Timestamp) / (time.Duration(configuration.Duration) * time.Second))))
 
       }
 
       // calculate the start time of this cycle (in Consensus Time)
-      hc.NetworkClock.NetworkStartTime = hc.NetworkClock.NetworkStartTime.Add(time.Duration(hc.Current * configuration.Duration) * time.Second)
+      hc.Clock.NetworkStartTime = hc.Clock.NetworkStartTime.Add(time.Duration(hc.Current * configuration.Duration) * time.Second)
 
     }
 
     // calculate the start time of this hive cycle in the local time of the node
-    hc.NetworkClock.LocalStartTime = hc.NetworkClock.NetworkStartTime.Add(hc.NetworkClock.Difference)
+    hc.Clock.LocalStartTime = hc.Clock.NetworkStartTime.Add(hc.Clock.Difference)
 
     // log information
     logger.Manager.Package["node"].Trace().Msg("Synchronized with HCS time and calculated hive cycle:")
-    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Consensus time: %v", hc.NetworkClock.NetworkTime))
-    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Difference to local time: %v", hc.NetworkClock.Difference))
+    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Consensus time: %v", hc.Clock.NetworkTime))
+    logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Difference to local time: %v", hc.Clock.Difference))
     logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Current hive cycle: %v", hc.Current))
 
     // if the hive cycle just changed
     if hc.Current != oldCycle {
 
         // log trace event
-        logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf("New hive cycle %v detected at consensus time %v / local time %v", hc.Current, hc.NetworkClock.NetworkTime, hc.NetworkClock.LocalTime))
+        logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf("New hive cycle %v detected at consensus time %v / local time %v", hc.Current, hc.Clock.NetworkTime, hc.Clock.LocalTime))
 
         // Enter the hive cycle application phase
         err = hc.ApplicationPhase(hm)
