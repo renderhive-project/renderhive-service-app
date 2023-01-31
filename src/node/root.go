@@ -195,10 +195,11 @@ func (nm *PackageManager) CreateCommand() (*cobra.Command) {
 func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
 
     // flags for the info command
-    var hivecycle bool
-    var offer bool
     var this bool
     var user bool
+    var offer bool
+    var hive_cycle bool
+    var hive_queue bool
 
     // create a 'info' command for the node
     command := &cobra.Command{
@@ -206,15 +207,6 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
     	Short: "Print information about this node",
     	Long: "This command provides information about the node including those information retrieved or derived from external network data.",
       Run: func(cmd *cobra.Command, args []string) {
-
-        // print the hive cycle
-        if hivecycle {
-            fmt.Println("")
-            fmt.Printf("The current hive cycle of the render hive is %v.\n", nm.HiveCycle.Current)
-            fmt.Printf(" [#] Started at consensus time: %v\n", nm.HiveCycle.Clock.NetworkStartTime)
-            fmt.Printf(" [#] Started at local time: %v\n", nm.HiveCycle.Clock.LocalStartTime)
-            fmt.Println("")
-        }
 
         // print the node data of this node
         if this {
@@ -226,6 +218,17 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
             if nm.Node.NodeAccount != nil {
                 fmt.Printf(" [#] Node Account ID (Hedera): %v\n", nm.Node.NodeAccount.AccountID.String())
             }
+            fmt.Println("")
+        }
+
+
+        // print the user data
+        if user {
+            fmt.Println("")
+            fmt.Println("This node is registered on the following user:")
+            fmt.Printf(" [#] User ID: %v\n", nm.User.ID)
+            fmt.Printf(" [#] Username: %v\n", nm.User.Username)
+            fmt.Printf(" [#] User Account ID (Hedera): %v\n", nm.User.UserAccount.AccountID.String())
             fmt.Println("")
         }
 
@@ -252,14 +255,36 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
             }
         }
 
-        // print the user data
-        if user {
+        // print the hive cycle
+        if hive_cycle {
             fmt.Println("")
-            fmt.Println("This node is registered on the following user:")
-            fmt.Printf(" [#] User ID: %v\n", nm.User.ID)
-            fmt.Printf(" [#] Username: %v\n", nm.User.Username)
-            fmt.Printf(" [#] User Account ID (Hedera): %v\n", nm.User.UserAccount.AccountID.String())
+            fmt.Printf("The current hive cycle of the render hive is %v.\n", nm.HiveCycle.Current)
+            fmt.Printf(" [#] Started at consensus time: %v\n", nm.HiveCycle.Clock.NetworkStartTime)
+            fmt.Printf(" [#] Started at local time: %v\n", nm.HiveCycle.Clock.LocalStartTime)
             fmt.Println("")
+        }
+
+        // print the render job queue of the hive
+        if hive_queue {
+
+            if len(nm.NetworkQueue) > 0 {
+                fmt.Println("")
+                fmt.Printf("There are %v render requests in the render hive queue:\n", len(nm.NetworkQueue))
+
+                // go through the list and print each queue
+                for i, job := range nm.NetworkQueue {
+                  fmt.Printf(" [#] [%v] Render job #%v (User: %v; Node: %v): %v\n", job.Request.SubmittedTimestamp, i, job.UserID, job.NodeID, job.Request.DocumentCID)
+                }
+
+                fmt.Println("")
+
+            } else {
+
+                fmt.Println("")
+                fmt.Println("There are no render requests in the render hive queue.")
+                fmt.Println("")
+
+           }
         }
 
         return
@@ -268,10 +293,11 @@ func (nm *PackageManager) CreateCommandInfo() (*cobra.Command) {
     }
 
     // add command flags
-    command.Flags().BoolVarP(&hivecycle, "hive-cycle", "c", false, "Print the current hive cycle this node calculated")
-    command.Flags().BoolVarP(&offer, "offer", "o", false, "Print the render offer of this node")
     command.Flags().BoolVarP(&this, "this", "t", false, "Print the available information about this node")
     command.Flags().BoolVarP(&user, "user", "u", false, "Print the node owner's user data")
+    command.Flags().BoolVarP(&offer, "offer", "o", false, "Print the render offer of this node")
+    command.Flags().BoolVarP(&hive_cycle, "hive-cycle", "c", false, "Print the current hive cycle this node calculated")
+    command.Flags().BoolVarP(&hive_queue, "hive-queue", "q", false, "Print the render job queue of the render hive")
 
     return command
 

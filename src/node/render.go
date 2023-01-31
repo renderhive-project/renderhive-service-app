@@ -556,11 +556,10 @@ func (nm *PackageManager) JobQueueMessageCallback() (func(message hederasdk.Topi
     return func(message hederasdk.TopicMessage) {
       var err error
 
-      //
       // Import and parse the compiled contract from the contract file
     	jsonData := message.Contents
 
-      // Parse the HiveCycleConfigurationMessage from the JSON string
+      // Parse the new render request message from the JSON string
       var request RenderRequestMessage
     	err = json.Unmarshal(jsonData, &request)
     	if err != nil {
