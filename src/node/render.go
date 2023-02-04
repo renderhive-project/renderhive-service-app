@@ -446,12 +446,6 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite boo
 
   }
 
-  // OS-specific path to app data
-  app_data_path, err := os.UserConfigDir()
-  if err != nil {
-      return 0, err
-  }
-
   // Update the ID
   request.ID = newID
 
@@ -460,7 +454,7 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite boo
 
   // Prepare the creation of a local render request document file
   request_document_filename := fmt.Sprintf("request-%v.json", request.ID)
-  request_document_directory := filepath.Join(app_data_path, RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS)
+  request_document_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS)
   request.DocumentPath = filepath.Join(request_document_directory, request_document_filename)
   if _, err := os.Stat(request.DocumentPath); os.IsNotExist(err) || overwrite {
 
@@ -800,8 +794,28 @@ func (tool *BlenderBenchmarkTool) Run(ro *RenderOffer, benchmark_version string,
 
         }
 
-        // TODO: store the Benchmark result locally as JSON file and on IPFS
-        // ...
+        // Prepare the creation of a local benchmark result file
+        benchmark_result_filename := fmt.Sprintf("benchmark-result-%v.json", benchmark_version)
+        benchmark_result_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_BLENDER_BENCHMARKS)
+        benchmark_result_path := filepath.Join(benchmark_result_directory, benchmark_result_filename)
+
+        // create the directory
+        err = os.MkdirAll(benchmark_result_directory, 0700)
+        if err != nil && !os.IsExist(err) {
+      		return err
+      	}
+
+        // create the benchmark result file
+      	benchmar_result_file, err := os.Create(benchmark_result_path)
+        if err != nil {
+            return err
+        }
+      	defer benchmar_result_file.Close()
+
+        // write the render request data into the file in JSON format
+      	encoder := json.NewEncoder(benchmar_result_file)
+      	encoder.Encode(tool.Result)
+
 
     } else {
         err = errors.New(fmt.Sprintf("Blender v'%v' is not in the node's render offer.", blender.BuildVersion))

@@ -30,7 +30,7 @@ import (
 
   // standard
   // "fmt"
-  // "os"
+  "os"
   // "time"
   // "sync"
 
@@ -61,5 +61,18 @@ func InStringSlice(slice []string, test string) (bool) {
     }
 
     return false
+
+}
+
+// Get the app data path as a string
+func GetAppDataPath() (string) {
+
+  // OS-specific path to app data
+  app_data_path, err := os.UserConfigDir()
+  if err != nil {
+      return ""
+  }
+
+  return app_data_path
 
 }
