@@ -410,7 +410,7 @@ func (ro *RenderOffer) Publish() (error) {
 // RENDER REQUESTS
 // #############################################################################
 // Create a new render request for this node
-func (nm *PackageManager) AddRenderRequest(request *RenderRequest) (int, error) {
+func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite bool) (int, error) {
   var err error
   var newID int
 
@@ -446,14 +446,44 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest) (int, error) 
 
   }
 
+  // OS-specific path to app data
+  app_data_path, err := os.UserConfigDir()
+  if err != nil {
+      return 0, err
+  }
+
   // Update the ID
   request.ID = newID
 
   // Append the request to the list of requests of this node
   nm.Renderer.Requests[newID] = request
 
-  // TODO: Create a local render request document
-  // ...
+  // Prepare the creation of a local render request document file
+  request_document_filename := fmt.Sprintf("request-%v.json", request.ID)
+  request_document_directory := filepath.Join(app_data_path, RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS)
+  request.DocumentPath = filepath.Join(request_document_directory, request_document_filename)
+  if _, err := os.Stat(request.DocumentPath); os.IsNotExist(err) || overwrite {
+
+      // create the directory
+      err = os.MkdirAll(request_document_directory, 0700)
+      if err != nil && !os.IsExist(err) {
+    		return 0, err
+    	}
+
+      // create the local render request document file
+    	request_document_file, err := os.Create(request.DocumentPath)
+      if err != nil {
+          return 0, err
+      }
+    	defer request_document_file.Close()
+
+      // write the render request data into the file in JSON format
+    	encoder := json.NewEncoder(request_document_file)
+    	encoder.Encode(request)
+
+  } else {
+      return 0, errors.New(fmt.Sprintf("Render request document '%v' already exists.", request.DocumentPath))
+  }
 
   return newID, err
 
@@ -1058,9 +1088,19 @@ func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
 
                 // Check if path is pointing to an existing blender file
                 fileInfo, err := os.Stat(blender_file)
-                if os.IsNotExist(err) || !fileInfo.Mode().IsRegular() || !strings.HasSuffix(fileInfo.Name(), ".blend") {
-                    fmt.Println(fmt.Errorf("The given file path '%v' is not pointing to a regular '.blend' file.", blender_file))
+                if !os.IsNotExist(err) {
+
+                    if !fileInfo.Mode().IsRegular() || !strings.HasSuffix(fileInfo.Name(), ".blend") {
+                        fmt.Println(fmt.Errorf("The given path '%v' is not pointing to a regular '.blend' file. \n", blender_file))
+                        return
+                    }
+
+                } else {
+
+                    fmt.Println(fmt.Errorf(err.Error()))
+                    fmt.Println("")
                     return
+
                 }
 
                 // Create a new render request
@@ -1077,10 +1117,9 @@ func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
                            }
 
                 // Add the render request to the node
-                id, err := nm.AddRenderRequest(request)
+                id, err := nm.AddRenderRequest(request, true)
 
                 if err != nil {
-                    fmt.Println("")
                     fmt.Println(err)
                 } else {
 

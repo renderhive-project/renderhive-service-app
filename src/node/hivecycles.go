@@ -129,6 +129,19 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) (error) {
     //       of mirror node calls
     if hc.LastSyncTime.IsZero() || time.Now().Sub(hc.LastSyncTime) > RENDERHIVE_CONFIG_HIVE_CYCLE_SYNCHRONIZATION_INTERVAL {
 
+        // TODO: Check the following approach
+        // Instead of using all the mirror node transactions and querying the
+        // mirror node on a regular basis, we could just subscribe to the job
+        // queue topic. Whenever a new message comes in (e.g., a new render job,
+        // a render job status update, etc.) each node will check the consensus
+        // time of this transaction and update the hive cycle based on this.
+        // When there is no network activitiy (e.g., because all nodes are busy)
+        // we will not query the mirror node network, because it makes no sense.
+        //
+        // Problem:
+        // - What if a new node goes online, which could make processing of a
+        //   previously skipped render job possible?
+
         // Get the last transaction on the Hedera mirror node
         transactions, err = hm.MirrorNode.Transactions("", 1, "desc", "", "", "")
         if err != nil {

@@ -60,6 +60,10 @@ const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.4409"
 // Hive cycle synchronization interval
 const RENDERHIVE_CONFIG_HIVE_CYCLE_SYNCHRONIZATION_INTERVAL = 1 * time.Hour
 
+// path to the render request documents (both own and from the hive) on this node
+const RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS = "/renderhive/service_app/render_requests/local/"
+const RENDERHIVE_APP_DIRECTORY_NETWORK_REQUESTS = "/renderhive/service_app/render_requests/network/"
+
 // BLENDER CONSTANTS
 // #############################################################################
 // Supported render engines
