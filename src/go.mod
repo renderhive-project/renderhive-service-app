@@ -21,24 +21,31 @@ module renderhive
 
 go 1.16
 
-// The Hedera Go SDK states:
+// Hedera
 // google.golang.org/protobuf v1.27.1 Breaks the SDK as it contains multiple
-// protobuf files with the same name. Make sure to use v1.26.1 instead.
-// The follow snippet can be used in go.mod to force the project to use v1.26.1
+// protobuf files with the same name.
 replace google.golang.org/protobuf v1.27.1 => google.golang.org/protobuf v1.26.1-0.20210525005349-febffdd88e85
 
-require github.com/hashgraph/hedera-sdk-go/v2 v2.20.0
-
-require github.com/rs/zerolog v1.28.0
-
 require (
-	github.com/ethereum/common v0.0.0-20150727083859-e5cdbecceb9d // indirect
-	github.com/ethereum/go-ethereum v1.10.26 // indirect
+	github.com/ethereum/go-ethereum v1.10.26
+	github.com/hashgraph/hedera-sdk-go/v2 v2.20.0
+)
+
+// IPFS
+require github.com/ipfs/kubo v0.18.1
+
+// General
+require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	// this is only required for the testnet
 	github.com/joho/godotenv v1.4.0
-	github.com/mattn/go-shellwords v1.0.12 // indirect
-	github.com/spf13/cobra v1.6.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
+	github.com/mattn/go-shellwords v1.0.12
+	github.com/polydawn/refmt v0.89.0 // indirect
+	github.com/rs/zerolog v1.28.0
+	github.com/spf13/cobra v1.6.1
+	github.com/spf13/pflag v1.0.5
+	github.com/whyrusleeping/cbor-gen v0.0.0-20230126041949-52956bd4c9aa // indirect
+	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/exp v0.0.0-20230118134722-a68e582fa157 // indirect
 )

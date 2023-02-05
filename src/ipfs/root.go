@@ -40,25 +40,38 @@ GO-IPFS EXAMPLES:
 import (
 
   // standard
-  // "fmt"
-  // "os"
+  "context"
+  "fmt"
+  "os"
+  "io"
+  "errors"
+  "path/filepath"
   // "time"
 
   // external
-  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+	"github.com/ipfs/kubo/plugin/loader"
+  "github.com/ipfs/kubo/config"
+  "github.com/ipfs/kubo/repo"
+  "github.com/ipfs/kubo/repo/fsrepo"
+  "github.com/ipfs/kubo/core"
+	"github.com/ipfs/kubo/core/node/libp2p"
   "github.com/spf13/cobra"
 
   // internal
+  . "renderhive/globals"
+  . "renderhive/utility"
   "renderhive/logger"
-  // . "renderhive/globals"
-  // "renderhive/hedera"
 )
 
 // structure for the IPFS manager
 type PackageManager struct {
 
-  // Placeholder
-  Placeholder string
+  // Local IPFS node
+  IpfsContext context.Context
+  IpfsContextCancel func()
+  IpfsRepoPath string
+  IpfsRepo repo.Repo
+  IpfsNode *core.IpfsNode
 
   // Command line interface
   Command *cobra.Command
@@ -83,6 +96,12 @@ func (ipfsm *PackageManager) Init() (error) {
     // log information
     logger.Manager.Package["ipfs"].Info().Msg("Initializing the IPFS manager ...")
 
+    // Create the local IPFS node
+    _, err = ipfsm.CreateLocalNode()
+    if err != nil {
+        logger.Manager.Package["ipfs"].Error().Msg(err.Error())
+    }
+
     return err
 
 }
@@ -94,7 +113,114 @@ func (ipfsm *PackageManager) DeInit() (error) {
     // log event
     logger.Manager.Package["ipfs"].Debug().Msg("Deinitializing the IPFS manager ...")
 
+    // stop the local IPFS node
+    err = ipfsm.IpfsNode.Close()
+    if err == nil {
+
+        // log debug event
+        logger.Manager.Package["ipfs"].Info().Msg(" [#] Closed the local IPFS node")
+
+    }
+    ipfsm.IpfsContextCancel()
+
+
     return err
+
+}
+
+// Initilize the local IPFS node
+func (ipfsm *PackageManager) CreateLocalNode() (*core.IpfsNode, error) {
+  var err error
+
+  // IPFS Repository
+  // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // create a local repository path, if it does not exist
+  ipfsm.IpfsRepoPath = filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_IPFS_REPO)
+  if _, err := os.Stat(ipfsm.IpfsRepoPath); os.IsNotExist(err) {
+
+      err = os.MkdirAll(ipfsm.IpfsRepoPath, 0700)
+    	if err != nil {
+    		return nil, errors.New(fmt.Sprintf("Could not create IPFS repository path '%v'.", ipfsm.IpfsRepoPath))
+    	}
+
+  }
+
+  // IPFS Plugins
+  // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // Load any external plugins if available on externalPluginsPath
+	plugins, err := loader.NewPluginLoader(filepath.Join(ipfsm.IpfsRepoPath, "plugins"))
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Error loading plugins: %s", err))
+	}
+
+	// Load preloaded and external plugins
+	if err := plugins.Initialize(); err != nil {
+		return nil, errors.New(fmt.Sprintf("Error initializing plugins: %s", err))
+	}
+
+	if err := plugins.Inject(); err != nil {
+		return nil, errors.New(fmt.Sprintf("Error initializing plugins: %s", err))
+	}
+
+  // IPFS Repo
+  // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Try to open the repo
+	ipfsm.IpfsRepo, err = fsrepo.Open(ipfsm.IpfsRepoPath)
+	if err != nil {
+
+      // Create a config with default options and a 2048 bit key
+      cfg, err := config.Init(io.Discard, 2048)
+      if err != nil {
+        return nil, errors.New(fmt.Sprintf("Could not init IPFS repo configuration:", err.Error()))
+      }
+
+    	// Enable experimental features
+  		// https://github.com/ipfs/kubo/blob/master/docs/experimental-features.md#ipfs-filestore
+  		cfg.Experimental.FilestoreEnabled = false
+  		// https://github.com/ipfs/kubo/blob/master/docs/experimental-features.md#ipfs-urlstore
+  		cfg.Experimental.UrlstoreEnabled = false
+  		// https://github.com/ipfs/kubo/blob/master/docs/experimental-features.md#ipfs-p2p
+  		cfg.Experimental.Libp2pStreamMounting = false
+  		// https://github.com/ipfs/kubo/blob/master/docs/experimental-features.md#p2p-http-proxy
+  		cfg.Experimental.P2pHttpProxy = false
+
+    	// Create the repo with the defined configuration
+    	err = fsrepo.Init(ipfsm.IpfsRepoPath, cfg)
+    	if err != nil {
+    		return nil, errors.New(fmt.Sprintf("Failed to init IPFS repo: %v", err.Error()))
+    	}
+
+    	// Try to open the repo again
+    	ipfsm.IpfsRepo, err = fsrepo.Open(ipfsm.IpfsRepoPath)
+    	if err != nil {
+        return nil, errors.New(fmt.Sprintf("Failed to open IPFS repo: %v", err.Error()))
+      }
+
+      // log debug event
+      logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Created a new local IPFS repo in '%v'", ipfsm.IpfsRepoPath))
+
+  }
+
+  // IPFS Node
+  // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // Create a context with cancel function
+  ipfsm.IpfsContext, ipfsm.IpfsContextCancel = context.WithCancel(context.Background())
+
+  // Spwan the local IPFS node
+  ipfsm.IpfsNode, err = core.NewNode(ipfsm.IpfsContext, &core.BuildCfg{
+  	Online: false,
+		Routing: libp2p.DHTOption, // This option sets the node to be a full DHT node (both fetching and storing DHT Records)
+		//Routing: libp2p.DHTClientOption, // This option sets the node to be a client DHT node (only fetching records)
+		Repo: ipfsm.IpfsRepo,
+  })
+  if err != nil {
+  	return nil, err
+  }
+
+  // log debug event
+  logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Initialized local node in '%v'", ipfsm.IpfsRepoPath))
+
+  return ipfsm.IpfsNode, nil
 
 }
 

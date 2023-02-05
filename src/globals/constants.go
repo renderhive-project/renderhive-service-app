@@ -60,6 +60,9 @@ const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.4409"
 // Hive cycle synchronization interval
 const RENDERHIVE_CONFIG_HIVE_CYCLE_SYNCHRONIZATION_INTERVAL = 1 * time.Hour
 
+// path to local IPFS repository
+const RENDERHIVE_APP_DIRECTORY_IPFS_REPO = "/renderhive/service_app/ipfs/repo/"
+
 // path to Blender benchmark results
 const RENDERHIVE_APP_DIRECTORY_BLENDER_BENCHMARKS = "/renderhive/service_app/blender_benchmarks/"
 
