@@ -47,7 +47,7 @@ import (
   . "renderhive/globals"
   . "renderhive/utility"
   "renderhive/logger"
-  // "renderhive/hedera"
+  "renderhive/ipfs"
 
 )
 
@@ -452,6 +452,12 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite boo
   // Append the request to the list of requests of this node
   nm.Renderer.Requests[newID] = request
 
+  // Add the CID of the Blender file to the render request data
+  request.BlenderFile.CID, err = ipfs.Manager.GetOnlyHash(request.BlenderFile.Path)
+  if err != nil {
+      return 0, err
+  }
+
   // Prepare the creation of a local render request document file
   request_document_filename := fmt.Sprintf("request-%v.json", request.ID)
   request_document_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS)
@@ -518,15 +524,27 @@ func (nm *PackageManager) SubmitRenderRequest(id int) (error) {
         // log trace event
         logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] ID: %v", request.ID))
 
-        // TODO: Store the Blender file via IPFS/Filecoin
-        // ...
+        // Put the Blender file on the local IPFS node
+        request.BlenderFile.CID, err = ipfs.Manager.PutFile(request.BlenderFile.Path)
+        if err != nil {
+            return err
+        }
+
+        // log trace event
+        logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Blender File (CID): %v", request.BlenderFile.CID))
 
         // TODO: Call the smart contract and add the transaction hash to the
         //       render request document
         // ...
 
-        // TODO: Pin the render request document to the local IPFS node
-        // ...
+        // Put the render request document on the local IPFS node
+        request.DocumentCID, err = ipfs.Manager.PutFile(request.DocumentPath)
+        if err != nil {
+            return err
+        }
+
+        // log trace event
+        logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Render Request Document (CID): %v", request.DocumentCID))
 
         // Submit the render request message to the job queue topic
         // Prepare the HCS message
@@ -534,8 +552,8 @@ func (nm *PackageManager) SubmitRenderRequest(id int) (error) {
 
           UserID: nm.User.ID,
           NodeID: nm.Node.ID,
-          DocumentCID: "",
-          BlenderFileCID: "",
+          DocumentCID: request.DocumentCID,
+          BlenderFileCID: request.BlenderFile.CID,
 
         }
 
@@ -1140,6 +1158,7 @@ func (nm *PackageManager) CreateCommandRequest_Add() (*cobra.Command) {
                     fmt.Println("Added a new render request to the node:")
                     fmt.Printf(" [#] ID: %v\n", id)
                     fmt.Printf(" [#] Blender file: %v\n", blender_file)
+                    fmt.Printf(" [#] Blender file CID: %v\n", request.BlenderFile.CID)
                     fmt.Printf(" [#] Requested Blender version: %v\n", blender_version)
                     fmt.Printf(" [#] Maximum price: %v USD / BBP \n", render_price)
                     fmt.Printf(" [#] Node participates: %v \n", this_node)
@@ -1277,7 +1296,7 @@ func (nm *PackageManager) CreateCommandRequest_Submit() (*cobra.Command) {
             if (id != -1) {
 
                 // if the parsed version is supported by the node
-                _, ok := nm.Renderer.Requests[id]
+                request, ok := nm.Renderer.Requests[id]
                 if ok {
 
                     // Submit the render request
@@ -1294,6 +1313,8 @@ func (nm *PackageManager) CreateCommandRequest_Submit() (*cobra.Command) {
 
                     fmt.Println("")
                     fmt.Printf("Submitted render request with ID %v to the render hive. \n", id)
+                    fmt.Printf(" [#] Blender file (CID): %v. \n", request.BlenderFile.CID)
+                    fmt.Printf(" [#] Render request document (CID): %v. \n", request.DocumentCID)
                     fmt.Println("")
 
                 } else {

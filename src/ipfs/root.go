@@ -49,13 +49,21 @@ import (
   // "time"
 
   // external
+  "github.com/ipfs/kubo/commands"
 	"github.com/ipfs/kubo/plugin/loader"
   "github.com/ipfs/kubo/config"
   "github.com/ipfs/kubo/repo"
   "github.com/ipfs/kubo/repo/fsrepo"
   "github.com/ipfs/kubo/core"
+  "github.com/ipfs/kubo/core/coreapi"
+	"github.com/ipfs/kubo/core/corehttp"
 	"github.com/ipfs/kubo/core/node/libp2p"
+  "github.com/ipfs/go-libipfs/files"
+  icore "github.com/ipfs/interface-go-ipfs-core"
+  icorepath "github.com/ipfs/interface-go-ipfs-core/path"
+	ioptions "github.com/ipfs/interface-go-ipfs-core/options"
   "github.com/spf13/cobra"
+	process "github.com/jbenet/goprocess"
 
   // internal
   . "renderhive/globals"
@@ -72,6 +80,7 @@ type PackageManager struct {
   IpfsRepoPath string
   IpfsRepo repo.Repo
   IpfsNode *core.IpfsNode
+  IpfsAPI icore.CoreAPI
 
   // Command line interface
   Command *cobra.Command
@@ -97,7 +106,7 @@ func (ipfsm *PackageManager) Init() (error) {
     logger.Manager.Package["ipfs"].Info().Msg("Initializing the IPFS manager ...")
 
     // Create the local IPFS node
-    _, err = ipfsm.CreateLocalNode()
+    _, err = ipfsm.StartLocalNode()
     if err != nil {
         logger.Manager.Package["ipfs"].Error().Msg(err.Error())
     }
@@ -128,8 +137,8 @@ func (ipfsm *PackageManager) DeInit() (error) {
 
 }
 
-// Initilize the local IPFS node
-func (ipfsm *PackageManager) CreateLocalNode() (*core.IpfsNode, error) {
+// Start the local IPFS node
+func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
   var err error
 
   // IPFS Repository
@@ -208,7 +217,7 @@ func (ipfsm *PackageManager) CreateLocalNode() (*core.IpfsNode, error) {
 
   // Spwan the local IPFS node
   ipfsm.IpfsNode, err = core.NewNode(ipfsm.IpfsContext, &core.BuildCfg{
-  	Online: false,
+  	Online: true,
 		Routing: libp2p.DHTOption, // This option sets the node to be a full DHT node (both fetching and storing DHT Records)
 		//Routing: libp2p.DHTClientOption, // This option sets the node to be a client DHT node (only fetching records)
 		Repo: ipfsm.IpfsRepo,
@@ -217,12 +226,116 @@ func (ipfsm *PackageManager) CreateLocalNode() (*core.IpfsNode, error) {
   	return nil, err
   }
 
+  // create the coreAPI interface for this node
+  ipfsm.IpfsAPI, err = coreapi.NewCoreAPI(ipfsm.IpfsNode)
+  if err != nil {
+  	return nil, err
+  }
+
   // log debug event
   logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Initialized local node in '%v'", ipfsm.IpfsRepoPath))
+  logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] PeerID: %v", ipfsm.IpfsNode.Identity.String()))
 
   return ipfsm.IpfsNode, nil
 
 }
+
+// Calculate only the hash without putting the file on IPFS
+func (ipfsm *PackageManager) GetOnlyHash(path string) (string, error) {
+  var err error
+
+  // prepare the local file for storage
+  stat, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
+	file, err := files.NewSerialFile(path, false, stat)
+	if err != nil {
+		return "", err
+	}
+
+	cid, err := ipfsm.IpfsAPI.Unixfs().Add(ipfsm.IpfsContext, file, ioptions.Unixfs.HashOnly(true))
+	if err != nil {
+    return "", errors.New(fmt.Sprintf("Failed to calculate only hash: %v", err.Error()))
+  }
+
+  return cid.String(), nil
+
+}
+
+// Put a file on the local IPFS node
+func (ipfsm *PackageManager) PutFile(path string) (string, error) {
+  var err error
+
+  // prepare the local file for storage
+  stat, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
+	file, err := files.NewSerialFile(path, false, stat)
+	if err != nil {
+		return "", err
+	}
+
+	cid, err := ipfsm.IpfsAPI.Unixfs().Add(ipfsm.IpfsContext, file)
+	if err != nil {
+    return "", errors.New(fmt.Sprintf("Failed to put file on the IPFS node: %v", err.Error()))
+  }
+
+  return cid.String(), nil
+
+}
+
+// Get a file/directory from IPFS and write it to a local path
+func (ipfsm *PackageManager) GetFile(cid_string string, outputPath string) (string, error) {
+  var err error
+
+  // get a CID object from the string
+  cidPath := icorepath.New(cid_string)
+
+  // try to retrieve the file/directory
+  rootNode, err := ipfsm.IpfsAPI.Unixfs().Get(ipfsm.IpfsContext, cidPath)
+	if err != nil {
+      return "", errors.New(fmt.Sprintf("Could not get file with CID: %s", err))
+	}
+
+	err = files.WriteTo(rootNode, outputPath)
+	if err != nil {
+      return "", errors.New(fmt.Sprintf("Could not write out the fetched CID: %s", err))
+	}
+
+  return outputPath, err
+
+}
+
+// Start HTTP server and webUI
+func (ipfsm *PackageManager) StartHTTPServer(path string) (error) {
+  var err error
+
+  var opts = []corehttp.ServeOption{
+    corehttp.GatewayOption(true, "/ipfs", "/ipns"),
+    corehttp.WebUIOption,
+    corehttp.CommandsOption(
+      commands.Context{
+    		ConfigRoot: ipfsm.IpfsRepoPath,
+    		ConstructNode: func() (*core.IpfsNode, error) {
+    			return ipfsm.IpfsNode, nil
+    		},
+    	}),
+  }
+  proc := process.WithParent(process.Background())
+  proc.Go(func(p process.Process) {
+    if err := corehttp.ListenAndServe(ipfsm.IpfsNode, "/ip4/127.0.0.1/tcp/5001", opts...); err != nil {
+      return
+    }
+  })
+
+  return err
+
+}
+
 
 // IPFS MANAGER COMMAND LINE INTERFACE
 // #############################################################################
