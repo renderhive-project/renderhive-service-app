@@ -186,7 +186,7 @@ type RenderSettings struct {
   TileX int                   // x resolution of tiles to be rendered
   TileY int                   // y resolution of tiles to be rendered
 
-  OutputFilepath string       // Output path (includes file naming)
+  OutAddObjectpath string       // Output path (includes file naming)
 
 }
 
@@ -525,7 +525,7 @@ func (nm *PackageManager) SubmitRenderRequest(id int) (error) {
         logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] ID: %v", request.ID))
 
         // Put the Blender file on the local IPFS node
-        request.BlenderFile.CID, err = ipfs.Manager.PutFile(request.BlenderFile.Path)
+        request.BlenderFile.CID, err = ipfs.Manager.AddObject(request.BlenderFile.Path, true)
         if err != nil {
             return err
         }
@@ -535,10 +535,9 @@ func (nm *PackageManager) SubmitRenderRequest(id int) (error) {
 
         // TODO: Call the smart contract and add the transaction hash to the
         //       render request document
-        // ...
 
         // Put the render request document on the local IPFS node
-        request.DocumentCID, err = ipfs.Manager.PutFile(request.DocumentPath)
+        request.DocumentCID, err = ipfs.Manager.AddObject(request.DocumentPath, true)
         if err != nil {
             return err
         }
@@ -614,11 +613,9 @@ func (nm *PackageManager) JobQueueMessageCallback() (func(message hederasdk.Topi
       // TODO: Validate that the message was from a valid source.
       // ...
 
-      // TODO: Download render request document and blender file
-      // ...
-
-      // TODO: Extract render job data from the render request document
-      // ...
+      // Pin the render request document and blender file to the local IPFS node
+      ipfs.Manager.PinObject(request.DocumentCID)
+      // ipfs.Manager.PinObject(request.BlenderFileCID)
 
       // create the RenderJob element for the internal job management
       job := &RenderJob{
