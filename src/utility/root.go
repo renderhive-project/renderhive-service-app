@@ -31,6 +31,8 @@ import (
   // standard
   // "fmt"
   "os"
+	"io/ioutil"
+	"net/http"
   // "time"
   // "sync"
 
@@ -74,5 +76,45 @@ func GetAppDataPath() (string) {
   }
 
   return app_data_path
+
+}
+
+// Query the public IPv4 address of this computer from an external service
+func GetPublicIPv4() (string, error) {
+
+  // Make a GET request to an external service that returns the public IP address
+  resp, err := http.Get("https://api.ipify.org")
+  if err != nil {
+    return "", err
+  }
+  defer resp.Body.Close()
+
+  // Read the response body and print the IP address
+  body, err := ioutil.ReadAll(resp.Body)
+  if err != nil {
+    return "", err
+  }
+
+  return string(body), nil
+
+}
+
+// Query the public IPv6 address of this computer from an external service
+func GetPublicIPv6() (string, error) {
+
+  // Make a GET request to an external service that returns the public IP address
+  resp, err := http.Get("https://api64.ipify.org")
+  if err != nil {
+    return "", err
+  }
+  defer resp.Body.Close()
+
+  // Read the response body and print the IP address
+  body, err := ioutil.ReadAll(resp.Body)
+  if err != nil {
+    return "", err
+  }
+
+  return string(body), nil
 
 }

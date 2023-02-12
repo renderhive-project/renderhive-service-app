@@ -213,7 +213,48 @@ func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
 
   }
 
-  // IPFS Node
+  // Public IP for announcing IPFS node
+  // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // TODO: Need to handle the case when the computer disconnects from the internet
+  //       and the IP address changes. Probably we will need to restart the node.
+
+  // Get node configuration
+  cfg, err := ipfsm.IpfsRepo.Config()
+
+  // get the public IPv4 and add it to the announced addresses
+  ipv4, err := GetPublicIPv4()
+  if err != nil {
+      return nil, err
+  }
+  if ipv4 != "" {
+
+      // add the multiaddr with the public IP to the configuration
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip4/%v/tcp/4001", ipv4))
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip4/%v/udp/4001/quic", ipv4))
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip4/%v/udp/4001/quic-v1", ipv4))
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip4/%v/udp/4001/quic-v1/webtransport", ipv4))
+
+  }
+  logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Queried IPv4 address: %v", ipv4))
+
+  // get the public IPv6 and add it to the announced addresses
+  ipv6, err := GetPublicIPv6()
+  if err != nil {
+      return nil, err
+  }
+  if ipv6 != "" {
+
+      // add the multiaddr with the public IP to the configuration
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip6/%v/tcp/4001", ipv6))
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip6/%v/udp/4001/quic", ipv6))
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip6/%v/udp/4001/quic-v1", ipv6))
+      cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip6/%v/udp/4001/quic-v1/webtransport", ipv6))
+
+  }
+  logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Queried IPv6 address: %v", ipv6))
+
+
+  // Start IPFS Node
   // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   // Create a context with cancel function
   ipfsm.IpfsContext, ipfsm.IpfsContextCancel = context.WithCancel(context.Background())
@@ -239,8 +280,9 @@ func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
   logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Initialized local node in '%v'", ipfsm.IpfsRepoPath))
   logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] PeerID: %v", ipfsm.IpfsNode.Identity.String()))
 
-  // if the node is an online
+  // if the node is online
   if ipfsm.IpfsNode.IsOnline {
+
       // wait until the node is connected to a minimum amount of peers or the timeout
       // passed
       start := time.Now()
@@ -273,7 +315,6 @@ func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
 
       }
   }
-
 
   return ipfsm.IpfsNode, nil
 
