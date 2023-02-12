@@ -614,8 +614,10 @@ func (nm *PackageManager) JobQueueMessageCallback() (func(message hederasdk.Topi
       // ...
 
       // Pin the render request document and blender file to the local IPFS node
-      ipfs.Manager.PinObject(request.DocumentCID)
-      // ipfs.Manager.PinObject(request.BlenderFileCID)
+      // TODO: Add a proper file management. Downloading each file, probably is
+      //       too resource intensive at larger network scales. 
+      go ipfs.Manager.PinObject(request.DocumentCID)
+      go ipfs.Manager.PinObject(request.BlenderFileCID)
 
       // create the RenderJob element for the internal job management
       job := &RenderJob{

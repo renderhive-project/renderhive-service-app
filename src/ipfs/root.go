@@ -453,40 +453,52 @@ func (ipfsm *PackageManager) GetObject(cid_string string, outputPath string) (st
 func (ipfsm *PackageManager) PinObject(cid_string string) (bool, error) {
   var err error
 
+  // only if a CID was passed
+  if cid_string == "" {
+      return false, errors.New(fmt.Sprintf("Could not pin IPFS object '%v': Not a valid CID.", cid_string))
+  }
+
   // get a path object from the CID string
   ipfsPath := icorepath.New(cid_string)
-
-	// Check if object is advertised in the DHT (i.e., if at least one provider exists)
-	providers, err := ipfsm.IpfsAPI.Dht().FindProviders(context.Background(), ipfsPath, ioptions.Dht.NumProviders(1))
-	if err != nil {
-		  return false, errors.New(fmt.Sprintf("The file is not advertised in the DHT yet: %v", cid_string))
-	}
-
-  logger.Manager.Package["ipfs"].Debug().Msg(fmt.Sprintf(" [#] File is advertised by at least one provider: %v", (<-providers).ID))
 
   // test, if file is already pinned
   _, pinned, err := ipfsm.IpfsAPI.Pin().IsPinned(ipfsm.IpfsContext, ipfsPath)
   if err != nil {
+      logger.Manager.Package["ipfs"].Trace().Msg(fmt.Sprintf("Could not pin IPFS object '%v': %v", cid_string, err.Error()))
       return false, errors.New(fmt.Sprintf("Could not pin '%v': %s", ipfsPath, err))
   }
 
-  logger.Manager.Package["ipfs"].Debug().Msg(fmt.Sprintf(" [#] Pinning status before trying to pin '%v': %v", ipfsPath, pinned))
+  // if the file is already pinned, don't try it again
+  if !pinned {
 
-  // pin the file
-  err = ipfsm.IpfsAPI.Pin().Add(ipfsm.IpfsContext, ipfsPath)
-	if err != nil {
-      return false, errors.New(fmt.Sprintf("Could not pin '%v': %s", ipfsPath, err))
-	}
+    	// Check if object is advertised in the DHT (i.e., if at least one provider exists)
+    	_, err := ipfsm.IpfsAPI.Dht().FindProviders(context.Background(), ipfsPath, ioptions.Dht.NumProviders(1))
+    	if err != nil {
+          logger.Manager.Package["ipfs"].Trace().Msg(fmt.Sprintf("Could not pin IPFS object '%v': %v", cid_string, err.Error()))
+    		  return false, errors.New(fmt.Sprintf("The file '%v' is not advertised in the DHT yet.", cid_string))
+    	}
 
-  logger.Manager.Package["ipfs"].Debug().Msg(fmt.Sprintf(" [#] Pinned the file '%v'.", ipfsPath))
+      // pin the file
+      err = ipfsm.IpfsAPI.Pin().Add(ipfsm.IpfsContext, ipfsPath)
+    	if err != nil {
+          logger.Manager.Package["ipfs"].Trace().Msg(fmt.Sprintf("Could not pin IPFS object '%v': %v", ipfsPath, err.Error()))
+          return false, errors.New(fmt.Sprintf("Could not pin '%v': %s", ipfsPath, err))
+    	}
 
-  // test, if file is pinned
-  _, pinned, err = ipfsm.IpfsAPI.Pin().IsPinned(ipfsm.IpfsContext, ipfsPath)
-  if err != nil {
-      return false, errors.New(fmt.Sprintf("Could not pin '%v': %s", ipfsPath, err))
+      // test, if file is now pinned
+      _, pinned, err = ipfsm.IpfsAPI.Pin().IsPinned(ipfsm.IpfsContext, ipfsPath)
+      if err != nil {
+          logger.Manager.Package["ipfs"].Trace().Msg(fmt.Sprintf("Could not pin IPFS object '%v': %v", ipfsPath, err.Error()))
+          return false, errors.New(fmt.Sprintf("Could not pin '%v': %s", ipfsPath, err))
+      }
+
+      logger.Manager.Package["ipfs"].Trace().Msg(fmt.Sprintf("Successfully pinned IPFS object: %v", ipfsPath))
+
+  } else {
+
+      logger.Manager.Package["ipfs"].Trace().Msg(fmt.Sprintf("IPFS object already pinned: %v", ipfsPath))
+
   }
-
-  logger.Manager.Package["ipfs"].Debug().Msg(fmt.Sprintf(" [#] Pinning status after trying to pin '%v': %v", ipfsPath, pinned))
 
   return pinned, nil
 
