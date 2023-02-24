@@ -22,189 +22,182 @@ package hedera
 
 import (
 
-  // standard
-  "fmt"
-  "os"
+	// standard
+	"fmt"
+	"os"
 
-  // external
-  "github.com/joho/godotenv"
-  hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+	// external
+	hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+	"github.com/joho/godotenv"
 
-  // internal
-  // . "renderhive/globals"
-  "renderhive/logger"
-
+	// internal
+	// . "renderhive/globals"
+	"renderhive/logger"
 )
 
 // Hedera account / wallet data
 type HederaAccount struct {
 
-  // Hedera account ID
-  AccountID hederasdk.AccountID
+	// Hedera account ID
+	AccountID hederasdk.AccountID
 
-  // keys
-  PrivateKey hederasdk.PrivateKey
-  PublicKey hederasdk.PublicKey
+	// keys
+	PrivateKey hederasdk.PrivateKey
+	PublicKey  hederasdk.PublicKey
 
-  // account information
-  Info hederasdk.AccountInfo
-
+	// account information
+	Info hederasdk.AccountInfo
 }
-
-
 
 // ACCOUNT MANAGEMENT
 // #############################################################################
 // Create a new account
 func (h *HederaAccount) New(InitialBalance float64) (*hederasdk.TransactionReceipt, error) {
-    var err error
+	var err error
 
-    // log information
-    logger.Manager.Package["hedera"].Debug().Msg("Create a new Hedera account on testnet:")
+	// log information
+	logger.Manager.Package["hedera"].Debug().Msg("Create a new Hedera account on testnet:")
 
-    // Generate a new private key for a the new account
-    h.PrivateKey, err = hederasdk.PrivateKeyGenerateEd25519()
-    if err != nil {
-      return nil, err
-    }
-    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Private key: %v", h.PrivateKey))
+	// Generate a new private key for a the new account
+	h.PrivateKey, err = hederasdk.PrivateKeyGenerateEd25519()
+	if err != nil {
+		return nil, err
+	}
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Private key: %v", h.PrivateKey))
 
-    // get the public key
-    h.PublicKey = h.PrivateKey.PublicKey()
-    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Public key: %v", h.PublicKey))
+	// get the public key
+	h.PublicKey = h.PrivateKey.PublicKey()
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] Public key: %v", h.PublicKey))
 
-    // Create new account, assign the public key, and transfer 1000 hBar to it
-    newAccountTransaction, err := hederasdk.NewAccountCreateTransaction().
-        SetKey(h.PublicKey).
-        SetInitialBalance(hederasdk.HbarFrom(InitialBalance, hederasdk.HbarUnits.Tinybar)).
-        Execute(Manager.NetworkClient)
+	// Create new account, assign the public key, and transfer 1000 hBar to it
+	newAccountTransaction, err := hederasdk.NewAccountCreateTransaction().
+		SetKey(h.PublicKey).
+		SetInitialBalance(hederasdk.HbarFrom(InitialBalance, hederasdk.HbarUnits.Tinybar)).
+		Execute(Manager.NetworkClient)
 
-    // Request the receipt of the account creation transaction
-    transactionReceipt, err := newAccountTransaction.GetReceipt(Manager.NetworkClient)
-    if err != nil {
-      return nil, err
-    }
+	// Request the receipt of the account creation transaction
+	transactionReceipt, err := newAccountTransaction.GetReceipt(Manager.NetworkClient)
+	if err != nil {
+		return nil, err
+	}
 
-    // Get the new account ID from the receipt
-    h.AccountID = *transactionReceipt.AccountID
-    logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] AccountID: %v", h.AccountID))
+	// Get the new account ID from the receipt
+	h.AccountID = *transactionReceipt.AccountID
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf("[#] AccountID: %v", h.AccountID))
 
-    return &transactionReceipt, nil
+	return &transactionReceipt, nil
 }
-
 
 // Load the account information from a file
 func (h *HederaAccount) FromFile(filepath string) error {
 
-    // TODO: DECRYPTION AND SAFE STORAGE IN MEMORY
-    //       For now, we just use an .env file and load the testnet account data
-    //       from there.
+	// TODO: DECRYPTION AND SAFE STORAGE IN MEMORY
+	//       For now, we just use an .env file and load the testnet account data
+	//       from there.
 
-    // Loads the .env file and throws an error if it cannot load the variables
-    // from that file correctly
-    err := godotenv.Load(filepath)
-    if err != nil {
-        return err
-    }
+	// Loads the .env file and throws an error if it cannot load the variables
+	// from that file correctly
+	err := godotenv.Load(filepath)
+	if err != nil {
+		return err
+	}
 
-    // Grab your testnet account ID and private key from the .env file
-    h.AccountID, err = hederasdk.AccountIDFromString(os.Getenv("TESTNET_ACCOUNT_ID"))
-    if err != nil {
-        return err
-    }
+	// Grab your testnet account ID and private key from the .env file
+	h.AccountID, err = hederasdk.AccountIDFromString(os.Getenv("TESTNET_ACCOUNT_ID"))
+	if err != nil {
+		return err
+	}
 
-    // get the private key
-    h.PrivateKey, err = hederasdk.PrivateKeyFromString(os.Getenv("TESTNET_PRIVATE_KEY"))
-    if err != nil {
-        return err
-    }
+	// get the private key
+	h.PrivateKey, err = hederasdk.PrivateKeyFromString(os.Getenv("TESTNET_PRIVATE_KEY"))
+	if err != nil {
+		return err
+	}
 
-    // derive the public key
-    h.PublicKey = h.PrivateKey.PublicKey()
+	// derive the public key
+	h.PublicKey = h.PrivateKey.PublicKey()
 
-    return nil
+	return nil
 }
 
 // Update the public key of a Hedera account
 func (h *HederaAccount) UpdateKey(newKey *hederasdk.PrivateKey) (string, error) {
-    var err error
+	var err error
 
-    // Updating the account with the new key
-  	newAccountUpdateTransaction, err := hederasdk.NewAccountUpdateTransaction().
-  		SetAccountID(h.AccountID).
-  		// The new key
-  		SetKey(newKey.PublicKey()).
-  		FreezeWith(Manager.NetworkClient)
-  	if err != nil {
-  		return "", err
-  	}
-    println(newKey.PublicKey().String())
-    println(newKey.String())
+	// Updating the account with the new key
+	newAccountUpdateTransaction, err := hederasdk.NewAccountUpdateTransaction().
+		SetAccountID(h.AccountID).
+		// The new key
+		SetKey(newKey.PublicKey()).
+		FreezeWith(Manager.NetworkClient)
+	if err != nil {
+		return "", err
+	}
+	println(newKey.PublicKey().String())
+	println(newKey.String())
 
-  	// Have to sign with both keys, the initial key first
-  	newAccountUpdateTransaction.Sign(Manager.Operator.PrivateKey)
-  	newAccountUpdateTransaction.Sign(*newKey)
+	// Have to sign with both keys, the initial key first
+	newAccountUpdateTransaction.Sign(Manager.Operator.PrivateKey)
+	newAccountUpdateTransaction.Sign(*newKey)
 
-    // Sign with client operator private key and submit the transaction to the Hedera network
-    _, err = newAccountUpdateTransaction.Execute(Manager.NetworkClient)
-    if err != nil {
-        return "", err
-    }
+	// Sign with client operator private key and submit the transaction to the Hedera network
+	_, err = newAccountUpdateTransaction.Execute(Manager.NetworkClient)
+	if err != nil {
+		return "", err
+	}
 
-    return "", nil
+	return "", nil
 
 }
-
 
 // ACCOUNT QUERIES
 // #############################################################################
 // Query the Hedera network for information on this account
 // NOTE: This should be used spareingly, since it has a network fee
 func (h *HederaAccount) QueryInfo(m *PackageManager) (string, error) {
-    var err error
+	var err error
 
-    //Create the account info query
-    newAccountInfoQuery := hederasdk.NewAccountInfoQuery().
-         SetAccountID(h.AccountID)
+	//Create the account info query
+	newAccountInfoQuery := hederasdk.NewAccountInfoQuery().
+		SetAccountID(h.AccountID)
 
-    // get cost of this query
-    cost, err := newAccountInfoQuery.GetCost(Manager.NetworkClient)
-    if err != nil {
-        return "", err
-    }
+	// get cost of this query
+	cost, err := newAccountInfoQuery.GetCost(Manager.NetworkClient)
+	if err != nil {
+		return "", err
+	}
 
-    //Sign with client operator private key and submit the query to a Hedera network
-    h.Info, err = newAccountInfoQuery.Execute(Manager.NetworkClient)
-    if err != nil {
-        return "", err
-    }
+	//Sign with client operator private key and submit the query to a Hedera network
+	h.Info, err = newAccountInfoQuery.Execute(Manager.NetworkClient)
+	if err != nil {
+		return "", err
+	}
 
-    return cost.String(), nil
+	return cost.String(), nil
 }
-
 
 // Query the Hedera network for the account balance
 func (h *HederaAccount) QueryBalance(m *PackageManager) (string, error) {
-    var err error
+	var err error
 
-    //Create the account info query
-    newAccountBalanceQuery := hederasdk.NewAccountBalanceQuery().
-         SetAccountID(h.AccountID)
+	//Create the account info query
+	newAccountBalanceQuery := hederasdk.NewAccountBalanceQuery().
+		SetAccountID(h.AccountID)
 
-    // get cost of this query
-    cost, err := newAccountBalanceQuery.GetCost(Manager.NetworkClient)
-    if err != nil {
-        return "", err
-    }
+	// get cost of this query
+	cost, err := newAccountBalanceQuery.GetCost(Manager.NetworkClient)
+	if err != nil {
+		return "", err
+	}
 
-    //Sign with client operator private key and submit the query to a Hedera network
-    accountBalance, err := newAccountBalanceQuery.Execute(Manager.NetworkClient)
-    if err != nil {
-        return "", err
-    }
+	//Sign with client operator private key and submit the query to a Hedera network
+	accountBalance, err := newAccountBalanceQuery.Execute(Manager.NetworkClient)
+	if err != nil {
+		return "", err
+	}
 
-    // update the internal balance
-    h.Info.Balance = accountBalance.Hbars
+	// update the internal balance
+	h.Info.Balance = accountBalance.Hbars
 
-    return cost.String(), nil
+	return cost.String(), nil
 }

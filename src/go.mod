@@ -43,9 +43,9 @@ require (
 	github.com/jbenet/goprocess v0.1.4
 	github.com/joho/godotenv v1.4.0
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
-	github.com/libp2p/go-libp2p v0.24.2 // indirect
+	github.com/libp2p/go-libp2p v0.24.2
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/multiformats/go-multiaddr v0.8.0 // indirect
+	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.6.1

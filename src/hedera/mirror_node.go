@@ -29,70 +29,68 @@ the Hedera mirror nodes.
 
 import (
 
-  // standard
-  "fmt"
-  "strconv"
-  "strings"
-  "net/http"
-  "io/ioutil"
-  "encoding/json"
+	// standard
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
 
-  // external
-  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+	// external
+	// hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
-  // internal
-  "renderhive/logger"
-
+	// internal
+	"renderhive/logger"
 )
 
 // Mirror node information and calls
 type MirrorNode struct {
 
-  // Mirror node url
-  URL string
-
+	// Mirror node url
+	URL string
 }
 
 // Response structures
 type TransactionResponse struct {
-  Transactions []TransactionInfo `json:"transactions"`
-  Links struct {
-    Next string `json:"next"`
-  } `json:"links"`
+	Transactions []TransactionInfo `json:"transactions"`
+	Links        struct {
+		Next string `json:"next"`
+	} `json:"links"`
 }
 
 type TransactionInfo struct {
-  Bytes                   interface{}   `json:"bytes"`
-  ChargedTxFee            int           `json:"charged_tx_fee"`
-  ConsensusTimestamp      string        `json:"consensus_timestamp"`
-  EntityID                string        `json:"entity_id"`
-  MaxFee                  int           `json:"max_fee"`
-  MemoBase64              interface{}   `json:"memo_base64"`
-  Name                    string        `json:"name"`
-  Node                    string        `json:"node"`
-  Nonce                   int           `json:"nonce"`
-  ParentConsensusTimestamp string        `json:"parent_consensus_timestamp"`
-  Result                  string        `json:"result"`
-  Scheduled               bool          `json:"scheduled"`
-  StakingRewardTransfers  []struct {
-    Account int `json:"account"`
-    Amount  int `json:"amount"`
-  } `json:"staking_reward_transfers"`
-  TransactionHash      string        `json:"transaction_hash"`
-  TransactionID        string        `json:"transaction_id"`
-  TokenTransfers       []struct {
-    TokenID     string  `json:"token_id"`
-    Account     string  `json:"account"`
-    Amount      int     `json:"amount"`
-    IsApproval  bool    `json:"is_approval"`
-  } `json:"token_transfers"`
-  Transfers []struct {
-    Account    string  `json:"account"`
-    Amount     int     `json:"amount"`
-    IsApproval bool    `json:"is_approval"`
-  } `json:"transfers"`
-  ValidDurationSeconds    int     `json:"valid_duration_seconds"`
-  ValidStartTimestamp     string  `json:"valid_start_timestamp"`
+	Bytes                    interface{} `json:"bytes"`
+	ChargedTxFee             int         `json:"charged_tx_fee"`
+	ConsensusTimestamp       string      `json:"consensus_timestamp"`
+	EntityID                 string      `json:"entity_id"`
+	MaxFee                   int         `json:"max_fee"`
+	MemoBase64               interface{} `json:"memo_base64"`
+	Name                     string      `json:"name"`
+	Node                     string      `json:"node"`
+	Nonce                    int         `json:"nonce"`
+	ParentConsensusTimestamp string      `json:"parent_consensus_timestamp"`
+	Result                   string      `json:"result"`
+	Scheduled                bool        `json:"scheduled"`
+	StakingRewardTransfers   []struct {
+		Account int `json:"account"`
+		Amount  int `json:"amount"`
+	} `json:"staking_reward_transfers"`
+	TransactionHash string `json:"transaction_hash"`
+	TransactionID   string `json:"transaction_id"`
+	TokenTransfers  []struct {
+		TokenID    string `json:"token_id"`
+		Account    string `json:"account"`
+		Amount     int    `json:"amount"`
+		IsApproval bool   `json:"is_approval"`
+	} `json:"token_transfers"`
+	Transfers []struct {
+		Account    string `json:"account"`
+		Amount     int    `json:"amount"`
+		IsApproval bool   `json:"is_approval"`
+	} `json:"transfers"`
+	ValidDurationSeconds int    `json:"valid_duration_seconds"`
+	ValidStartTimestamp  string `json:"valid_start_timestamp"`
 }
 
 // MIRROR NODE API
@@ -100,46 +98,56 @@ type TransactionInfo struct {
 // Query a list of transactions
 // https://mainnet-public.mirrornode.hedera.com/api/v1/transactions?order=desc&limit=1
 func (m *MirrorNode) Transactions(accountID string, limit int, order string, transactionType string, result string, balanceType string) (*[]TransactionInfo, error) {
-    var err error
-    var command []string
-    var parameters []string
+	var err error
+	var command []string
+	var parameters []string
 
-    // log query
-    logger.Manager.Package["hedera"].Trace().Msg("Query a list of transactions:")
+	// log query
+	logger.Manager.Package["hedera"].Trace().Msg("Query a list of transactions:")
 
-    // prepare the base command
-    command = append(command, m.URL, "api", "v1", "transactions?")
+	// prepare the base command
+	command = append(command, m.URL, "api", "v1", "transactions?")
 
-    // prepare the parameters
-    if limit > 0              { parameters = append(parameters, "limit=" + strconv.Itoa(limit)) }
-    if order != ""            { parameters = append(parameters, "order=" + order) }
-    if transactionType != ""  { parameters = append(parameters, "transactiontype=" + transactionType) }
-    if result != ""           { parameters = append(parameters, "result=" + result) }
-    if balanceType != ""      { parameters = append(parameters, "type=" + balanceType) }
+	// prepare the parameters
+	if limit > 0 {
+		parameters = append(parameters, "limit="+strconv.Itoa(limit))
+	}
+	if order != "" {
+		parameters = append(parameters, "order="+order)
+	}
+	if transactionType != "" {
+		parameters = append(parameters, "transactiontype="+transactionType)
+	}
+	if result != "" {
+		parameters = append(parameters, "result="+result)
+	}
+	if balanceType != "" {
+		parameters = append(parameters, "type="+balanceType)
+	}
 
-    // log the command
-    logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Command: %v", strings.Join(command, "/") + strings.Join(parameters, "&")))
+	// log the command
+	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Command: %v", strings.Join(command, "/")+strings.Join(parameters, "&")))
 
-    // query the transaction list
-    httpResponse, err := http.Get(strings.Join(command, "/") + strings.Join(parameters, "&"))
-    if err != nil {
-        return nil, err
-    }
-    defer httpResponse.Body.Close()
+	// query the transaction list
+	httpResponse, err := http.Get(strings.Join(command, "/") + strings.Join(parameters, "&"))
+	if err != nil {
+		return nil, err
+	}
+	defer httpResponse.Body.Close()
 
-    // read the complete data
-    httpResponseBody, err := ioutil.ReadAll(httpResponse.Body)
-    if err != nil {
-        return nil, err
-    }
+	// read the complete data
+	httpResponseBody, err := ioutil.ReadAll(httpResponse.Body)
+	if err != nil {
+		return nil, err
+	}
 
-    // parse the transaction response
-    var TransactionResponse TransactionResponse
-    json.Unmarshal(httpResponseBody, &TransactionResponse)
+	// parse the transaction response
+	var TransactionResponse TransactionResponse
+	json.Unmarshal(httpResponseBody, &TransactionResponse)
 
-    // log number of transactions
-    logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Mirror node responded with %v transactions", len(TransactionResponse.Transactions)))
+	// log number of transactions
+	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Mirror node responded with %v transactions", len(TransactionResponse.Transactions)))
 
-    return &TransactionResponse.Transactions, err
+	return &TransactionResponse.Transactions, err
 
 }

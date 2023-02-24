@@ -30,56 +30,48 @@ package cli
 
 import (
 
-  // standard
-  "fmt"
-  "os"
-  "bufio"
-  "strings"
+	// standard
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
 
-  // external
-  // hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
-  "github.com/mattn/go-shellwords"
-  "github.com/spf13/pflag"
-  "github.com/spf13/cobra"
+	// external
+	// hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+	"github.com/mattn/go-shellwords"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
-  // internal
-  // . "renderhive/globals"
-  "renderhive/logger"
-  "renderhive/node"
-  "renderhive/hedera"
-  "renderhive/ipfs"
-  "renderhive/webapp"
-
+	// internal
+	// . "renderhive/globals"
+	"renderhive/hedera"
+	"renderhive/ipfs"
+	"renderhive/logger"
+	"renderhive/node"
+	"renderhive/webapp"
 )
-
-
 
 // CLI STRUCTURES, VARIABLES & CONSTANTS
 // #############################################################################
 type Commands struct {
 
-  // renderhive main commands
-  Main *cobra.Command
-  MainFlags struct {
+	// renderhive main commands
+	Main      *cobra.Command
+	MainFlags struct {
+		Interactive bool
+	}
 
-    Interactive bool
-
-  }
-
-  // subcommands
-  Help *cobra.Command
-  Exit *cobra.Command
-
+	// subcommands
+	Help *cobra.Command
+	Exit *cobra.Command
 }
 
 type PackageManager struct {
 
-  // CLI commands
-  Commands Commands
-  Quit bool
-
+	// CLI commands
+	Commands Commands
+	Quit     bool
 }
-
 
 // CLI MANAGER
 // #############################################################################
@@ -87,93 +79,92 @@ type PackageManager struct {
 var Manager = PackageManager{}
 
 // Initialize the CLI Manager
-func (clim *PackageManager) Init() (error) {
-    var err error
+func (clim *PackageManager) Init() error {
+	var err error
 
-    logger.Manager.Package["cli"].Debug().Msg("Initializing the Command Line Interface manager ...")
+	logger.Manager.Package["cli"].Debug().Msg("Initializing the Command Line Interface manager ...")
 
-    // create the main command
-    clim.Commands.Main = clim.CreateMainCommand()
+	// create the main command
+	clim.Commands.Main = clim.CreateMainCommand()
 
-    // for each package, add the package command to the CLI
-    clim.AddPackageCommand(node.Manager.CreateCommand())
-    clim.AddPackageCommand(hedera.Manager.CreateCommand())
-    clim.AddPackageCommand(ipfs.Manager.CreateCommand())
-    clim.AddPackageCommand(webapp.Manager.CreateCommand())
+	// for each package, add the package command to the CLI
+	clim.AddPackageCommand(node.Manager.CreateCommand())
+	clim.AddPackageCommand(hedera.Manager.CreateCommand())
+	clim.AddPackageCommand(ipfs.Manager.CreateCommand())
+	clim.AddPackageCommand(webapp.Manager.CreateCommand())
 
-    return err
+	return err
 }
 
 // Deinitialize the CLI manager
-func (clim *PackageManager) DeInit() (error) {
-    var err error
+func (clim *PackageManager) DeInit() error {
+	var err error
 
-    // log event
-    logger.Manager.Package["cli"].Debug().Msg("Deinitializing the Command Line Interface manager ...")
+	// log event
+	logger.Manager.Package["cli"].Debug().Msg("Deinitializing the Command Line Interface manager ...")
 
-    return err
+	return err
 
 }
-
 
 // COMMAND LINE INTERFACE
 // #############################################################################
 // Create the main command for the command line interface
 func (clim *PackageManager) CreateMainCommand() *cobra.Command {
 
-    // log debug event
-    logger.Manager.Package["cli"].Debug().Msg("Create the main commands for the CLI.")
+	// log debug event
+	logger.Manager.Package["cli"].Debug().Msg("Create the main commands for the CLI.")
 
-    // create the main command
-    clim.Commands.Main = &cobra.Command{
-      Use:     "renderhive",
-      Short:   "Renderhive is a crowdrendering plattform for Blender based on Web3 technologies",
-      Long:    "This command line interface gives you complete control over the Renderhive Service App backend, which is the main software package for participating in the Renderhive network – the first crowdrendering platform for Blender built on Web3 technologies.",
-      Run: func(cmd *cobra.Command, args []string) {
+	// create the main command
+	clim.Commands.Main = &cobra.Command{
+		Use:   "renderhive",
+		Short: "Renderhive is a crowdrendering plattform for Blender based on Web3 technologies",
+		Long:  "This command line interface gives you complete control over the Renderhive Service App backend, which is the main software package for participating in the Renderhive network – the first crowdrendering platform for Blender built on Web3 technologies.",
+		Run: func(cmd *cobra.Command, args []string) {
 
-        return
+			return
 
-      },
-    }
+		},
+	}
 
-    // add command flags
-    clim.Commands.Main.Flags().BoolVarP(&clim.Commands.MainFlags.Interactive, "interactive", "i", false, "Run the Renderhive Service App in an interactive session")
+	// add command flags
+	clim.Commands.Main.Flags().BoolVarP(&clim.Commands.MainFlags.Interactive, "interactive", "i", false, "Run the Renderhive Service App in an interactive session")
 
-    // Create an 'exit' command for the CLI session
-    clim.Commands.Exit = &cobra.Command{
-    	Use:   "exit",
-    	Short: "Exit the Renderhive command line interface session",
-    	Long: "This command will close the command line interface session and shutdown the Renderhive Service App",
-    	Run: func(cmd *cobra.Command, args []string) {
+	// Create an 'exit' command for the CLI session
+	clim.Commands.Exit = &cobra.Command{
+		Use:   "exit",
+		Short: "Exit the Renderhive command line interface session",
+		Long:  "This command will close the command line interface session and shutdown the Renderhive Service App",
+		Run: func(cmd *cobra.Command, args []string) {
 
-        // quit the session
-        clim.Quit = true
+			// quit the session
+			clim.Quit = true
 
-        return
-    	},
-    }
+			return
+		},
+	}
 
-    // Parse the flags passed to the CLI
-    clim.Commands.Main.ParseFlags(os.Args[1:])
+	// Parse the flags passed to the CLI
+	clim.Commands.Main.ParseFlags(os.Args[1:])
 
-    // add the command
-    clim.Commands.Main.AddCommand(clim.Commands.Exit)
+	// add the command
+	clim.Commands.Main.AddCommand(clim.Commands.Exit)
 
-    return clim.Commands.Main
+	return clim.Commands.Main
 
 }
 
 // Create the package command for the command line interface
 func (clim *PackageManager) AddPackageCommand(command *cobra.Command) *cobra.Command {
-    var packageCommands *cobra.Command
+	var packageCommands *cobra.Command
 
-    // log debug event
-    logger.Manager.Package["cli"].Debug().Msg(fmt.Sprintf("Create the package command '%v' for the CLI.", command.Name()))
+	// log debug event
+	logger.Manager.Package["cli"].Debug().Msg(fmt.Sprintf("Create the package command '%v' for the CLI.", command.Name()))
 
-    // add the commands to the main command
-    clim.Commands.Main.AddCommand(command)
+	// add the commands to the main command
+	clim.Commands.Main.AddCommand(command)
 
-    return packageCommands
+	return packageCommands
 
 }
 
@@ -192,33 +183,33 @@ func (clim *PackageManager) StartInteractive() {
 	fmt.Println("")
 	fmt.Println("Interact with the Renderhive network from the command line:")
 
-  // start a new interactive CLI session
+	// start a new interactive CLI session
 	for !clim.Quit {
 
-    // new command line
+		// new command line
 		fmt.Print("(renderhive) > ")
 
-    // wait for new user input
+		// wait for new user input
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 
-    // split the input line into arguments
+		// split the input line into arguments
 		input = strings.TrimSpace(input)
-    args, err := shellwords.Parse(input)
-    if err != nil {
-      break
-    }
+		args, err := shellwords.Parse(input)
+		if err != nil {
+			break
+		}
 
-    // process the command
-    clim.Commands.Main.SetArgs(args)
-    clim.Commands.Main.Execute()
+		// process the command
+		clim.Commands.Main.SetArgs(args)
+		clim.Commands.Main.Execute()
 
-    // reset arguments and flags for the next command
-    // empty args again, so that they don't interfere with the next loop
-    args = []string{""}
+		// reset arguments and flags for the next command
+		// empty args again, so that they don't interfere with the next loop
+		args = []string{""}
 
-    // reset all flags
-    clim.ResetFlags()
+		// reset all flags
+		clim.ResetFlags()
 
 	}
 
@@ -227,60 +218,60 @@ func (clim *PackageManager) StartInteractive() {
 // Reset all flags to their default values
 func (clim *PackageManager) ResetFlags() {
 
-  // reset all flags to their default values
-  // TODO: Improve this methode to be recursive without defining the recursion
-  //       level
-  for _, subcmd := range clim.Commands.Main.Commands() {
-    subcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
-      // fmt.Println(flag.Name, flag.DefValue)
-      flag.Value.Set(flag.DefValue)
-      if val, ok := flag.Value.(pflag.SliceValue); ok {
-          _ = val.Replace(nil)
-      }
-    })
+	// reset all flags to their default values
+	// TODO: Improve this methode to be recursive without defining the recursion
+	//       level
+	for _, subcmd := range clim.Commands.Main.Commands() {
+		subcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+			// fmt.Println(flag.Name, flag.DefValue)
+			flag.Value.Set(flag.DefValue)
+			if val, ok := flag.Value.(pflag.SliceValue); ok {
+				_ = val.Replace(nil)
+			}
+		})
 
-    subcmd.Flags().VisitAll(func(flag *pflag.Flag) {
-      // fmt.Println(flag.Name, flag.DefValue)
-      flag.Value.Set(flag.DefValue)
-      if val, ok := flag.Value.(pflag.SliceValue); ok {
-          _ = val.Replace(nil)
-      }
-    })
+		subcmd.Flags().VisitAll(func(flag *pflag.Flag) {
+			// fmt.Println(flag.Name, flag.DefValue)
+			flag.Value.Set(flag.DefValue)
+			if val, ok := flag.Value.(pflag.SliceValue); ok {
+				_ = val.Replace(nil)
+			}
+		})
 
-    for _, subsubcmd := range subcmd.Commands() {
-      subsubcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
-        // fmt.Println(flag.Name, flag.DefValue)
-        flag.Value.Set(flag.DefValue)
-        if val, ok := flag.Value.(pflag.SliceValue); ok {
-            _ = val.Replace(nil)
-        }
-      })
+		for _, subsubcmd := range subcmd.Commands() {
+			subsubcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+				// fmt.Println(flag.Name, flag.DefValue)
+				flag.Value.Set(flag.DefValue)
+				if val, ok := flag.Value.(pflag.SliceValue); ok {
+					_ = val.Replace(nil)
+				}
+			})
 
-      subsubcmd.Flags().VisitAll(func(flag *pflag.Flag) {
-        // fmt.Println(flag.Name, flag.DefValue)
-        flag.Value.Set(flag.DefValue)
-        if val, ok := flag.Value.(pflag.SliceValue); ok {
-            _ = val.Replace(nil)
-        }
-      })
+			subsubcmd.Flags().VisitAll(func(flag *pflag.Flag) {
+				// fmt.Println(flag.Name, flag.DefValue)
+				flag.Value.Set(flag.DefValue)
+				if val, ok := flag.Value.(pflag.SliceValue); ok {
+					_ = val.Replace(nil)
+				}
+			})
 
-      for _, subsubsubcmd := range subsubcmd.Commands() {
-        subsubsubcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
-          // fmt.Println(flag.Name, flag.DefValue)
-          flag.Value.Set(flag.DefValue)
-          if val, ok := flag.Value.(pflag.SliceValue); ok {
-              _ = val.Replace(nil)
-          }
-        })
+			for _, subsubsubcmd := range subsubcmd.Commands() {
+				subsubsubcmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+					// fmt.Println(flag.Name, flag.DefValue)
+					flag.Value.Set(flag.DefValue)
+					if val, ok := flag.Value.(pflag.SliceValue); ok {
+						_ = val.Replace(nil)
+					}
+				})
 
-        subsubsubcmd.Flags().VisitAll(func(flag *pflag.Flag) {
-          flag.Value.Set(flag.DefValue)
-          if val, ok := flag.Value.(pflag.SliceValue); ok {
-              _ = val.Replace(nil)
-          }
-        })
-      }
-    }
-  }
+				subsubsubcmd.Flags().VisitAll(func(flag *pflag.Flag) {
+					flag.Value.Set(flag.DefValue)
+					if val, ok := flag.Value.(pflag.SliceValue); ok {
+						_ = val.Replace(nil)
+					}
+				})
+			}
+		}
+	}
 
 }
