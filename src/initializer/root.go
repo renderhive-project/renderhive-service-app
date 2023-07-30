@@ -118,7 +118,7 @@ func main() {
 
 		// prepare the topic information, which are used to create the topic
 		contract := hedera.HederaSmartContract{Info: hederasdk.ContractInfo{ContractMemo: fmt.Sprintf("renderhive-v%s.%s.%s::smart-contract", renderhive_contract_main_version, renderhive_contract_sub_version, renderhive_contract_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
-		_, receipt, err = contract.New(&HederaManager, "./RenderhiveTestContract.json", HederaManager.Operator.PrivateKey, 100000)
+		_, receipt, err = contract.New("./RenderhiveTestContract.json", HederaManager.Operator.PrivateKey, 100000)
 		if err != nil {
 			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 			os.Exit(1)
@@ -150,7 +150,7 @@ func main() {
 
 			// Delete the created contract
 			logger.Manager.Package["hedera"].Debug().Msg("Delete the created contract again")
-			_, receipt, err = contract.Delete(&HederaManager, nil)
+			_, receipt, err = contract.Delete(nil)
 			if err != nil {
 				logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 				os.Exit(1)
@@ -179,7 +179,7 @@ func main() {
 
 		// prepare the topic information, which are used to create the topic
 		topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::hive-cycle-synchronization", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey, SubmitKey: HederaManager.Operator.PublicKey}}
-		receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
+		receipt, err = topic.New(HederaManager.Operator.PrivateKey)
 		if err != nil {
 			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 			os.Exit(1)
@@ -218,7 +218,7 @@ func main() {
 			return
 		} else {
 
-			receipt, err = topic.SubmitMessage(&HederaManager, string(jsonMessage), HederaManager.Operator.PrivateKey, false, nil, false)
+			receipt, err = topic.SubmitMessage(string(jsonMessage), HederaManager.Operator.PrivateKey, false, nil, false)
 			if err != nil {
 				logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 				os.Exit(1)
@@ -236,7 +236,7 @@ func main() {
 
 			// Delete the created topic
 			logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
-			receipt, err = topic.Delete(&HederaManager, nil)
+			receipt, err = topic.Delete(nil)
 			if err != nil {
 				logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 				os.Exit(1)
@@ -256,7 +256,7 @@ func main() {
 
 		// prepare the topic information, which are used to create the topic
 		topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::hive-cycle-application", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
-		receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
+		receipt, err = topic.New(HederaManager.Operator.PrivateKey)
 		if err != nil {
 			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 			os.Exit(1)
@@ -288,7 +288,7 @@ func main() {
 
 			// Delete the created topic
 			logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
-			receipt, err = topic.Delete(&HederaManager, nil)
+			receipt, err = topic.Delete(nil)
 			if err != nil {
 				logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 				os.Exit(1)
@@ -308,7 +308,7 @@ func main() {
 
 		// prepare the topic information, which are used to create the topic
 		topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::hive-cycle-validation", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
-		receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
+		receipt, err = topic.New(HederaManager.Operator.PrivateKey)
 		if err != nil {
 			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 			os.Exit(1)
@@ -340,7 +340,7 @@ func main() {
 
 			// Delete the created topic
 			logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
-			receipt, err = topic.Delete(&HederaManager, nil)
+			receipt, err = topic.Delete(nil)
 			if err != nil {
 				logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 				os.Exit(1)
@@ -360,7 +360,7 @@ func main() {
 
 		// prepare the topic information, which are used to create the topic
 		topic := hedera.HederaTopic{Info: hederasdk.TopicInfo{TopicMemo: fmt.Sprintf("renderhive-v%s.%s.%s::render-job-queue", renderhive_topic_main_version, renderhive_topic_sub_version, renderhive_topic_patch_version), AdminKey: HederaManager.Operator.PublicKey}}
-		receipt, err = topic.New(&HederaManager, HederaManager.Operator.PrivateKey)
+		receipt, err = topic.New(HederaManager.Operator.PrivateKey)
 		if err != nil {
 			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 			os.Exit(1)
@@ -392,7 +392,7 @@ func main() {
 
 			// Delete the created topic
 			logger.Manager.Package["hedera"].Debug().Msg("Delete the created topic again")
-			receipt, err = topic.Delete(&HederaManager, nil)
+			receipt, err = topic.Delete(nil)
 			if err != nil {
 				logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 				os.Exit(1)
