@@ -269,7 +269,7 @@ func (contract *HederaSmartContract) Delete(adminKey interface{}) (*hederasdk.Tr
 func (contract *HederaSmartContract) CallFunction(name string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
 	var err error
 
-	// create the topic info query
+	// create the cmart contract call
 	newContractExecuteTransaction := hederasdk.NewContractExecuteTransaction().
 		SetContractID(contract.ID).
 		SetGas(gas).
@@ -288,6 +288,26 @@ func (contract *HederaSmartContract) CallFunction(name string, parameters *heder
 	}
 
 	return &transactionResponse, &transactionReceipt, err
+
+}
+
+// Call a smart contract function local (i.e., on a single node)
+func (contract *HederaSmartContract) CallFunctionLocal(name string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.ContractFunctionResult, error) {
+	var err error
+
+	// create the local smart contract call
+	newContractCallQueryTransaction := hederasdk.NewContractCallQuery().
+		SetContractID(contract.ID).
+		SetGas(gas).
+		SetFunction(name, parameters)
+
+	// get the function result
+	functionResult, err := newContractCallQueryTransaction.Execute(Manager.NetworkClient)
+	if err != nil {
+		return nil, err
+	}
+
+	return &functionResult, err
 
 }
 
