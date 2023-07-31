@@ -36,8 +36,6 @@ require github.com/ipfs/kubo v0.18.1
 
 // General
 require (
-	github.com/dop251/goja v0.0.0-20221118162653-d4bf6fde1b86
-	github.com/dop251/goja_nodejs v0.0.0-20230222172725-12ac04f8c000
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-libipfs v0.2.0
