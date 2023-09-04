@@ -22,8 +22,8 @@ package webapp
 
 /*
 
-The webapp package provides the backend and front end for the user UI, which will
-be served locally as a webapp.
+The webapp package provides the communication layer between backend and frontend for the user UI, which will
+be served locally as a web app.
 
 */
 
@@ -84,7 +84,7 @@ func (webappm *PackageManager) DeInit() error {
 
 }
 
-// RENDER MANAGER COMMAND LINE INTERFACE
+// WEBAPP MANAGER COMMAND LINE INTERFACE
 // #############################################################################
 // Create the command for the command line interface
 func (webappm *PackageManager) CreateCommand() *cobra.Command {
