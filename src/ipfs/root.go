@@ -85,6 +85,9 @@ type PackageManager struct {
 	IpfsNode          *core.IpfsNode
 	IpfsAPI           icore.CoreAPI
 
+	// w3up service
+	W3Agent w3cliAgent
+
 	// Command line interface
 	Command      *cobra.Command
 	CommandFlags struct {
@@ -109,6 +112,39 @@ func (ipfsm *PackageManager) Init() error {
 	if err != nil {
 		logger.Manager.Package["ipfs"].Error().Msg(err.Error())
 	}
+
+	// Initialize w3 CLI command
+	ipfsm.W3Agent.Path = "w3"
+
+	// Authorize this agent
+	_, err = ipfsm.W3Agent.Whoami()
+	if err != nil {
+		logger.Manager.Package["ipfs"].Error().Msg(err.Error())
+		return err
+	}
+
+	// log did key of the w3up agent
+	logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] w3up identity: %v", ipfsm.W3Agent.DIDkey))
+
+	// Get list of spaces this agent has access to
+	err = ipfsm.W3Agent.SpaceList()
+	if err != nil {
+		logger.Manager.Package["ipfs"].Error().Msg(err.Error())
+		return err
+	}
+
+	// log number of known w3up spaces
+	logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] w3up spaces: %v", len(ipfsm.W3Agent.Spaces)))
+
+	// Get list of uploads in the active space
+	err = ipfsm.W3Agent.UploadList()
+	if err != nil {
+		logger.Manager.Package["ipfs"].Error().Msg(err.Error())
+		return err
+	}
+
+	// log currently used w3up spaces
+	logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] w3up current space: %v (%v)", ipfsm.W3Agent.ActiveSpace, ipfsm.W3Agent.Spaces[ipfsm.W3Agent.ActiveSpace].Name))
 
 	return err
 
@@ -566,12 +602,15 @@ func (ipfsm *PackageManager) CreateCommand() *cobra.Command {
 		},
 	}
 
-	// add the subcommands
+	// add the subcommands (IPFS)
 	ipfsm.Command.AddCommand(ipfsm.CreateCommandInfo())
 	ipfsm.Command.AddCommand(ipfsm.CreateCommandSwarm())
 	ipfsm.Command.AddCommand(ipfsm.CreateCommandAdd())
 	ipfsm.Command.AddCommand(ipfsm.CreateCommandGet())
 	ipfsm.Command.AddCommand(ipfsm.CreateCommandPin())
+
+	// add the subcommands (Filecoin / w3up service)
+	ipfsm.Command.AddCommand(ipfsm.CreateCommandW3())
 
 	return ipfsm.Command
 
