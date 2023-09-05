@@ -25,10 +25,10 @@ https://www.docker.com
 
 #### 2. Clone the repository
 
-\```bash
+```bash
 git clone https://github.com/renderhive-projects/renderhive-service-app.git
 cd renderhive/service_app
-\```
+```
 
 #### 3. Create a Hedera testnet account
 
@@ -45,17 +45,17 @@ TESTNET_PRIVATE_KEY=$YOUR_PRIVATE_KEY$
 
 You can use the Docker Desktop app to create the containers or simply the command-line interface:
 
-\```bash
+```bash
 docker-compose -p renderhive build
-\```
+```
 
 #### 4. Start the renderhive container
 
 To spin up the renderhive service app, you run the docker containers via `docker-compose`
 
-\```bash
+```bash
 docker-compose -p renderhive up
-\```
+```
 
 ### Contributing
 
