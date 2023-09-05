@@ -1,0 +1,10 @@
+# general
+*.log
+*.tmp
+*.bak
+.DS_Store
+
+# backend
+snippets
+initializer
+tmp
