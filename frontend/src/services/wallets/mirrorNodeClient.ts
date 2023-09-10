@@ -1,6 +1,11 @@
 import { AccountId } from "@hashgraph/sdk";
 import { NetworkConfig } from "../../config";
 
+export interface MirrorNodeAccountTokenBalance {
+  balance: number,
+  token_id: string,
+}
+
 export class MirrorNodeClient {
   url: string;
   constructor(networkConfig: NetworkConfig) {

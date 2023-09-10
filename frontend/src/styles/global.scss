@@ -1,0 +1,51 @@
+@import "./fonts.scss";
+@import "./variables.scss";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.main {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: "Styrene A Web", "Helvetica Neue", Sans-Serif;
+  background-color: $main-bg;
+  color: $main-color;
+}
+
+.container {
+  display: flex;
+}
+
+.menuContainer {
+  width: 250px;
+  padding: 5px 20px;
+  border-right: 2px solid $soft-bg;
+}
+
+.contentContainer {
+  width: 100%;
+  padding: 5px 20px;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+.renderhiveLogoImg {
+  width: 32px;
+  height: auto;
+  background-color: '#FF0000';
+}
+
+.walletLogoImage {
+  width: 30px;
+  height: auto;
+}
