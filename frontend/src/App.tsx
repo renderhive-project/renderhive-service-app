@@ -1,44 +1,23 @@
-import Footer from './components/Footer';
-import CssBaseline from '@mui/material/CssBaseline';
-import NavBar from './components/Navbar';
-import { Box, ThemeProvider } from '@mui/material';
-import { AllWalletsProvider } from './services/wallets/AllWalletsProvider';
 import AppRouter from './AppRouter';
-import colorBackground from './assets/colors.png';
-import { theme } from './theme';
-import "./App.css";
+import { AllWalletsProvider } from './services/wallets/AllWalletsProvider';
+
+// styles & themes
+import "./styles/global.scss"
+import { ColorModeContext, useMode } from './theme';
+import { ThemeProvider } from '@emotion/react';
 
 function App() {
+  const [theme, colorMode] = useMode();
+
   return (
-    <ThemeProvider theme={theme}>
-      <AllWalletsProvider>
-        <CssBaseline />
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: '100vh',
-            backgroundColor: '#222222',
-            backgroundImage: `url(${colorBackground})`,
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center'
-          }}
-        >
-          <header>
-            <NavBar />
-          </header>
-          <Box
-            flex={1}
-            p={3}
-          >
-            <AppRouter />
-          </Box>
-          <Footer />
-        </Box>
-      </AllWalletsProvider>
-    </ThemeProvider>
-  );
+    <ColorModeContext.Provider value={colorMode}>
+      <ThemeProvider theme={theme}>
+        <AllWalletsProvider>
+          <AppRouter />
+        </AllWalletsProvider>
+      </ThemeProvider>
+    </ColorModeContext.Provider>
+  )
 }
 
-export default App;
+export default App
