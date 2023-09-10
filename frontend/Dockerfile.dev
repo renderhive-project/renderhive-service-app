@@ -29,4 +29,4 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm install
 
 # Start the development server
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]

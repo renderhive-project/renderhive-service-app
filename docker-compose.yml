@@ -25,6 +25,7 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "8080:8080"
+      - "8443:8443"
 
   frontend:
     build:
@@ -32,5 +33,6 @@ services:
       dockerfile: frontend/Dockerfile
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - backend
