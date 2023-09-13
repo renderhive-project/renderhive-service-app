@@ -5,6 +5,7 @@ import { WalletInterface } from "../walletInterface";
 import { AccountId, ContractExecuteTransaction, ContractId, TokenAssociateTransaction, TokenId, TransferTransaction } from "@hashgraph/sdk";
 import { ContractFunctionParameterBuilder } from "../contractFunctionParameterBuilder";
 import { appConfig } from "../../../config";
+import { useLoading } from "../../../contexts/LoaderContext";
 
 
 const currentNetworkConfig = appConfig.networks.testnet;
@@ -122,12 +123,14 @@ const hashConnectInitPromise = new Promise(async (resolve) => {
 
 // this component will sync the hashconnect state with the context
 export const HashConnectClient = () => {
+  const { isLoading, setLoading } = useLoading();
   // use the HashpackContext to keep track of the hashpack account and connection
   const { setAccountId, setIsConnected } = useContext(HashconnectContext);
 
   // sync the hashconnect state with the context
   const syncWithHashConnect = useCallback(() => {
     const accountId = getPairingInfo()?.accountIds[0];
+
     if (accountId) {
       setAccountId(accountId);
       setIsConnected(true);
@@ -135,14 +138,24 @@ export const HashConnectClient = () => {
       setAccountId('');
       setIsConnected(false);
     }
+    
   }, [setAccountId, setIsConnected]);
 
   useEffect(() => {
+    
+    // set the loader status
+    setLoading(true)
+
     // when the component renders, sync the hashconnect state with the context
     syncWithHashConnect();
+    
     // when hashconnect is initialized, sync the hashconnect state with the context
     hashConnectInitPromise.then(() => {
       syncWithHashConnect();
+
+      // reset the loader status
+      setLoading(false)
+
     });
 
     // when pairing an account, sync the hashconnect state with the context
@@ -155,6 +168,9 @@ export const HashConnectClient = () => {
       // remove the event listeners when the component unmounts
       hashConnect.pairingEvent.off(syncWithHashConnect);
       hashConnect.connectionStatusChangeEvent.off(syncWithHashConnect);
+
+      // reset the loader status
+      setLoading(false)
     }
   }, [syncWithHashConnect]);
   return null;

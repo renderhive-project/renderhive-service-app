@@ -11,6 +11,57 @@ interface WalletSelectionDialogProps {
   onClose: (value: string) => void;
 }
 
+export const WalletSelector = () => {
+
+  return (
+    <Stack display="flex" flexDirection="column" width="100%" p={0} gap={1}>
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={() => {
+          hashConnect.connectToLocalWallet();
+        }}
+      >
+        <img
+          src={HashPackLogo}
+          alt='hashpack logo'
+          className='walletLogoImage'
+          style={{
+            marginLeft: '-6px'
+          }}
+        />
+        HashPack
+      </Button>
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={() => {
+          connectToBladeWallet();
+        }}
+      >
+        Blade
+      </Button>
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={() => {
+          connectToMetamask();
+        }}
+      >
+        <img
+          src={MetamaskLogo}
+          alt='metamask logo'
+          className='walletLogoImage'
+          style={{
+            padding: '4px 4px 4px 0px'
+          }}
+        />
+        Metamask
+      </Button>
+    </Stack>
+  );
+}
+
 export const WalletSelectionDialog = (props: WalletSelectionDialogProps) => {
   const { onClose, open } = props;
 

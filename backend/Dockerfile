@@ -50,6 +50,8 @@ COPY --from=builder /app/src/renderhive-service /app/renderhive-service
 # create required directories
 RUN mkdir hedera
 RUN mkdir tmp
+RUN mkdir config
+RUN mkdir data
 
 # Copy the testnet.env into the container
 COPY /backend/src/hedera/testnet.env ./hedera/testnet.env

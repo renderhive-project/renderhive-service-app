@@ -36,6 +36,7 @@ require github.com/ipfs/kubo v0.18.1
 
 // General
 require (
+	github.com/gorilla/rpc v1.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-libipfs v0.2.0

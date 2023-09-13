@@ -5,6 +5,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { BladeContext } from "../../../contexts/BladeContext";
 import { ContractFunctionParameterBuilder } from "../contractFunctionParameterBuilder";
 import { WalletInterface } from "../walletInterface";
+import { useLoading } from "../../../contexts/LoaderContext";
 
 const env = HederaNetwork.Testnet;
 const bladeLocalStorage = "usedBladeForWalletPairing";
@@ -153,12 +154,14 @@ export const connectToBladeWallet = async (skipKillSession: boolean = false) => 
 
 export const BladeClient = () => {
   const [usedBlade, setUsedBlade] = useState(false);
+  const { isLoading, setLoading } = useLoading();
 
   // use the BladeContext to keep track of the hashpack account and connection
   const { setAccountId, setIsConnected } = useContext(BladeContext);
 
   // sync with blade state with the context so the context is aware of connected account id
   const syncWithBladeSession = useCallback(() => {
+
     try {
       const bladeSigner = bladeConnector.getSigner();
       if (bladeSigner) {
@@ -182,8 +185,13 @@ export const BladeClient = () => {
 
   // sync the blade state with the context
   useEffect(() => {
+    // set the loader status
+    setLoading(true)
+
     const sessionCallback = () => {
       syncWithBladeSession();
+      // reset the loader status
+      setLoading(false)
     };
     const disconnectCallback = () => {
       syncWithBladeDisconnected();
@@ -199,6 +207,9 @@ export const BladeClient = () => {
     return () => {
       syncWithBladeEvent.off("syncSession", sessionCallback);
       syncWithBladeEvent.off("syncDisconnect", disconnectCallback)
+      
+      // reset the loader status
+      setLoading(false)
     }
   }, [syncWithBladeSession, syncWithBladeDisconnected, usedBlade]);
 

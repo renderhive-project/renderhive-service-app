@@ -24,15 +24,27 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "8080:8080"
-      - "8443:8443"
+      # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
+      #       If not specified, other machines could access the web app (if the firewall rules would allow for that)
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8443:8443"
+    volumes:
+      # $YOUR_APP_CONFIG_PATH$ needs to be replaced with the path to the directory on
+      # the host machine, where Renderhive will store persistent configuration data 
+      - $YOUR_APP_CONFIG_PATH$:/app/config
+      # $YOUR_APP_DATA_PATH$ needs to be replaced with the path to the directory on
+      # the host machine, where Renderhive will store persistent app data 
+      # (i.e., benchmarks, blender files, render results, etc.)
+      - $YOUR_APP_DATA_PATH$:/app/data
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "80:80"
-      - "443:443"
+      # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
+      #       If not specified, other machines could access the web app (if the firewall rules would allow for that)
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
     depends_on:
       - backend

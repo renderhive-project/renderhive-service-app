@@ -54,7 +54,8 @@ import (
 // TODO: add further user data
 type UserData struct {
 	ID           int                    // Renderhive User ID given by the Renderhive Smart Contract
-	Username     string                 // a user name
+	Username     string                 // User name of the node operator
+	Email        string                 // Email address of the node operator
 	UserAccount  hedera.HederaAccount   // Hedera account ID of the user's main account
 	NodeAccounts []hedera.HederaAccount // Hedera account IDs of the user's node accounts
 

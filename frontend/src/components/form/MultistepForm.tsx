@@ -5,10 +5,11 @@ import { Step, StepLabel, Stepper } from '@mui/material';
 
 interface Props extends FormikConfig<FormikValues> {
     children: React.ReactNode;
+    showStepper: boolean;
 }
 
 // Multistep form component
-const MultiStepForm = ({ children, initialValues, onSubmit }: Props) => {
+const MultiStepForm = ({ children, initialValues, onSubmit, showStepper }: Props) => {
     const [stepNumber, setStepNumber] = useState(0);
     const steps = React.Children.toArray(children) as React.ReactElement[];  // get array of childrens in the form
 
@@ -60,7 +61,7 @@ const MultiStepForm = ({ children, initialValues, onSubmit }: Props) => {
                     <Form>
 
                         {/* render a step visualization */}
-                        <Stepper alternativeLabel activeStep={stepNumber} style={{marginTop: 25, marginBottom: 25}}>
+                        { showStepper && <Stepper alternativeLabel activeStep={stepNumber} style={{marginTop: 25, marginBottom: 25}}>
                             {steps.map(currentStep => {
                                 const label = currentStep.props.stepName;
 
@@ -70,7 +71,7 @@ const MultiStepForm = ({ children, initialValues, onSubmit }: Props) => {
                                     </Step>
                                 )
                             })}
-                        </Stepper>
+                        </Stepper>}
 
                         {/* render the actual form of this step */}
                         {step}

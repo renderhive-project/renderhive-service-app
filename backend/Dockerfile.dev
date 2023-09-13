@@ -30,6 +30,10 @@ ENV GOOS=linux
 # Set the working directory inside the container
 WORKDIR /app
 
+# create required directories
+RUN mkdir /app/config
+RUN mkdir /app/data
+
 # install dependencies
 RUN apk add --update nodejs npm
 RUN npm install -g @web3-storage/w3cli

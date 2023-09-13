@@ -1,4 +1,7 @@
-import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Outlet, Navigate, useLocation } from "react-router-dom";
+import { Box, CircularProgress, CssBaseline, Toolbar } from "@mui/material";
+import { useWalletInterface } from "./services/wallets/useWalletInterface";
+import { useLoading } from "./contexts/LoaderContext";
 
 // components
 import Navbar from "./components/navbar/Navbar";
@@ -6,14 +9,21 @@ import Navbar from "./components/navbar/Navbar";
 import Sidebar from "./components/sidebar/Sidebar";
 
 // pages
+import SignUp from "./pages/signup/signup";
+import SignIn from "./pages/signin/signin";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Users from "./pages/users/Users";
 import Products from "./pages/products/Products";
-import Login from "./pages/login/Login";
-import { Box, CssBaseline, Toolbar } from "@mui/material";
+import RPCTest from "./pages/rpctest/RPCTest";
 
 export default function AppRouter() {
+  const { accountId } = useWalletInterface();
+  const { isLoading, setLoading } = useLoading();
+
   const Layout = () => {
+    const location = useLocation();
+    console.log(location.pathname)
+
     return (
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
@@ -21,16 +31,23 @@ export default function AppRouter() {
         {/* Render the app bar */}
         <Navbar />
 
-        {/* Render the sidebar */}
-        <Sidebar />
+        {/* Render the sidebar (if not on sign/signup pages) */}
+        {(!["/signin", '/signup'].includes(location.pathname)) && <Sidebar />}
 
         {/* Render content */}
         <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+
           <Toolbar />
 
           <Box className="contentContainer">
             {/* <QueryClientProvider client={queryClient}> */}
-            <Outlet />
+            { ( isLoading ) ? (
+              <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="80vh">  
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Outlet />
+            )}
             {/* </QueryClientProvider> */}
           </Box>
         </Box>
@@ -46,15 +63,27 @@ export default function AppRouter() {
       children: [
         {
           path: "/",
-          element: <Dashboard />,
+          element: (accountId ? <Dashboard /> : <Navigate to="/signin" replace />),
         },
         {
           path: "/users",
-          element: <Users />,
+          element: (accountId ? <Users /> : <Navigate to="/signin" replace />),
         },
         {
           path: "/products",
-          element: <Products />,
+          element: (accountId ? <Products /> : <Navigate to="/signin" replace />),
+        },
+        {
+          path: "/signup",
+          element: (accountId ? <Navigate to="/" replace /> : <SignUp />),
+        },
+        {
+          path: "/signin",
+          element: (accountId ? <Navigate to="/" replace /> : <SignIn />),
+        },
+        {
+          path: "*",
+          element: (accountId ? <Navigate to="/" replace /> : <Navigate to="/signin" replace />),
         },
         // {
         //   path: "/users/:id",
@@ -67,8 +96,8 @@ export default function AppRouter() {
       ],
     },
     {
-      path: "/login",
-      element: <Login />,
+      path: "/test",
+      element: <RPCTest />,
     },
   ]);
 
