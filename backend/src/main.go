@@ -24,14 +24,16 @@ import (
 
 	// standard
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
-	"time"
+
 	// external
 	// hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+
 	// internal
 	// . "renderhive/globals"
-	// "renderhive/logger"
+	"renderhive/logger"
 	// "renderhive/cli"
 	// "renderhive/hedera"
 	// "renderhive/node"
@@ -73,7 +75,7 @@ func main() {
 	defer ServiceApp.DeInit()
 
 	// placeholder
-	fmt.Println(time.Now().Add(30 * time.Second))
+	// fmt.Println(time.Now().Add(30 * time.Second))
 
 	// COMMAND LINE INTERFACE
 	// ***************************************************************************
@@ -85,8 +87,22 @@ func main() {
 
 	}
 
-	// MAIN LOOP
+	// BACKEND SERVER
 	// ***************************************************************************
-	// time.Sleep(91 * time.Second)
+	err := ServiceApp.WebAppManager.StartServer("5174", "webapp/cert/cert.pem", "webapp/cert/key.pem")
+	if err != nil {
+		if err == http.ErrServerClosed {
+
+			// log information
+			logger.Manager.Package["webapp"].Error().Msg("Server closed gracefully")
+
+		} else {
+
+			// log information
+			logger.Manager.Package["webapp"].Error().Msg(fmt.Sprintf("Error starting server:", err))
+
+		}
+
+	}
 
 }

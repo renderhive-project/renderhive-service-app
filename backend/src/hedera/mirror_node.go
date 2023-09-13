@@ -32,7 +32,7 @@ import (
 	// standard
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,7 +52,43 @@ type MirrorNode struct {
 }
 
 // Response structures
-type TransactionResponse struct {
+type AccountInfoResponse struct {
+	Accounts []AccountInfo `json:"accounts"`
+	Links    struct {
+		Next string `json:"next"`
+	} `json:"links"`
+}
+
+type AccountInfo struct {
+	Account         string `json:"account"`
+	Alias           string `json:"alias"`
+	AutoRenewPeriod int64  `json:"auto_renew_period"`
+	Balance         struct {
+		Balance   int64         `json:"balance"`
+		Timestamp string        `json:"timestamp"`
+		Tokens    []interface{} `json:"tokens"`
+	} `json:"balance"`
+	CreatedTimestamp string `json:"created_timestamp"`
+	DeclineReward    bool   `json:"decline_reward"`
+	Deleted          bool   `json:"deleted"`
+	EthereumNonce    int    `json:"ethereum_nonce"`
+	EvmAddress       string `json:"evm_address"`
+	ExpiryTimestamp  string `json:"expiry_timestamp"`
+	Key              struct {
+		Type string `json:"_type"`
+		Key  string `json:"key"`
+	} `json:"key"`
+	MaxAutomaticTokenAssociations int    `json:"max_automatic_token_associations"`
+	Memo                          string `json:"memo"`
+	PendingReward                 int    `json:"pending_reward"`
+	ReceiverSigRequired           bool   `json:"receiver_sig_required"`
+	StakedAccountID               string `json:"staked_account_id"`
+	StakedNodeID                  int    `json:"staked_node_id"`
+	StakePeriodStart              string `json:"stake_period_start"`
+}
+
+// Response structures
+type TransactionInfoResponse struct {
 	Transactions []TransactionInfo `json:"transactions"`
 	Links        struct {
 		Next string `json:"next"`
@@ -95,6 +131,57 @@ type TransactionInfo struct {
 
 // MIRROR NODE API
 // #############################################################################
+// Query account information
+// https://mainnet-public.mirrornode.hedera.com/api/v1/accounts?account.id=x.x.xxxx
+func (m *MirrorNode) GetAccountInfo(accountID string, limit int, order string) (*[]AccountInfo, error) {
+	var err error
+	var command []string
+	var parameters []string
+
+	// log query
+	logger.Manager.Package["hedera"].Trace().Msg("Query account information:")
+
+	// prepare the base command
+	command = append(command, m.URL, "api", "v1", "accounts?")
+
+	// prepare the parameters
+	if accountID != "" {
+		parameters = append(parameters, "account.id="+accountID)
+	}
+	if limit > 0 {
+		parameters = append(parameters, "limit="+strconv.Itoa(limit))
+	}
+	if order != "" {
+		parameters = append(parameters, "order="+order)
+	}
+
+	// log the command
+	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Command: %v", strings.Join(command, "/")+strings.Join(parameters, "&")))
+
+	// query the transaction list
+	httpResponse, err := http.Get(strings.Join(command, "/") + strings.Join(parameters, "&"))
+	if err != nil {
+		return nil, err
+	}
+	defer httpResponse.Body.Close()
+
+	// read the complete data
+	httpResponseBody, err := io.ReadAll(httpResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// parse the transaction response
+	var AccountInfoResponse AccountInfoResponse
+	json.Unmarshal(httpResponseBody, &AccountInfoResponse)
+
+	// log number of transactions
+	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Mirror node responded with %v accounts", len(AccountInfoResponse.Accounts)))
+
+	return &AccountInfoResponse.Accounts, err
+
+}
+
 // Query a list of transactions
 // https://mainnet-public.mirrornode.hedera.com/api/v1/transactions?order=desc&limit=1
 func (m *MirrorNode) Transactions(accountID string, limit int, order string, transactionType string, result string, balanceType string) (*[]TransactionInfo, error) {
@@ -136,13 +223,13 @@ func (m *MirrorNode) Transactions(accountID string, limit int, order string, tra
 	defer httpResponse.Body.Close()
 
 	// read the complete data
-	httpResponseBody, err := ioutil.ReadAll(httpResponse.Body)
+	httpResponseBody, err := io.ReadAll(httpResponse.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	// parse the transaction response
-	var TransactionResponse TransactionResponse
+	var TransactionResponse TransactionInfoResponse
 	json.Unmarshal(httpResponseBody, &TransactionResponse)
 
 	// log number of transactions

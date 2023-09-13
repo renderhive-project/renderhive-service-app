@@ -3,8 +3,14 @@ import { NetworkConfigs } from "./type"
 export const networkConfig: NetworkConfigs = {
   testnet: {
     network: "testnet",
-    jsonRpcUrl: "https://testnet.hashio.io/api", // check out the readme for alternative RPC Relay urls
+    jsonRpcUrl: "https://testnet.hashio.io/api",
     mirrorNodeUrl: "https://testnet.mirrornode.hedera.com",
     chainId: "0x128",
+  },
+  mainnet: {
+    network: "mainnet",
+    jsonRpcUrl: "",
+    mirrorNodeUrl: "",
+    chainId: "0x128"
   }
 }

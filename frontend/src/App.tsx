@@ -1,4 +1,5 @@
 import AppRouter from './AppRouter';
+import { LoadingContextProvider } from './contexts/LoaderContext';
 import { AllWalletsProvider } from './services/wallets/AllWalletsProvider';
 
 // styles & themes
@@ -10,13 +11,15 @@ function App() {
   const [theme, colorMode] = useMode();
 
   return (
-    <ColorModeContext.Provider value={colorMode}>
-      <ThemeProvider theme={theme}>
-        <AllWalletsProvider>
-          <AppRouter />
-        </AllWalletsProvider>
-      </ThemeProvider>
-    </ColorModeContext.Provider>
+    <LoadingContextProvider>
+      <ColorModeContext.Provider value={colorMode}>
+        <ThemeProvider theme={theme}>
+          <AllWalletsProvider>
+            <AppRouter />
+          </AllWalletsProvider>
+        </ThemeProvider>
+      </ColorModeContext.Provider>
+    </LoadingContextProvider>
   )
 }
 

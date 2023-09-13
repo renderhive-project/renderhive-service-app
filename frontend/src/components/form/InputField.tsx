@@ -1,11 +1,15 @@
 import React from "react";
-import { TextField } from "@mui/material";
+import { BaseTextFieldProps, TextField, TextFieldProps, TextFieldVariants } from "@mui/material";
 import { FieldConfig, FieldHookConfig, useField } from "formik";
 
 interface InputFieldProps {
     name: string;
     label: string;
+
+    fullWidth?: boolean
+    disabled?: boolean
     style?: React.CSSProperties;
+    value?: string
 }
 
 const InputField = ({ label, ...props }: InputFieldProps ) => {

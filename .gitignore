@@ -5,11 +5,13 @@ node_modules
 *.pnp
 *.pnp.js
 
-# testing
+# testing & development
 coverage
 snippets
 initializer
 tmp
+/data
+/config
 
 # production
 build

@@ -59,15 +59,19 @@ const RENDERHIVE_TESTNET_RENDER_JOB_QUEUE = "0.0.390086"
 // Hive cycle synchronization interval
 const RENDERHIVE_CONFIG_HIVE_CYCLE_SYNCHRONIZATION_INTERVAL = 1 * time.Hour
 
+// path to application data
+const RENDERHIVE_APP_DIRECTORY_DATA = "data/"
+const RENDERHIVE_APP_DIRECTORY_CONFIG = "config/"
+
 // path to local IPFS repository
-const RENDERHIVE_APP_DIRECTORY_IPFS_REPO = "/renderhive/service_app/ipfs/repo/"
+const RENDERHIVE_APP_DIRECTORY_IPFS_REPO = "ipfs/repo/"
 
 // path to Blender benchmark results
-const RENDERHIVE_APP_DIRECTORY_BLENDER_BENCHMARKS = "/renderhive/service_app/blender_benchmarks/"
+const RENDERHIVE_APP_DIRECTORY_BLENDER_BENCHMARKS = "data/blender_benchmarks/"
 
 // path to the render request documents (both own and from the hive) on this node
-const RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS = "/renderhive/service_app/render_requests/local/"
-const RENDERHIVE_APP_DIRECTORY_NETWORK_REQUESTS = "/renderhive/service_app/render_requests/network/"
+const RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS = "data/render_requests/local/"
+const RENDERHIVE_APP_DIRECTORY_NETWORK_REQUESTS = "data/render_requests/network/"
 
 // BLENDER CONSTANTS
 // #############################################################################

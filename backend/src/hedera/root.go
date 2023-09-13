@@ -56,7 +56,7 @@ type PackageManager struct {
 	NetworkType   int
 	NetworkClient *hederasdk.Client
 
-	// account of the user
+	// account of the node
 	Operator HederaAccount
 
 	// Mirror Node
