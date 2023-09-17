@@ -20,7 +20,7 @@ const Dashboard = () => {
         <Typography variant="h4" sx={{ marginBottom: '10px', }}>Dashboard</Typography>
 
         {/* // Page Content */}
-        <Grid container spacing={0} className="page-content">
+        <Grid container spacing={0} className="page-content" bgcolor="background.paper">
           <Grid item xs={12} >
     
             <Grid container spacing={2} direction="row">
@@ -47,7 +47,7 @@ const Dashboard = () => {
           </Grid>
         </Grid>
         
-        <Grid container spacing={0} className="page-content">
+        <Grid container spacing={0} className="page-content" bgcolor="background.paper">
           <Grid item xs={12} sx={{height: '500px'}}>
     
 

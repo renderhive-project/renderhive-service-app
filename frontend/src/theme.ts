@@ -102,6 +102,8 @@ export const tokens = (mode: PaletteMode) => ({
     })
 })
 
+
+
 // theme settings to return color tokens dynamically based on the mode
 export const createRenderhiveTheme = (mode: PaletteMode) => {
   const colors = tokens(mode);
@@ -119,17 +121,19 @@ export const createRenderhiveTheme = (mode: PaletteMode) => {
     palette: {
       mode: 'light',
       primary: {
-        dark: colors.primary[500],
-        main: colors.white[500],
-        light: colors.primary[800],
-      },
-      secondary: {
-        dark: colors.primary[200],
-        main: colors.primary[500],
-        light: colors.primary[900],
+        dark: "#F6C849",
+        main: "#f1a83b",
+        light: "#f8d64b",
+        contrastText: "#01080D",
       },
       background: {
-        default: colors.primary[900],
+        default: "#E5ECEF",
+        paper: "#fcfcfc",
+      },
+      text: {
+        primary: "#000000",
+        secondary: "#050F15",
+        disabled: "#ececec",
       }
     },
     components: {
@@ -179,30 +183,39 @@ export const createRenderhiveTheme = (mode: PaletteMode) => {
       palette: {
         mode: 'dark',
         primary: {
-          main: colors.primary[500],
+          dark: "#f1a83b",
+          main: "#F6C849",
+          light: "#f8d64b",
+          contrastText: "#01080D",
         },
         background: {
-          default: colors.grey[900]
+          default: "#01080D",
+          paper: "#050F15"
+        },
+        text: {
+          primary: "#7f878d",
+          secondary: "#050F15",
+          disabled: "#ececec",
         }
       },
       components: {
         MuiAppBar: {
           styleOverrides: {
             root: {
-              backgroundColor: colors.grey[800],
-              text: colors.white[500],
+              //backgroundColor: "#050F15",
+              //text: colors.white[500],
             }
           }
         },
         MuiDrawer: {
           styleOverrides: {
             paper: {
-              backgroundColor: colors.grey[800],
-              color: colors.white[500],
+              //backgroundColor: colors.grey[800],
+              //color: colors.white[500],
     
               '& .MuiListSubheader-root': {
-                backgroundColor: 'inherit',
-                color: colors.white[500],
+                //backgroundColor: 'inherit',
+                //color: colors.white[500],
               }
             }
           }
@@ -211,7 +224,7 @@ export const createRenderhiveTheme = (mode: PaletteMode) => {
           styleOverrides: {
             root: {
               '&:hover': {
-                backgroundColor: colors.grey[800],
+                //backgroundColor: colors.grey[800],
               }
             }
           }
