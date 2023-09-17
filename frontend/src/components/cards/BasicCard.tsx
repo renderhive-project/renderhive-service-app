@@ -1,7 +1,7 @@
 import React from 'react';
 import { styled, useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import { Card, CardContent } from '@mui/material';
+import { Box, Card, CardContent } from '@mui/material';
 import { tokens } from '../../theme';
 
 
@@ -26,17 +26,20 @@ const BasicCard: React.FC<BasicCardProps> = ({ type, title }) => {
 
     const stylesMap = {
         cardAccountBalance: {
-            color: theme.palette.secondary.dark,
-            backgroundColor: theme.palette.primary.light,
+            color: theme.palette.primary.main,
+            backgroundColor: theme.palette.background.paper,
         },
     };
 
   return (
     <StyledCard cardStyle={stylesMap[type]}>
       <CardContent>
-        <Typography sx={{ fontSize: 14 }} gutterBottom>
-          {title}
-        </Typography>
+        <Box display="flex" >
+          <Typography sx={{ fontSize: 14 }} alignItems="center" justifyItems="center" gutterBottom>
+            <Box bgcolor="#ffffff" borderRadius={'5px'} width="10px" height="20px" />
+            {title}
+          </Typography>
+        </Box>
       </CardContent>
     </StyledCard>
   );

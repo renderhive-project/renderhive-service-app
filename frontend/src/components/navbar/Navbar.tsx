@@ -36,7 +36,7 @@ const NavBar = () => {
       <Toolbar disableGutters={true} sx={{ paddingLeft: '18px', paddingRight: '18px' }}>
         <Box sx={{ display: 'flex' }}>
           <img src={RenderhiveLogo} alt='A stylized Blender default cube forming a honeycomb (renderhive logo)' className='renderhiveLogoImg' />
-          <Typography variant="h6" pl={3} sx={{ display: { xs: 'none', md: 'flex' } }} noWrap>
+          <Typography variant="h6" pl={2} mt={0.25} sx={{ display: { xs: 'none', md: 'flex' } }} noWrap>
             Renderhive Service App
           </Typography>
         </Box>

@@ -12,7 +12,7 @@ const FormContainer: React.FC<FormContainerProps> = ({ children, height }) => {
     <Box
       textAlign="center" 
       sx={{
-          backgroundColor: 'background.default',
+          backgroundColor: 'background.paper',
           borderRadius: '10px',
           //boxShadow: '0px 2px 5px 0px rgba(0,0,0,0.25)',
           border: '1px solid #222222',
