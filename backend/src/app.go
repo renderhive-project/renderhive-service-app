@@ -28,281 +28,213 @@ This file contains all functions and other declarations for the service app.
 
 import (
 
-  // standard
-  "fmt"
-  // "os"
-  "time"
-  "sync"
+	// standard
+	"fmt"
+	"time"
 
-  // external
-  hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+	// "os"
+	"sync"
 
-  // internal
-  . "renderhive/globals"
-  "renderhive/logger"
-  "renderhive/node"
-  "renderhive/hedera"
-  "renderhive/ipfs"
-  "renderhive/webapp"
-  "renderhive/cli"
+	// external
+
+	// internal
+	"renderhive/cli"
+	. "renderhive/globals"
+	"renderhive/hedera"
+	"renderhive/ipfs"
+	"renderhive/logger"
+	"renderhive/node"
+	"renderhive/webapp"
 )
 
 // Data required to manage the nodes
 type AppManager struct {
 
-  // Managers
-  LoggerManager *logger.PackageManager
-  NodeManager *node.PackageManager
-  HederaManager *hedera.PackageManager
-  IPFSManager *ipfs.PackageManager
-  WebAppManager *webapp.PackageManager
-  CLIManager *cli.PackageManager
+	// Managers
+	LoggerManager *logger.PackageManager
+	NodeManager   *node.PackageManager
+	HederaManager *hedera.PackageManager
+	IPFSManager   *ipfs.PackageManager
+	WebAppManager *webapp.PackageManager
+	CLIManager    *cli.PackageManager
 
-  // Signaling channels
-  Quit chan bool
-  WG sync.WaitGroup
-
+	// Signaling channels
+	Quit chan bool
+	WG   sync.WaitGroup
 }
 
 // FUNCTIONS
 // #############################################################################
 // Initialize the Renderhive Service App session
-func (service *AppManager) Init() (error) {
-    var err error
+func (service *AppManager) Init() error {
+	var err error
 
-    // INITIALIZE LOGGER
-    // *************************************************************************
-    // initialize the logger manager
-    service.LoggerManager = &logger.Manager
-    err = service.LoggerManager.Init()
-    if err != nil {
-      return err
-    }
+	// INITIALIZE LOGGER
+	// *************************************************************************
+	// initialize the logger manager
+	service.LoggerManager = &logger.Manager
+	err = service.LoggerManager.Init()
+	if err != nil {
+		return err
+	}
 
-    // INITIALIZE INTERNAL MANAGERS
-    // *************************************************************************
-    // log the start of the renderhive service
-    logger.Manager.Main.Info().Msg("Starting Renderhive service app.")
+	// INITIALIZE INTERNAL MANAGERS
+	// *************************************************************************
+	// log the start of the renderhive service
+	logger.Manager.Main.Info().Msg("Starting Renderhive service app.")
 
-    // log debug event
-    logger.Manager.Package["logger"].Debug().Msg("Initialized the logger manager.")
-    logger.Manager.Package["logger"].Debug().Msg(fmt.Sprintf(" [#] The log file is located at '%s'", logger.Manager.FileWriter.Name()))
+	// log debug event
+	logger.Manager.Package["logger"].Debug().Msg("Initialized the logger manager.")
+	logger.Manager.Package["logger"].Debug().Msg(fmt.Sprintf(" [#] The log file is located at '%s'", logger.Manager.FileWriter.Name()))
 
-    // initialize the node manager
-    service.NodeManager = &node.Manager
-    err = service.NodeManager.Init()
-    if err != nil {
-      return err
-    }
+	// initialize the node manager
+	service.NodeManager = &node.Manager
+	err = service.NodeManager.Init()
+	if err != nil {
+		return err
+	}
 
-    // initialize the Hedera manager
-    service.HederaManager = &hedera.Manager
-    err = service.HederaManager.Init(hedera.NETWORK_TYPE_TESTNET, "hedera/testnet.env")
-    if err != nil {
-      return err
-    }
-    logger.Manager.Main.Info().Msg("Loaded the account details from the environment file.")
-    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Public key: %s", service.HederaManager.Operator.PublicKey))
-    logger.Manager.Main.Info().Msg(fmt.Sprintf("Mirror node: %v", service.HederaManager.MirrorNode.URL))
+	// initialize the Hedera manager
+	service.HederaManager = &hedera.Manager
+	err = service.HederaManager.Init(hedera.NETWORK_TYPE_TESTNET)
+	if err != nil {
+		return err
+	}
 
-    // initialize the IPFS manager
-    service.IPFSManager = &ipfs.Manager
-    err = service.IPFSManager.Init()
-    if err != nil {
-      return err
-    }
+	// initialize the IPFS manager
+	service.IPFSManager = &ipfs.Manager
+	err = service.IPFSManager.Init()
+	if err != nil {
+		return err
+	}
 
-    // initialize the web app manager
-    service.WebAppManager = &webapp.Manager
-    err = service.WebAppManager.Init()
-    if err != nil {
-      return err
-    }
+	// initialize the web app manager
+	service.WebAppManager = &webapp.Manager
+	err = service.WebAppManager.Init()
+	if err != nil {
+		return err
+	}
 
-    // initialize the command line interfae manager
-    service.CLIManager = &cli.Manager
-    err = service.CLIManager.Init()
-    if err != nil {
-      return err
-    }
+	// initialize the command line interfae manager
+	service.CLIManager = &cli.Manager
+	err = service.CLIManager.Init()
+	if err != nil {
+		return err
+	}
 
-    // READ HCS TOPIC INFORMATION & SUBSCRIBE
-    // *************************************************************************
-    // render job queue
-    if RENDERHIVE_TESTNET_RENDER_JOB_QUEUE != "" {
-        service.NodeManager.JobQueueTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_RENDER_JOB_QUEUE)
-        if err != nil {
-          return err
-        }
-        err = service.HederaManager.TopicSubscribe(service.NodeManager.JobQueueTopic, time.Unix(0, 0), service.NodeManager.JobQueueMessageCallback())
-        if err != nil {
-          return err
-        }
-    }
+	// HIVE CYCLE
+	// *************************************************************************
+	if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION != "" {
 
-    // hive cycle synchronization topic
-    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION != "" {
-        service.NodeManager.HiveCycleSynchronizationTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION)
-        if err != nil {
-          return err
-        }
-        err = service.HederaManager.TopicSubscribe(service.NodeManager.HiveCycleSynchronizationTopic, time.Unix(0, 0), service.NodeManager.HiveCycle.MessageCallback())
-        if err != nil {
-          return err
-        }
-    }
+		go func() {
 
-    // hive cycle application topic
-    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION != "" {
-        service.NodeManager.HiveCycleApplicationTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION)
-        if err != nil {
-          return err
-        }
-        err = service.HederaManager.TopicSubscribe(service.NodeManager.HiveCycleApplicationTopic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+			// add call to wait group
+			service.WG.Add(1)
 
-          logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+			// loop forever
+			for {
 
-        })
-        if err != nil {
-          return err
-        }
-    }
+				select {
 
-    // hive cycle validation topic
-    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION != "" {
-        service.NodeManager.HiveCycleValidationTopic, err = service.HederaManager.TopicInfoFromString(RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION)
-        if err != nil {
-          return err
-        }
-        err = service.HederaManager.TopicSubscribe(service.NodeManager.HiveCycleValidationTopic, time.Unix(0, 0), func(message hederasdk.TopicMessage) {
+				// app is quitting
+				case <-service.Quit:
+					logger.Manager.Main.Debug().Msg("Stopped hive cycle synchronization loop.")
+					service.WG.Done()
+					return
 
-          logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf("Message received: %s", string(message.Contents)))
+				// app is running
+				default:
 
-        })
-        if err != nil {
-          return err
-        }
-    }
+					// synchronize the hive cycle
+					err := service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
+					if err != nil {
+						logger.Manager.Main.Error().Msg(fmt.Sprintf("Error in hive cycle synchronization: %v", err))
+					}
 
+					// wait for 100 milliseconds to next check
+					time.Sleep(100 * time.Millisecond)
 
+				}
+			}
+		}()
 
-    // HIVE CYCLE
-    // *************************************************************************
-    if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION != "" {
-        // synchronize with the render hive
-        service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
+	}
 
-        go func() {
+	// STATE CHECKS
+	// *************************************************************************
+	// perform important state checks
+	// ...
 
-          // add call to wait group
-          service.WG.Add(1)
+	// LOG BASIC APP INFORMATION
+	// *************************************************************************
 
-          // loop forever
-          for {
+	// log some informations about the used constants
+	logger.Manager.Main.Info().Msg("This service app instance relies on the following smart contract(s) and HCS topic(s):")
+	// the renderhive smart contract this instance calls
+	logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Smart Contract: %s", RENDERHIVE_TESTNET_SMART_CONTRACT))
+	// Hive cycle
+	logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Synchronization Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION))
+	logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Application Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION))
+	logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Validation Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
+	// Render jobs
+	logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Render Job Topic: %s", RENDERHIVE_TESTNET_RENDER_JOB_QUEUE))
 
-            select {
+	return nil
 
-            // app is quitting
-            case <-service.Quit:
-              logger.Manager.Main.Debug().Msg("Stopped hive cycle synchronization loop.")
-              service.WG.Done()
-              return
-
-            // app is running
-            default:
-
-              // synchronize the hive cycle
-              service.NodeManager.HiveCycle.Synchronize(service.HederaManager)
-
-              // wait for 100 milliseconds to next check
-              time.Sleep(100 * time.Millisecond)
-
-            }
-          }
-        }()
-    }
-
-
-    // STATE CHECKS
-    // *************************************************************************
-    // perform important state checks
-    // ...
-
-
-
-
-    // LOG BASIC APP INFORMATION
-    // *************************************************************************
-
-    // log some informations about the used constants
-    logger.Manager.Main.Info().Msg("This service app instance relies on the following smart contract(s) and HCS topic(s):")
-    // the renderhive smart contract this instance calls
-    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Smart Contract: %s", RENDERHIVE_TESTNET_SMART_CONTRACT))
-    // Hive cycle
-    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Synchronization Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION))
-    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Application Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_APPLICATION))
-    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Hive Cycle Validation Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
-    // Render jobs
-    logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Render Job Topic: %s", RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_VALIDATION))
-
-
-    return nil
 }
 
 // Deinitialize the Renderhive Service App session
-func (service *AppManager) DeInit() (error) {
-    var err error
+func (service *AppManager) DeInit() error {
+	var err error
 
-    // log event
-    logger.Manager.Main.Info().Msg("Stopping Renderhive service app ... ")
+	// log event
+	logger.Manager.Main.Info().Msg("Stopping Renderhive service app ... ")
 
-    // send the Quit signal to all concurrent go functions
-    service.Quit <- true
+	// send the Quit signal to all concurrent go functions
+	service.Quit <- true
 
-    // log event
-    logger.Manager.Main.Info().Msg("Waiting for background operations to terminate ... ")
-    service.WG.Wait()
+	// log event
+	logger.Manager.Main.Info().Msg("Waiting for background operations to terminate ... ")
+	service.WG.Wait()
 
-    // DEINITIALIZE INTERNAL MANAGERS
-    // *************************************************************************
+	// DEINITIALIZE INTERNAL MANAGERS
+	// *************************************************************************
 
-    // deinitialize the commmand line interface manager
-    err = service.CLIManager.DeInit()
-    if err != nil {
-      return err
-    }
+	// deinitialize the commmand line interface manager
+	err = service.CLIManager.DeInit()
+	if err != nil {
+		return err
+	}
 
-    // deinitialize the web app manager
-    err = service.WebAppManager.DeInit()
-    if err != nil {
-      return err
-    }
+	// deinitialize the web app manager
+	err = service.WebAppManager.DeInit()
+	if err != nil {
+		return err
+	}
 
-    // deinitialize the IPFS manager
-    service.IPFSManager.DeInit()
-    if err != nil {
-      return err
-    }
+	// deinitialize the IPFS manager
+	service.IPFSManager.DeInit()
+	if err != nil {
+		return err
+	}
 
-    // deinitialize the Hedera manager
-    err = service.HederaManager.DeInit()
-    if err != nil {
-      return err
-    }
+	// deinitialize the Hedera manager
+	err = service.HederaManager.DeInit()
+	if err != nil {
+		return err
+	}
 
-    // deinitialize the node manager
-    err = service.NodeManager.DeInit()
-    if err != nil {
-      return err
-    }
+	// deinitialize the node manager
+	err = service.NodeManager.DeInit()
+	if err != nil {
+		return err
+	}
 
+	// LOG BASIC APP INFORMATION
+	// *************************************************************************
 
+	logger.Manager.Main.Info().Msg("Renderhive service app stopped.")
 
-    // LOG BASIC APP INFORMATION
-    // *************************************************************************
-
-    logger.Manager.Main.Info().Msg("Renderhive service app stopped.")
-
-    return err
+	return err
 
 }

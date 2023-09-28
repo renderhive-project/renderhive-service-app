@@ -58,7 +58,13 @@ func init() {
 	// initialize service app
 	err = ServiceApp.Init()
 	if err != nil {
-		fmt.Println(err)
+		if ServiceApp.LoggerManager != nil {
+			logger.Manager.Main.Error().Msg(fmt.Sprintf("Initialization error: %v", err.Error()))
+		} else {
+			fmt.Println("Initialization error:", err)
+		}
+
+		// exit
 		os.Exit(1)
 	}
 
@@ -99,7 +105,7 @@ func main() {
 		} else {
 
 			// log information
-			logger.Manager.Package["webapp"].Error().Msg(fmt.Sprintf("Error starting server:", err))
+			logger.Manager.Package["webapp"].Error().Msg(fmt.Sprintf("Error starting server: %v", err))
 
 		}
 

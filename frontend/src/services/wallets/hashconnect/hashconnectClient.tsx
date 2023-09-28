@@ -113,8 +113,8 @@ const hashConnectInitPromise = new Promise(async (resolve) => {
       wallet can display what app is requesting access from the user
   */
   const appMetadata: HashConnectTypes.AppMetadata = {
-    name: "Hedera CRA Template",
-    description: "Hedera CRA Template",
+    name: "Renderhive",
+    description: "The first blockchain-based crowdrender network for Blender",
     icon: window.location.origin + "/logo192.png"
   };
   const initResult = await hashConnect.init(appMetadata, hederaNetwork, true)

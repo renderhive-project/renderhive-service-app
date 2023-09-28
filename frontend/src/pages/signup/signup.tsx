@@ -4,15 +4,13 @@ import FormContainer from '../../components/form/FormContainer';
 import InputField from "../../components/form/InputField";
 import MultiStepForm, { FormStep } from "../../components/form/MultistepForm";
 import { Box, Button, Grid, Link, Typography } from "@mui/material";
-import { Stack } from "@mui/system";
 
 // Web3 services
 import { useWalletInterface } from '../../services/wallets/useWalletInterface';
-import { WalletSelectionDialog } from '../../components/wallets/WalletSelectionDialog';
+import { WalletSelectionDialog } from '../../components/wallets/SignInWalletSelector';
 
 // images & icons
 import RenderhiveLogo from "../../assets/renderhive-logo.svg";
-import { TRUE } from 'sass';
 
 // Validation schema for email adresses
 const validationSchema_PersonForm = yup.object({

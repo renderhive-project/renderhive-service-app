@@ -36,13 +36,14 @@ require github.com/ipfs/kubo v0.18.1
 
 // General
 require (
-	github.com/gorilla/rpc v1.2.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
+	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/rpc v1.2.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-libipfs v0.2.0
 	github.com/ipfs/interface-go-ipfs-core v0.8.2
 	github.com/jbenet/goprocess v0.1.4
-	github.com/joho/godotenv v1.4.0
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/libp2p/go-libp2p v0.24.2
 	github.com/mattn/go-shellwords v1.0.12

@@ -30,20 +30,29 @@ be served locally as a web app. It is basically a JSON RPC client-server model.
 import (
 
 	// standard
+
+	"bytes"
+	"context"
+	"crypto/ed25519"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
+	"time"
 
 	// "os"
 	// "time"
 
 	// external
-	// hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 	"net"
 	"net/http"
 
+	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
-	"github.com/gorilla/rpc/v2/json"
+	"github.com/gorilla/rpc/v2/json2"
 
 	"github.com/spf13/cobra"
 
@@ -59,6 +68,7 @@ type PackageManager struct {
 	// JSON RPC
 	// General
 	Mutex    sync.Mutex
+	Server   http.Server
 	Listener net.Listener
 	Port     string
 
@@ -66,8 +76,18 @@ type PackageManager struct {
 	PingService     *PingService
 	OperatorService *OperatorService
 
-	// Placeholder
-	Placeholder string
+	// Session data
+	SessionActive bool
+	SessionToken  struct {
+		SignedString string
+		ExpiresAt    time.Time
+		PublicKey    ed25519.PublicKey
+		PrivateKey   ed25519.PrivateKey
+		Update       bool
+	}
+	SessionCookie struct {
+		Name string
+	}
 
 	// Command line interface
 	Command      *cobra.Command
@@ -107,7 +127,7 @@ func (webappm *PackageManager) DeInit() error {
 
 }
 
-// Start the JSON RPC server
+// Start the JSON-RPC server
 func (webappm *PackageManager) StartServer(port string, certFile string, keyFile string) error {
 	var err error
 
@@ -115,7 +135,7 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 	s := rpc.NewServer()
 
 	// set JSON codec
-	s.RegisterCodec(json.NewCodec(), "application/json")
+	s.RegisterCodec(json2.NewCodec(), "application/json")
 
 	// register all services
 	err = s.RegisterService(webappm.PingService, "PingService")
@@ -127,16 +147,179 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 		return err
 	}
 
-	// HTTP handler
-	http.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
+	// Create a new router
+	router := mux.NewRouter()
 
+	// Apply middleware to the router
+	router.Use(webappm.corsMiddleware)
+	router.Use(webappm.authenticationMiddleware)
+
+	// Handle OPTIONS requests on the JSON-RPC route
+	router.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
 		// log event
-		logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf("Received request: %s %s", r.Method, r.URL.Path))
+		logger.Manager.Package["webapp"].Debug().Msg("Handling the OPTIONS Request")
+
+		// Respond to the OPTIONS request with CORS headers and 200 OK
+		w.WriteHeader(http.StatusOK)
+		return
+
+	}).Methods("OPTIONS")
+
+	// Define GET method separately for the JSON-RPC route
+	router.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
+		// log event
+		logger.Manager.Package["webapp"].Debug().Msg("Handling the GET Request")
+		w.Write([]byte("JSON-RPC server active. Please use POST requests for RPC calls."))
+	}).Methods("GET")
+
+	// Handle POST requests on the JSON-RPC route
+	router.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
+		// log event
+		logger.Manager.Package["webapp"].Debug().Msg("Handling the POST Request")
+		// Create a new response writer that buffers the response
+		// NOTE: We need this, so that we can write the session cookie after the SignIn request
+		bw := NewBufferedResponseWriter(w)
+
+		// Call JSON-RPC method
+		s.ServeHTTP(bw, r)
+
+		// if the JWT should be updated
+		if webappm.SessionToken.SignedString != "" && Manager.SessionToken.Update {
+
+			// log event
+			logger.Manager.Package["webapp"].Debug().Msg("Setting HttpOnly cookie ...")
+			logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf(" [#] Name: ", webappm.SessionCookie.Name))
+			logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf(" [#] String: ", webappm.SessionToken.SignedString))
+
+			// set the cookie, which will expire at the same time as the token
+			http.SetCookie(w, &http.Cookie{
+				Name: webappm.SessionCookie.Name,
+				//Domain:   "localhost",
+				Path:     "/",
+				Value:    webappm.SessionToken.SignedString,
+				Expires:  webappm.SessionToken.ExpiresAt,
+				HttpOnly: true,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			// reset update status
+			webappm.SessionToken.Update = false
+
+			// log event
+			logger.Manager.Package["webapp"].Info().Msg("Cookie set and user sucessfully logged in.")
+
+		}
+
+		// Write buffered response to the original response writer
+		bw.WriteBufferedResponse()
+
+	}).Methods("POST")
+
+	// Setting up HTTPS Server configuration
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+	webappm.Server = http.Server{
+		Addr:      ":" + port,
+		TLSConfig: tlsConfig,
+		Handler:   router,
+	}
+
+	// log event
+	logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf("Server starting on port %v ...", webappm.Port))
+
+	// Start the server
+	err = webappm.Server.ListenAndServeTLS(certFile, keyFile)
+	if err != nil {
+		return err
+	}
+
+	return err
+
+}
+
+// Stop the JSON RPC server
+func (webappm *PackageManager) StopServer() {
+
+	// log event
+	logger.Manager.Package["webapp"].Debug().Msg("Attempting to stop the server.")
+
+	if webappm.Listener != nil {
+		// Create a context with a timeout to allow ongoing requests to complete
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		// Attempt to gracefully shutdown the server
+		if err := webappm.Server.Shutdown(ctx); err != nil {
+			// If the shutdown fails, log the error and force close the listener
+			logger.Manager.Package["webapp"].Error().Msgf("Server shutdown failed: %+v", err)
+			webappm.Listener.Close()
+		}
+	}
+
+	// log event
+	logger.Manager.Package["webapp"].Debug().Msg("Server was stopped.")
+
+}
+
+// WEBAPP BUFFEREDRESPONSEWRITER
+// #############################################################################
+type BufferedResponseWriter struct {
+	original http.ResponseWriter
+	code     int
+	body     *bytes.Buffer
+	header   http.Header
+}
+
+func NewBufferedResponseWriter(original http.ResponseWriter) *BufferedResponseWriter {
+	return &BufferedResponseWriter{
+		original: original,
+		code:     http.StatusOK,
+		body:     &bytes.Buffer{},
+		header:   make(http.Header),
+	}
+}
+
+func (b *BufferedResponseWriter) Header() http.Header {
+	return b.header
+}
+
+func (b *BufferedResponseWriter) WriteHeader(code int) {
+	b.code = code
+}
+
+func (b *BufferedResponseWriter) Write(p []byte) (int, error) {
+	return b.body.Write(p)
+}
+
+func (b *BufferedResponseWriter) WriteBufferedResponse() {
+	// Write headers
+	for key, values := range b.header {
+		for _, value := range values {
+			b.original.Header().Add(key, value)
+		}
+	}
+
+	// Write status code
+	b.original.WriteHeader(b.code)
+
+	// Write body
+	b.original.Write(b.body.Bytes())
+}
+
+// WEBAPP MIDDLEWARE
+// #############################################################################
+
+// CORS middleware handler for the router
+func (webappm *PackageManager) corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", "https://localhost:5173")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, withCredentials")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// Handling CORS preflight request
 		if r.Method == "OPTIONS" {
@@ -147,77 +330,89 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 			return
 		}
 
-		// in case someone opens it in a browser
-		if r.Method == http.MethodGet {
-			w.Write([]byte("JSON-RPC server active. Please use POST requests for RPC calls."))
-			return
-		}
-
-		// Handling RPC POST request
-		if r.Method == "POST" {
-			logger.Manager.Package["webapp"].Debug().Msg("Handling the POST Request")
-			s.ServeHTTP(w, r)
-			return
-		}
-
+		next.ServeHTTP(w, r)
 	})
-
-	// Setting up HTTPS
-	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS12, // Ensure modern TLS version
-	}
-	server := &http.Server{
-		Addr:      ":" + port,
-		TLSConfig: tlsConfig,
-	}
-
-	// log event
-	logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf("Server starting on port %v ...", webappm.Port))
-
-	// Start the server
-	err = server.ListenAndServeTLS(certFile, keyFile)
-	if err != nil {
-		return err
-	}
-
-	// // start the tcp server
-	// webappm.Listener, err = tls.Listen("tcp", ":"+, config)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer webappm.StopServer()
-
-	// // store the port
-	// webappm.Port = port
-
-	// // listen for incoming connections
-	// for {
-	// 	conn, err := webappm.Listener.Accept()
-	// 	if err != nil {
-	// 		logger.Manager.Package["webapp"].Error().Msg(fmt.Sprint("Connection error:", err))
-	// 		continue
-	// 	}
-	// 	go jsonrpc.ServeConn(conn)
-
-	// 	// log event
-	// 	logger.Manager.Package["webapp"].Info().Msg(fmt.Sprintf(" [#] Connection between %v and %v established ...", conn.LocalAddr().String(), conn.RemoteAddr().String()))
-
-	// }
-
-	return err
-
 }
 
-// Stop the JSON RPC server
-func (webappm *PackageManager) StopServer() {
+// Authentication middleware handler for the router
+func (webappm *PackageManager) authenticationMiddleware(next http.Handler) http.Handler {
 
-	// if the server is runnig
-	if webappm.Listener != nil {
-		webappm.Listener.Close()
+	// define a set of allowed methods that do not require authentication
+	whitelistMethods := map[string]bool{
+		"OperatorService.GetSignInPayload": true,
+		"OperatorService.GetInfo":          true,
+		"OperatorService.SignIn":           true,
 	}
 
-	// log event
-	logger.Manager.Package["webapp"].Debug().Msg("Server was stopped.")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// get the method name from the request
+		method, err := webappm.getRpcMethod(w, r)
+		if err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		if _, isAllowed := whitelistMethods[method]; isAllowed {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// VERIFY THE JWT
+		// Extract JWT session token from HttpOnly cookie
+		cookie, err := r.Cookie(webappm.SessionCookie.Name)
+		if err != nil {
+
+			// No cookie, return Unauthorized response
+			http.Error(w, fmt.Sprintf("Error: %v", err), http.StatusUnauthorized)
+			return
+		}
+
+		// Parse and Verify the JWT seesion token
+		tokenString := cookie.Value
+		_, err = jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			// Validate the algorithm and return the key for verification
+			if token.Method != jwt.SigningMethodEdDSA {
+				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			}
+
+			return webappm.SessionToken.PublicKey, nil
+		}, jwt.WithValidMethods([]string{"EdDSA"}))
+		if err != nil {
+			// Invalid token, return Unauthorized response
+			http.Error(w, fmt.Sprintf("Error: %v", err), http.StatusUnauthorized)
+			return
+		}
+
+		// Call the next handler in the chain
+		next.ServeHTTP(w, r)
+	})
+}
+
+// get the JSON-RPC method name from the HTTP request
+func (webappm *PackageManager) getRpcMethod(w http.ResponseWriter, r *http.Request) (string, error) {
+
+	// Get the name of the requested JSON-RPC method
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return "", err
+	}
+	r.Body.Close()                                    //  Must close
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // Replace the body
+
+	var requestBody map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return "", err
+	}
+
+	method, ok := requestBody["method"].(string)
+	if !ok {
+		http.Error(w, "Invalid method", http.StatusBadRequest)
+		return "", err
+	}
+
+	return method, nil
 
 }
 

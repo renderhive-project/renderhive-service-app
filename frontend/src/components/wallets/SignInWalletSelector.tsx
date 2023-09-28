@@ -1,7 +1,9 @@
+
 import { Button, Dialog, Stack } from "@mui/material";
 import { connectToBladeWallet } from "../../services/wallets/blade/bladeClient";
 import { hashConnect } from "../../services/wallets/hashconnect/hashconnectClient";
 import { connectToMetamask } from "../../services/wallets/metamask/metamaskClient";
+
 import HashPackLogo from "../../assets/hashpack-logo.svg";
 import MetamaskLogo from "../../assets/metamask-logo.svg";
 
@@ -15,11 +17,12 @@ export const WalletSelector = () => {
 
   return (
     <Stack display="flex" flexDirection="column" width="100%" p={0} gap={1}>
+
       <Button
         fullWidth
         variant="outlined"
-        onClick={() => {
-          hashConnect.connectToLocalWallet();
+        onClick={async () => {
+          hashConnect.connectToLocalWallet()
         }}
       >
         <img
@@ -31,8 +34,10 @@ export const WalletSelector = () => {
           }}
         />
         HashPack
+        
       </Button>
       <Button
+        disabled
         fullWidth
         variant="outlined"
         onClick={() => {
@@ -42,6 +47,7 @@ export const WalletSelector = () => {
         Blade
       </Button>
       <Button
+        disabled
         fullWidth
         variant="outlined"
         onClick={() => {

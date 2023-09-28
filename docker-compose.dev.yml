@@ -25,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile.dev
+    user: "renderhive"
     ports:
       # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
       #       If not specified, other machines could access the web app (if the firewall rules would allow for that)
@@ -33,11 +34,14 @@ services:
       - ./backend/src:/app
       - ./config:/app/config
       - ./data:/app/data
+    networks:
+      - app-network
 
   frontend_dev:
     build:
       context: .
       dockerfile: frontend/Dockerfile.dev
+    user: "renderhive"
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
@@ -49,3 +53,9 @@ services:
       - NODE_ENV=development
     depends_on:
       - backend_dev
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

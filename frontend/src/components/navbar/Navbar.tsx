@@ -1,7 +1,13 @@
+import { appConfig } from "../../config";
 import { useState } from 'react';
+import { useSession } from '../../contexts/SessionContext';
 import { useWalletInterface } from '../../services/wallets/useWalletInterface';
-import { AppBar, Avatar, Badge, Box, Divider, IconButton, Menu, MenuItem, Toolbar, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
+
+// components
+import { AppBar, Avatar, Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Toolbar, Typography } from '@mui/material';
 
 // icons
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -17,6 +23,7 @@ const NavBar = () => {
   const [userMenu, setUserMenu] = useState(null);
   const {accountId, walletInterface} = useWalletInterface();
   const navigate = useNavigate();
+  const { signedIn, setSignedIn, operatorInfo, setOperatorInfo, nodeInfo, setNodeInfo } = useSession();
 
   const handleMenuOpen = (event) => {
     setUserMenu(event.currentTarget);
@@ -24,11 +31,49 @@ const NavBar = () => {
   
   const handleMenuClose = () => {
     setUserMenu(null);
+  };
+
+  // TODO: Implement a OperatorService.SignOut method on the JSON-RPC, which informs the
+  //       backend about the sign out process
+  const handleMenuLogout = async () => {
+    try {
+
+        // Request payload from backend in a first RPC request
+        const response_signout = await axios.post(appConfig.api.jsonrpc.url, {
+          jsonrpc: '2.0',
+          method: 'OperatorService.SignOut',
+          params: [{}],
+          id: uuidv4()
+        }, {
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          withCredentials: true, // This will include cookies in the request
+        });
+
+        // if signout succeeded
+        if (response_signout.data && response_signout.data.result) {
+
+            // sign out
+            setSignedIn(false)
+            console.log(response_signout.data.result.Message);
+
+        } else {
+            console.error("Unexpected response format:", response_signout.data);
+        }
+        
+    } catch (error) {
+        console.error('Error signing out:', error);
+    }
 
     if (walletInterface) {
-      walletInterface.disconnect();
-      navigate("/signin")
+        // OPTIONAL: disconnect from the operator wallet?
+        // walletInterface.disconnect();
     }
+
+    // close the menu
+    handleMenuClose()
+    navigate("/signin");
   };
 
   return (
@@ -75,8 +120,7 @@ const NavBar = () => {
               onClose={handleMenuClose}
             >
               <MenuItem onClick={() => {
-                handleMenuClose();
-                // Your logout logic here
+                handleMenuLogout();
               }}>
                 Logout
               </MenuItem>

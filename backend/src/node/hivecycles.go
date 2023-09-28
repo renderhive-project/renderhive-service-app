@@ -121,6 +121,16 @@ func (hc *HiveCycle) Synchronize(hm *hedera.PackageManager) error {
 	var err error
 	var transactions *[]hedera.TransactionInfo
 
+	// if a operator is NOT set, the app has the node account data not yet available
+	if hm.NetworkClient.GetOperatorAccountID().IsZero() {
+		return nil // errors.New("Node not signed in.")
+	}
+
+	// if the hive cycle configuration was NOT obtained yet
+	if len(hc.Configurations) == 0 {
+		return nil // errors.New("Hive cycle configuration unknown.")
+	}
+
 	// Only synchronize with the mirror node once per hour
 	// NOTE: We use a local time between the synchronizations to lower the amount
 	//       of mirror node calls

@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider, Outlet, Navigate, useLocation } from "react-router-dom";
-import { Box, CircularProgress, CssBaseline, Toolbar } from "@mui/material";
+import { Box, CircularProgress, CssBaseline, Toolbar, Typography } from "@mui/material";
 import { useWalletInterface } from "./services/wallets/useWalletInterface";
 import { useLoading } from "./contexts/LoaderContext";
 
@@ -14,15 +14,19 @@ import SignIn from "./pages/signin/signin";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Users from "./pages/users/Users";
 import Products from "./pages/products/Products";
-import RPCTest from "./pages/rpctest/RPCTest";
+import { useContext } from "react";
+import { SessionContext, useSession } from "./contexts/SessionContext";
 
 export default function AppRouter() {
+  const { signedIn, operatorInfo } = useSession();
   const { accountId } = useWalletInterface();
   const { isLoading, setLoading } = useLoading();
+  // console.log("Signed in:", signedIn)
+  // console.log(operatorInfo)
 
   const Layout = () => {
     const location = useLocation();
-    console.log(location.pathname)
+    // console.log(location.pathname)
 
     return (
       <Box sx={{ display: 'flex' }}>
@@ -46,7 +50,10 @@ export default function AppRouter() {
                 <CircularProgress />
               </Box>
             ) : (
-              <Outlet />
+              <div>
+                <Typography variant="h1">{signedIn}</Typography>
+                <Outlet />
+              </div>
             )}
             {/* </QueryClientProvider> */}
           </Box>
@@ -63,27 +70,27 @@ export default function AppRouter() {
       children: [
         {
           path: "/",
-          element: (accountId ? <Dashboard /> : <Navigate to="/signin" replace />),
+          element: ((accountId && signedIn) ? <Dashboard /> : <Navigate to="/signin" replace />),
         },
         {
           path: "/users",
-          element: (accountId ? <Users /> : <Navigate to="/signin" replace />),
+          element: ((accountId && signedIn) ? <Users /> : <Navigate to="/signin" replace />),
         },
         {
           path: "/products",
-          element: (accountId ? <Products /> : <Navigate to="/signin" replace />),
+          element: ((accountId && signedIn) ? <Products /> : <Navigate to="/signin" replace />),
         },
         {
           path: "/signup",
-          element: (accountId ? <Navigate to="/" replace /> : <SignUp />),
+          element: ((accountId && signedIn) ? <Navigate to="/" replace /> : <SignUp />),
         },
         {
           path: "/signin",
-          element: (accountId ? <Navigate to="/" replace /> : <SignIn />),
+          element: ((accountId && signedIn) ? <Navigate to="/" replace /> : <SignIn />),
         },
         {
           path: "*",
-          element: (accountId ? <Navigate to="/" replace /> : <Navigate to="/signin" replace />),
+          element: ((accountId && signedIn) ? <Navigate to="/" replace /> : <Navigate to="/signin" replace />),
         },
         // {
         //   path: "/users/:id",
@@ -94,10 +101,6 @@ export default function AppRouter() {
         //   element: <Product />,
         // },
       ],
-    },
-    {
-      path: "/test",
-      element: <RPCTest />,
     },
   ]);
 

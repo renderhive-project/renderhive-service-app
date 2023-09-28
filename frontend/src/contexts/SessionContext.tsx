@@ -1,6 +1,9 @@
-import { createContext, useEffect, useState } from "react";
-import axios from 'axios';
+import { createContext, useContext, useEffect, useState } from "react";
 import { appConfig } from "../config";
+import { useWalletInterface } from "../services/wallets/useWalletInterface";
+
+import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 // define types we need
 type OperatorInfo = {
@@ -10,11 +13,12 @@ type OperatorInfo = {
 }
 type NodeInfo = {
     accountId: string;
-    nodename: string;
-    balance: string;
+    alias: string;
 };
 
 type SessionContextType = {
+    signedIn: boolean,
+    setSignedIn: (newValue: boolean) => void,
     operatorInfo: OperatorInfo,
     setOperatorInfo: (newValue: OperatorInfo) => void; // Define the type for newValue
     nodeInfo: NodeInfo,
@@ -22,6 +26,8 @@ type SessionContextType = {
 };
 
 const defaultValue: SessionContextType = {
+    signedIn: false,
+    setSignedIn: (newValue: boolean) => { },
     operatorInfo: {
         accountId: '',
         username: '',
@@ -30,76 +36,128 @@ const defaultValue: SessionContextType = {
     setOperatorInfo: (newValue: OperatorInfo) => { },
     nodeInfo: {
         accountId: '',
-        nodename: '',
-        balance: ''
+        alias: '',
     },
     setNodeInfo: (newValue: NodeInfo) => { },
 }
 
-const SessionContext = createContext<SessionContextType>(defaultValue);
+export const SessionContext = createContext<SessionContextType>(defaultValue);
+
+export const useSession = () => {
+  const context = useContext(SessionContext);
+  if (!context) throw new Error("useSession must be used within a SessionProvider");
+  return context;
+};
 
 export const SessionContextProvider = ({ children }) => {
-    const [operatorInfo, setOperatorInfo] = useState(defaultValue.operatorInfo);
-    const [nodeInfo, setNodeInfo] = useState(defaultValue.nodeInfo);
+  const {accountId, walletInterface} = useWalletInterface();
+  const [signedIn, setSignedIn] = useState(defaultValue.signedIn);
+  const [operatorInfo, setOperatorInfo] = useState(defaultValue.operatorInfo);
+  const [nodeInfo, setNodeInfo] = useState(defaultValue.nodeInfo);
 
-    const contextValue = {
-        operatorInfo,
-        setOperatorInfo,
-        nodeInfo,
-        setNodeInfo,
+  // get info about the operator and the node
+  useEffect(() => {
+
+    const fetchInfo = async () => {
+      try {
+
+        // Request basic node infos
+        const response = await axios.post(appConfig.api.jsonrpc.url, {
+          jsonrpc: '2.0',
+          method: 'OperatorService.GetInfo',
+          params: [{}],
+          id: uuidv4()
+        }, {
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          withCredentials: true, // This will include cookies in the request
+        })
+
+        // Request signing of the payload from the wallet app
+        if (response.data && response.data.result) {
+            setOperatorInfo({
+              username: response.data.result.Username,
+              email: response.data.result.UserEmail,
+              accountId: response.data.result.UserAccount,
+            })
+            setNodeInfo({
+              alias: response.data.result.NodeAlias,
+              accountId: response.data.result.NodeAccount,
+            })
+
+        } else {
+            //setErrorMessage('Unexpected server response.');
+            console.error("Unexpected response format:", response.data);
+        }
+
+          
+      } catch (error) {
+          console.error('Error signing in:', error);
+          //setErrorMessage('Error signing in. Please try again.');
+      }
+    };
+
+    // if the accountId is not empty anymore
+    if (accountId) {
+      fetchInfo();
+    }
+
+  }, [accountId])
+  
+  // get info about the operator and the node
+  useEffect(() => {
+
+    const checkSession = async () => {
+        try {
+
+          // Check the session validity
+          const response = await axios.post(appConfig.api.jsonrpc.url, {
+            jsonrpc: '2.0',
+            method: 'OperatorService.IsSessionValid',
+            params: [{}],
+            id: uuidv4()
+          }, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            withCredentials: true, // This will include cookies in the request
+          })
+
+          // if a response was received
+          if (response.data && response.data.result) {
+              setSignedIn(response.data.result.Valid)
+
+          } else {
+              //setErrorMessage('Unexpected server response.');
+              console.error("Unexpected response format:", response.data);
+              setSignedIn(false)
+          }
+
+            
+        } catch (error) {
+            console.error('Error signing in:', error);
+            //setErrorMessage('Error signing in. Please try again.');
+        }
       };
-  
-    // // fetch session data from the backend
-    // useEffect(() => {
-    //   async function fetchData() {
-    //     try {
-    //         const response = await axios.post(appConfig.api.jsonrpc.url, {
-    //             jsonrpc: '2.0',
-    //             method: 'OperatorService.SignUp',
-    //             params: [{ 
-    //                 Operator: { 
-    //                     Username: "Test", 
-    //                     Email: "Test@domain.io", 
-    //                     AccountID: "0.0.390079" 
-    //                 } 
-    //             }],
-    //             id: 1
-    //         });
 
-    //         if (response.data && response.data.result) {
-    //             // Handle successful response
-    //             setOperatorInfo(response.data.result);
-    //             setErrorMessage(''); // clear any previous error messages
-    //             console.log(response.data.result);
-    //         } else {
-    //             setOperatorInfo(null);
-    //             setErrorMessage('Unexpected server response.');
-    //             console.log("Unexpected response format:", response.data);
-    //         }
+      // if the accountId is not empty anymore
+      checkSession();
 
-    //         // store the session data
-    //         setSessionData(sessionData)
+  }, [])
 
-    //     } catch (error: any) {
-    //         if (error.response && error.response.data && error.response.data.error) {
-    //             // Handle JSON-RPC error sent with an HTTP 400 status code
-    //             setOperatorInfo(null);
-    //             setErrorMessage(error.response.data.error);
-    //         } else {
-    //             // Handle other types of errors
-    //             setOperatorInfo(null);
-    //             setErrorMessage('Failed to connect to the server.');
-    //         }
-    //         console.error("Error calling the API", error);
-    //     }
-    //   }
-  
-    //   fetchData();
-    // }, []);
-  
-    return (
-      <SessionContext.Provider value={contextValue}>
-        {children}
-      </SessionContext.Provider>
-    );
-  };
+  const contextValue = {
+      signedIn,
+      setSignedIn,
+      operatorInfo,
+      setOperatorInfo,
+      nodeInfo,
+      setNodeInfo,
+    };
+
+  return (
+    <SessionContext.Provider value={contextValue}>
+      {children}
+    </SessionContext.Provider>
+  );
+};

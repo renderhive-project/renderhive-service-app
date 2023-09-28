@@ -42,7 +42,10 @@ RUN apk add --update nodejs npm
 RUN npm install -g @web3-storage/w3cli
 
 # Set the working directory inside the container
-WORKDIR /app/
+WORKDIR /app
+
+# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
+RUN addgroup -S docker && adduser -S renderhive -G docker
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/src/renderhive-service /app/renderhive-service
@@ -50,11 +53,15 @@ COPY --from=builder /app/src/renderhive-service /app/renderhive-service
 # create required directories
 RUN mkdir hedera
 RUN mkdir tmp
-RUN mkdir config
-RUN mkdir data
 
 # Copy the testnet.env into the container
 COPY /backend/src/hedera/testnet.env ./hedera/testnet.env
+
+# Assign ownership of the /app directory to the local container user
+RUN chown -R renderhive:docker /app
+
+# Switch to user 'renderhive'
+USER renderhive
 
 # Run the binary
 CMD ["/app/renderhive-service"]
