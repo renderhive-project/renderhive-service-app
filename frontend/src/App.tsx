@@ -1,5 +1,6 @@
 import AppRouter from './AppRouter';
 import { LoadingContextProvider } from './contexts/LoaderContext';
+import { SessionContextProvider } from './contexts/SessionContext';
 import { AllWalletsProvider } from './services/wallets/AllWalletsProvider';
 
 // styles & themes
@@ -15,7 +16,9 @@ function App() {
       <ColorModeContext.Provider value={colorMode}>
         <ThemeProvider theme={theme}>
           <AllWalletsProvider>
-            <AppRouter />
+            <SessionContextProvider>
+              <AppRouter />
+            </SessionContextProvider>
           </AllWalletsProvider>
         </ThemeProvider>
       </ColorModeContext.Provider>

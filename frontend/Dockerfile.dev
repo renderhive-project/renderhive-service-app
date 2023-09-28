@@ -24,9 +24,18 @@ FROM node:18-alpine as builder
 # Set working directory to the source code
 WORKDIR /usr/src/app
 
+# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
+RUN addgroup -S docker && adduser -S renderhive -G docker
+
 # Install dependencies and build static assets
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm install
+
+# Assign ownership of the /app directory to the local container user
+RUN chown -R renderhive:docker /usr/src/app
+
+# Switch to user 'renderhive'
+USER renderhive
 
 # Start the development server
 CMD ["npm", "run", "dev"]

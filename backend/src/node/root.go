@@ -34,41 +34,51 @@ types are:
 import (
 
 	// standard
+
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	// "os"
 	// "time"
 
 	// external
-	// hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+
 	"github.com/spf13/cobra"
 
 	// internal
-	// "renderhive/globals"
+	. "renderhive/globals"
 	"renderhive/hedera"
 	"renderhive/logger"
 )
 
-// User data of the node's owner
-// TODO: add further user data
-type UserData struct {
-	ID           int                    // Renderhive User ID given by the Renderhive Smart Contract
-	Username     string                 // User name of the node operator
-	Email        string                 // Email address of the node operator
-	UserAccount  hedera.HederaAccount   // Hedera account ID of the user's main account
-	NodeAccounts []hedera.HederaAccount // Hedera account IDs of the user's node accounts
-
-}
-
 // Node data of the node running this service app instance
 type NodeData struct {
-	ID         int  // Renderhive Node ID given by the Renderhive Smart Contract
-	ClientNode bool // True, if the node acts as a client node
-	RenderNode bool // True, if the node acts as a render node
+	ID    int    // Renderhive Node ID given by the Renderhive Smart Contract
+	Alias string // A alias name for the node, which makes it human identifiable
 
-	UserData    *UserData
-	NodeAccount *hedera.HederaAccount
+	// Configuration
+	ClientNode    bool // True, if the node acts as a client node
+	RenderNode    bool // True, if the node acts as a render node
+	HederaAccount struct {
+		AccountID string // ID of the node's Hedera account
+		PublicKey string // ID of the node's Hedera account
+	}
+}
+
+// Define the JSON data structure for the node data
+type NodeDataJSON struct {
+	ID            int    `json:"ID"`
+	Alias         string `json:"Alias"`
+	ClientNode    bool   `json:"ClientNode"`
+	RenderNode    bool   `json:"RenderNode"`
+	HederaAccount struct {
+		AccountID string `json:"AccountID"`
+		PublicKey string `json:"PublicKey"`
+	} `json:"HederaAccount"`
 }
 
 // Render data of the node running this service app instance
@@ -127,6 +137,12 @@ func (nm *PackageManager) Init() error {
 	// log information
 	logger.Manager.Package["node"].Info().Msg("Initializing the node manager ...")
 
+	// Read the node configuration
+	err = nm.LoadConfiguration()
+	if err != nil {
+		return err
+	}
+
 	// Initialize the render offer
 	nm.InitRenderOffer()
 
@@ -153,6 +169,75 @@ func (nm *PackageManager) DeInit() error {
 
 	// log event
 	logger.Manager.Package["node"].Debug().Msg("Deinitializing the node manager ...")
+
+	return err
+
+}
+
+// Read the details of the node from the configuration file
+func (nm *PackageManager) ReadNodeData() error {
+	var err error
+	var node NodeDataJSON
+
+	// log event
+	logger.Manager.Package["node"].Debug().Msg(" [#] Reading the node data from the configuration file ...")
+
+	// Open the configuration file
+	file, err := os.Open(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, "node.json"))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Read the file content
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	// get the file content into a structure
+	err = json.Unmarshal(fileData, &node)
+	if err != nil {
+		return err
+	}
+
+	// read the node data into the node manager
+	nm.Node.ID = node.ID
+	nm.Node.Alias = node.Alias
+	nm.Node.ClientNode = node.ClientNode
+	nm.Node.RenderNode = node.RenderNode
+	nm.Node.HederaAccount.AccountID = node.HederaAccount.AccountID
+	nm.Node.HederaAccount.PublicKey = node.HederaAccount.PublicKey
+
+	// log event
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Node ID: %v", nm.Node.ID))
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Alias: %v", nm.Node.Alias))
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Client node: %v", nm.Node.ClientNode))
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Render node: %v", nm.Node.RenderNode))
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Public Key: %v", nm.Node.HederaAccount.PublicKey))
+
+	return err
+
+}
+
+// Load the node configuration from the configuration file
+func (nm *PackageManager) LoadConfiguration() error {
+	var err error
+
+	// log event
+	logger.Manager.Package["node"].Debug().Msg(" [#] Loading the node configuration ...")
+
+	// Read the user data
+	err = nm.ReadUserData()
+	if err != nil {
+		return err
+	}
+
+	// Read the node data
+	err = nm.ReadNodeData()
+	if err != nil {
+		return err
+	}
 
 	return err
 
@@ -219,9 +304,7 @@ func (nm *PackageManager) CreateCommandInfo() *cobra.Command {
 				fmt.Printf(" [#] Node ID: %v\n", nm.Node.ID)
 				fmt.Printf(" [#] Operating as client node: %v\n", nm.Node.ClientNode)
 				fmt.Printf(" [#] Operating as render node: %v\n", nm.Node.RenderNode)
-				if nm.Node.NodeAccount != nil {
-					fmt.Printf(" [#] Node Account ID (Hedera): %v\n", nm.Node.NodeAccount.AccountID.String())
-				}
+				fmt.Printf(" [#] Node Account ID (Hedera): %v\n", nm.Node.HederaAccount.AccountID)
 				fmt.Println("")
 			}
 

@@ -23,12 +23,12 @@ package hedera
 import (
 
 	// standard
+	"errors"
 	"fmt"
 	"os"
 
 	// external
 	hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
-	"github.com/joho/godotenv"
 
 	// internal
 	// . "renderhive/globals"
@@ -88,34 +88,30 @@ func (h *HederaAccount) New(InitialBalance float64) (*hederasdk.TransactionRecei
 	return &transactionReceipt, nil
 }
 
-// Load the account information from a file
-func (h *HederaAccount) FromFile(filepath string) error {
+// Load the account information from a keystore file
+func (h *HederaAccount) FromFile(filepath string, passphrase string, publickey string) error {
+	var err error
 
-	// TODO: DECRYPTION AND SAFE STORAGE IN MEMORY
-	//       For now, we just use an .env file and load the testnet account data
-	//       from there.
-
-	// Loads the .env file and throws an error if it cannot load the variables
-	// from that file correctly
-	err := godotenv.Load(filepath)
+	// Open the keystore file
+	file, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
-	// Grab your testnet account ID and private key from the .env file
-	h.AccountID, err = hederasdk.AccountIDFromString(os.Getenv("TESTNET_ACCOUNT_ID"))
-	if err != nil {
-		return err
-	}
-
-	// get the private key
-	h.PrivateKey, err = hederasdk.PrivateKeyFromString(os.Getenv("TESTNET_PRIVATE_KEY"))
+	// load and decrypt the private key
+	h.PrivateKey, err = hederasdk.PrivateKeyReadKeystore(file, passphrase)
 	if err != nil {
 		return err
 	}
 
 	// derive the public key
 	h.PublicKey = h.PrivateKey.PublicKey()
+
+	// check if the known public key is identical to the derived one
+	if h.PublicKey.String() != publickey {
+		return errors.New("Private key does not match the known node account.")
+	}
 
 	return nil
 }

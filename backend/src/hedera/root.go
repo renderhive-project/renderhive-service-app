@@ -31,6 +31,8 @@ import (
 
 	// standard
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	// external
@@ -56,7 +58,7 @@ type PackageManager struct {
 	NetworkType   int
 	NetworkClient *hederasdk.Client
 
-	// account of the node
+	// Hedera account of this node
 	Operator HederaAccount
 
 	// Mirror Node
@@ -75,14 +77,10 @@ type PackageManager struct {
 var Manager = PackageManager{}
 
 // Initialize everything required for communication with the Hedera network
-func (hm *PackageManager) Init(NetworkType int, AccountFilePath string) error {
+func (hm *PackageManager) Init(NetworkType int) error {
 	var err error
-	var NetworkClient *hederasdk.Client
 
 	logger.Manager.Package["hedera"].Debug().Msg("Initializing the Hedera manager ...")
-
-	// create a new account
-	Account := HederaAccount{}
 
 	switch NetworkType {
 	case NETWORK_TYPE_TESTNET:
@@ -91,7 +89,7 @@ func (hm *PackageManager) Init(NetworkType int, AccountFilePath string) error {
 		logger.Manager.Package["hedera"].Info().Msg(" [#] Initializing on Hedera Testnet ...")
 
 		// Create your testnet client
-		NetworkClient = hederasdk.ClientForTestnet()
+		hm.NetworkClient = hederasdk.ClientForTestnet()
 
 	case NETWORK_TYPE_PREVIEWNET:
 
@@ -99,7 +97,7 @@ func (hm *PackageManager) Init(NetworkType int, AccountFilePath string) error {
 		logger.Manager.Package["hedera"].Debug().Msg("Initializing on Hedera Previewnet:")
 
 		// Create your preview client
-		NetworkClient = hederasdk.ClientForPreviewnet()
+		hm.NetworkClient = hederasdk.ClientForPreviewnet()
 
 	case NETWORK_TYPE_MAINNET:
 
@@ -107,39 +105,59 @@ func (hm *PackageManager) Init(NetworkType int, AccountFilePath string) error {
 		logger.Manager.Package["hedera"].Debug().Msg("Initializing on Hedera Mainnet:")
 
 		// Create your preview client
-		NetworkClient = hederasdk.ClientForPreviewnet()
+		hm.NetworkClient = hederasdk.ClientForPreviewnet()
 
 	}
 
-	// get the testnet account information from file
-	logger.Manager.Package["hedera"].Info().Msg(" [#] Load account information from encrypted file.")
-	Account.FromFile(AccountFilePath)
-
-	// Populate the Hedera manager
+	// set network type
 	hm.NetworkType = NetworkType
-	hm.NetworkClient = NetworkClient
-	hm.Operator = Account
-
-	// log the testnet account ID and private key to the console
-	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", Account.AccountID))
-	// logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Private key: %v", Account.PrivateKey))
-	// logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Public key: %v", Account.PublicKey))
-
-	// set theis account as the operator
-	NetworkClient.SetOperator(Account.AccountID, Account.PrivateKey)
-
-	// query the complete account information from the Hedera network
-	queryCost, err := Account.QueryInfo(hm)
-	logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
-	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
-
-	// query the account balance from the Hedera network
-	queryCost, err = Account.QueryBalance(hm)
-	logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
-	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
 
 	// get the mirror node URL
 	hm.MirrorNode.URL = HEDERA_TESTNET_MIRROR_NODE_URL
+
+	// log info
+	logger.Manager.Main.Info().Msg(fmt.Sprintf(" [#] Mirror node: %v", hm.MirrorNode.URL))
+
+	return err
+}
+
+// Deinitialize the Hedera manager
+func (hm *PackageManager) LoadAccount(account_id string, passphrase string, publickey string) error {
+	var err error
+
+	// read the node account ID into the node manager
+	hm.Operator.AccountID, err = hederasdk.AccountIDFromString(account_id)
+	if err != nil {
+		return err
+	}
+
+	// log info
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", hm.Operator.AccountID))
+
+	// TODO: From this point on, the private key is in memory in clear text
+	//		 This needs to be improved from a security standpoint!!!
+
+	// read the private key from the keystore file and decrypt it
+	err = hm.Operator.FromFile(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(account_id, ".", "")+".key"), passphrase, publickey)
+	if err != nil {
+		return err
+	}
+
+	// log info
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Public key: %v", hm.Operator.PublicKey))
+
+	// set this account as the operator
+	hm.NetworkClient.SetOperator(hm.Operator.AccountID, hm.Operator.PrivateKey)
+
+	// query the complete account information from the Hedera network
+	queryCost, err := hm.Operator.QueryInfo(hm)
+	logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", hm.Operator.Info.Balance))
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
+
+	// // query the account balance from the Hedera network
+	// queryCost, err = Account.QueryBalance(hm)
+	// logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
+	// logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
 
 	return err
 }

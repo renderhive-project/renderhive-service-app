@@ -30,9 +30,8 @@ ENV GOOS=linux
 # Set the working directory inside the container
 WORKDIR /app
 
-# create required directories
-RUN mkdir /app/config
-RUN mkdir /app/data
+# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
+RUN addgroup -S docker && adduser -S renderhive -G docker
 
 # install dependencies
 RUN apk add --update nodejs npm
@@ -44,6 +43,12 @@ COPY ./backend/src/go.mod ./backend/src/go.sum ./
 # Load Go modules
 RUN go mod download
 RUN go install github.com/cosmtrek/air@latest
+
+# Assign ownership of the /app directory to the local container user
+RUN chown -R renderhive:docker /app
+
+# Switch to user 'renderhive'
+USER renderhive
 
 # compile with hot reloading
 CMD ["air", "-c", ".air.toml"]

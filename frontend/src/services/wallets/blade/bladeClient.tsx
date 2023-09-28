@@ -12,7 +12,7 @@ const bladeLocalStorage = "usedBladeForWalletPairing";
 
 const appMetadata = {
   network: env,
-  dAppCode: "hederaCraTemplate",
+  dAppCode: "renderhive",
 };
 const bladeConnector = new BladeConnector();
 

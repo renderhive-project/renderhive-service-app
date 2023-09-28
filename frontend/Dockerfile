@@ -21,7 +21,11 @@
 # Build the React application
 FROM node:18-alpine as builder
 
+# Set the working directory inside the container
 WORKDIR /app
+
+# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
+RUN addgroup -S docker && adduser -S renderhive -G docker
 
 # Install dependencies and build static assets
 COPY frontend/package.json frontend/package-lock.json ./
@@ -34,6 +38,12 @@ FROM nginx:alpine
 
 # Copy the build static assets from the builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
+
+# Assign ownership of the /app directory to the local container user
+RUN chown -R renderhive:docker /app
+
+# Switch to user 'renderhive'
+USER renderhive
 
 # Expose port 80
 EXPOSE 80
