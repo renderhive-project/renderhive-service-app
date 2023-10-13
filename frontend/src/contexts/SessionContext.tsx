@@ -13,7 +13,7 @@ type OperatorInfo = {
 }
 type NodeInfo = {
     accountId: string;
-    alias: string;
+    name: string;
 };
 
 type SessionContextType = {
@@ -36,7 +36,7 @@ const defaultValue: SessionContextType = {
     setOperatorInfo: (newValue: OperatorInfo) => { },
     nodeInfo: {
         accountId: '',
-        alias: '',
+        name: '',
     },
     setNodeInfo: (newValue: NodeInfo) => { },
 }
@@ -74,7 +74,7 @@ export const SessionContextProvider = ({ children }) => {
           withCredentials: true, // This will include cookies in the request
         })
 
-        // Request signing of the payload from the wallet app
+        // set operator and node data
         if (response.data && response.data.result) {
             setOperatorInfo({
               username: response.data.result.Username,
@@ -82,7 +82,7 @@ export const SessionContextProvider = ({ children }) => {
               accountId: response.data.result.UserAccount,
             })
             setNodeInfo({
-              alias: response.data.result.NodeAlias,
+              name: response.data.result.NodeName,
               accountId: response.data.result.NodeAccount,
             })
 

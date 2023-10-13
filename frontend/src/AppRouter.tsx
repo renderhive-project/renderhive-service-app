@@ -18,11 +18,11 @@ import { useContext } from "react";
 import { SessionContext, useSession } from "./contexts/SessionContext";
 
 export default function AppRouter() {
-  const { signedIn, operatorInfo } = useSession();
+  const { signedIn, operatorInfo, nodeInfo } = useSession();
   const { accountId } = useWalletInterface();
   const { isLoading, setLoading } = useLoading();
   // console.log("Signed in:", signedIn)
-  // console.log(operatorInfo)
+  // console.log(operatorInfo, nodeInfo, accountId)
 
   const Layout = () => {
     const location = useLocation();
@@ -50,10 +50,9 @@ export default function AppRouter() {
                 <CircularProgress />
               </Box>
             ) : (
-              <div>
-                <Typography variant="h1">{signedIn}</Typography>
+              <Box height="80vh"> 
                 <Outlet />
-              </div>
+              </Box>
             )}
             {/* </QueryClientProvider> */}
           </Box>
@@ -82,11 +81,19 @@ export default function AppRouter() {
         },
         {
           path: "/signup",
-          element: ((accountId && signedIn) ? <Navigate to="/" replace /> : <SignUp />),
+          element: ((accountId && signedIn) ? <Navigate to="/" replace /> : (
+            
+            ((operatorInfo && operatorInfo.accountId == accountId) && (nodeInfo && nodeInfo.accountId != "")) ? <Navigate to="/signin" replace /> : <SignUp /> 
+            
+          )),
         },
         {
           path: "/signin",
-          element: ((accountId && signedIn) ? <Navigate to="/" replace /> : <SignIn />),
+          element: ((accountId && signedIn) ? <Navigate to="/" replace /> : (
+
+            ((operatorInfo && operatorInfo.accountId == '0.0.0' || (operatorInfo && operatorInfo.accountId == accountId) && (nodeInfo && nodeInfo.accountId == ""))) ? <Navigate to="/signup" replace /> : <SignIn /> 
+            
+          )),
         },
         {
           path: "*",

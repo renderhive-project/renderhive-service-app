@@ -10,6 +10,7 @@ interface InputFieldProps {
     disabled?: boolean
     style?: React.CSSProperties;
     value?: string
+    type?: string;
 }
 
 const InputField = ({ label, ...props }: InputFieldProps ) => {

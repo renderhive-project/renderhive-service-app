@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	// external
 	hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
@@ -33,6 +34,7 @@ import (
 	// internal
 	// . "renderhive/globals"
 	"renderhive/logger"
+	"renderhive/utility"
 )
 
 // Hedera account / wallet data
@@ -74,6 +76,9 @@ func (h *HederaAccount) New(InitialBalance float64) (*hederasdk.TransactionRecei
 		SetKey(h.PublicKey).
 		SetInitialBalance(hederasdk.HbarFrom(InitialBalance, hederasdk.HbarUnits.Tinybar)).
 		Execute(Manager.NetworkClient)
+	if err != nil {
+		return nil, err
+	}
 
 	// Request the receipt of the account creation transaction
 	transactionReceipt, err := newAccountTransaction.GetReceipt(Manager.NetworkClient)
@@ -88,7 +93,7 @@ func (h *HederaAccount) New(InitialBalance float64) (*hederasdk.TransactionRecei
 	return &transactionReceipt, nil
 }
 
-// Load the account information from a keystore file
+// Load the private key from a keystore file
 func (h *HederaAccount) FromFile(filepath string, passphrase string, publickey string) error {
 	var err error
 
@@ -111,6 +116,35 @@ func (h *HederaAccount) FromFile(filepath string, passphrase string, publickey s
 	// check if the known public key is identical to the derived one
 	if h.PublicKey.String() != publickey {
 		return errors.New("Private key does not match the known node account.")
+	}
+
+	return nil
+}
+
+// Write the private key to a keystore file
+func (h *HederaAccount) ToFile(filepath string, passphrase string) error {
+	var err error
+
+	// Rename the original file to create a backup, if already on exists
+	if isFile, _ := utility.IsFile(filepath); isFile {
+		err = os.Rename(filepath, strings.ReplaceAll(filepath, ".key", ".bak"))
+		if err != nil {
+			return err // Handle the error appropriately.
+		}
+	}
+
+	// Create the keystore file
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Write the keystore data into the file
+	err = h.PrivateKey.WriteKeystore(file, passphrase)
+	if err != nil {
+		fmt.Println("WriteKeystore Error:", err)
+		return err
 	}
 
 	return nil
@@ -153,7 +187,7 @@ func (h *HederaAccount) UpdateKey(newKey *hederasdk.PrivateKey) (string, error) 
 func (h *HederaAccount) QueryInfo(m *PackageManager) (string, error) {
 	var err error
 
-	//Create the account info query
+	// Create the account info query
 	newAccountInfoQuery := hederasdk.NewAccountInfoQuery().
 		SetAccountID(h.AccountID)
 
@@ -163,7 +197,7 @@ func (h *HederaAccount) QueryInfo(m *PackageManager) (string, error) {
 		return "", err
 	}
 
-	//Sign with client operator private key and submit the query to a Hedera network
+	// sign with client operator private key and submit the query to a Hedera network
 	h.Info, err = newAccountInfoQuery.Execute(Manager.NetworkClient)
 	if err != nil {
 		return "", err

@@ -36,14 +36,11 @@ import (
 	// standard
 
 	"crypto/ed25519"
-	"crypto/sha256"
-	"encoding/hex"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	// external
@@ -55,20 +52,30 @@ import (
 	"renderhive/hedera"
 	"renderhive/logger"
 	"renderhive/node"
+	"renderhive/utility"
 )
 
 // SERVICE INITIALIZATION
 // #############################################################################
 
 // Defines the operator information
-type Operator struct {
-	ID        int    `json:"userid"`    // a unique user id
-	Username  string `json:"username"`  // a unique username
-	Email     string `json:"email"`     // email address of the user
-	AccountID string `json:"accountid"` // the 0.0.xxxx formated account id with checksum
+type OperatorInfo struct {
+	ID        int    `json:"userid"`     // a unique user id
+	Username  string `json:"username"`   // a unique username
+	Email     string `json:"email"`      // email address of the user
+	AccountID string `json:"accountid"`  // the 0.0.xxxx formated account id
+	PublicKey string `json:"public_key"` // public key of the Hedera account
 }
 
-var operators = make(map[string]Operator)
+// Defines the node information
+type NodeInfo struct {
+	ID         int    `json:"nodeid"`      // a unique user id
+	Name       string `json:"name"`        // a unique alias for this node
+	ClientNode bool   `json:"client_node"` // node is a client node
+	RenderNode bool   `json:"render_node"` // node is a render node
+	AccountID  string `json:"accountid"`   // the 0.0.xxxx formated Hedera account id
+	PublicKey  string `json:"public_key"`  // public key of the Hedera account
+}
 
 // export the OperatorService for net/rpc
 type OperatorService struct{}
@@ -79,10 +86,16 @@ type OperatorService struct{}
 
 // Arguments and reply
 type SignUpArgs struct {
-	Operator Operator
+	Step                         string
+	Operator                     OperatorInfo
+	Node                         NodeInfo
+	Passphrase                   string
+	AccountCreationTransactionID string
 }
 type SignUpReply struct {
-	Message string
+	Message       string
+	NodeAccountID string
+	Payload       []byte
 }
 
 // Adds a known operator
@@ -92,46 +105,158 @@ func (ops *OperatorService) SignUp(r *http.Request, args *SignUpArgs, reply *Sig
 	Manager.Mutex.Lock()
 	defer Manager.Mutex.Unlock()
 
-	// if the operator already exists
-	if _, ok := operators[args.Operator.AccountID]; ok {
-		return fmt.Errorf("Operator already exists")
+	// STEP 1: Initialize the sign up procedure
+	if args.Step == "init" {
+
+		// TODO: Implement further checks and security measures
+
+		// OPERATOR INFO
+		// if the node operator info is not yet available
+		if node.Manager.User.UserAccount.PublicKey.String() == "" {
+
+			// query the operator account information from a mirror node
+			accounts, err := hedera.Manager.MirrorNode.GetAccountInfo(args.Operator.AccountID, 1, "")
+			if err != nil || (accounts == nil || (accounts != nil && len(*accounts) == 0)) {
+				return fmt.Errorf("Error: %v", err)
+			}
+
+			// update the node data
+			node.Manager.User.UserAccount.AccountID, err = hederasdk.AccountIDFromString((*accounts)[0].Account)
+			if err != nil {
+				return fmt.Errorf("Error: %v", err)
+			}
+			node.Manager.User.UserAccount.PublicKey, err = hederasdk.PublicKeyFromString((*accounts)[0].Key.Key)
+			if err != nil {
+				return fmt.Errorf("Error: %v", err)
+			}
+
+			// write the user data to a file
+			err = node.Manager.WriteUserData(args.Operator.ID, args.Operator.Username, args.Operator.Email, args.Operator.AccountID, (*accounts)[0].Key.Key)
+			if err != nil {
+				return fmt.Errorf("Error: %v", err)
+			}
+		}
+
+		// NODE INFO
+		if args.Node.Name == "" {
+			return fmt.Errorf("Error: %v", "Node name is empty")
+		}
+
+		// if the node operator info is not yet available
+		if node.Manager.Node.HederaAccount.PublicKey == "" {
+
+			// generate a key pair
+			privateKey, err := hederasdk.PrivateKeyGenerateEd25519()
+			if err != nil {
+				return fmt.Errorf("Error: %v", err)
+			}
+			publicKey := privateKey.PublicKey()
+
+			// Assuming that the target shard and realm are known.
+			// For now they are virtually always 0 and 0.
+			aliasAccountId := *publicKey.ToAccountID(0, 0)
+			if aliasAccountId.AliasKey == nil {
+				return fmt.Errorf("Error: %v", "Could not generate alias key for node account")
+			}
+
+			// set Hedera operator for the network client
+			hedera.Manager.Operator.PublicKey = publicKey
+			hedera.Manager.Operator.PrivateKey = privateKey
+
+			// save the node's private key using the users passphrase
+			err = hedera.Manager.Operator.ToFile(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(aliasAccountId.String(), ".", "")+".key"), args.Passphrase)
+			if err != nil {
+				return fmt.Errorf("Failed to save private key: %v", err)
+			}
+
+			// create reply for the RPC client
+			reply.Message = "Successfully initialized sign up procedure"
+			reply.NodeAccountID = aliasAccountId.String()
+			reply.Payload = nil
+
+		}
+
+		return nil
+
 	}
 
-	// query the account information from a mirror node
-	accounts, err := hedera.Manager.MirrorNode.GetAccountInfo(args.Operator.AccountID, 1, "")
-	if err != nil || (accounts == nil || (accounts != nil && len(*accounts) == 0)) {
-		return fmt.Errorf("Failed to obtain account information from mirror node: %v", err)
+	// STEP 2: Create the node account
+	if args.Step == "create" {
+
+		logger.Manager.Package["webapp"].Info().Msg(fmt.Sprintf("Waiting for transaction to land on the mirror node: %v", args.AccountCreationTransactionID))
+
+		// wait some seconds to make sure the mirror node receives the transaction data
+		time.Sleep(5 * time.Second)
+
+		// query the operator account information from a mirror node
+		transactionInfo, err := hedera.Manager.MirrorNode.GetTransactionInfo(args.AccountCreationTransactionID)
+		if err != nil {
+			return fmt.Errorf("Error: %v", err)
+		}
+
+		// if the returned transaction is the account create transaction
+		if transactionInfo.Name != "CRYPTOCREATEACCOUNT" {
+			return fmt.Errorf("Error: Unexpected transaction type '%v'", transactionInfo.Name)
+		}
+
+		// Rename the original file to create a backup, if already on exists
+		keystorepath := filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(hedera.Manager.Operator.PublicKey.ToAccountID(0, 0).String(), ".", "")+".key")
+		if isFile, _ := utility.IsFile(keystorepath); isFile {
+			err = os.Rename(keystorepath, filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(transactionInfo.EntityID, ".", "")+".key"))
+			if err != nil {
+				return err // Handle the error appropriately.
+			}
+		}
+
+		// rename the keyfile
+		err = hedera.Manager.LoadAccount(transactionInfo.EntityID, args.Passphrase, hedera.Manager.Operator.PublicKey.String())
+		if err != nil {
+			return fmt.Errorf("Error: %v", err)
+		}
+
+		// Write the node data
+		err = node.Manager.WriteNodeData(-1, args.Node.Name, true, false, hedera.Manager.Operator.AccountID.String(), hedera.Manager.Operator.PublicKey.String())
+		if err != nil {
+			return fmt.Errorf("Error: %v", err)
+		}
+
+		// create reply for the RPC client
+		reply.Message = "Successfully created the node account"
+		reply.NodeAccountID = hedera.Manager.Operator.AccountID.String()
+		reply.Payload = nil
+		return nil
 	}
 
-	// TODO: HERE ALL THE LOGIC FOR THE ACTUAL SIGNUP NEEDS TO BE ADDED
-	//		 - Register at the smart contract
-	//		 - Set up w3up access for the operator
-	//		 - Create a node account on Hedera
+	// STEP 3: Register with the smart contract
+	if args.Step == "contract" {
 
-	// CREATE A KEYSTORE FILE
-	// // Rename the original file to create a backup
-	// err = os.Rename(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(account_id, ".", "")+".key"), filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(account_id, ".", "")+".bak"))
-	// if err != nil {
-	// 	return err // Handle the error appropriately.
-	// }
-	// // Open the keystore file
-	// file, err := os.Create(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(account_id, ".", "")+".key"))
-	// if err != nil {
-	// 	return err
-	// }
-	// defer file.Close()
+		// TODO: Implement registration with the smart contract
 
-	// err = hm.Operator.PrivateKey.WriteKeystore(file, passphrase)
-	// if err != nil {
-	// 	fmt.Println("WriteKeystore Error:", err)
-	// 	return err
-	// }
-	// fmt.Println(passphrase)
+		// create reply for the RPC client
+		reply.Message = "Successfully created the node account"
+		reply.NodeAccountID = hedera.Manager.Operator.AccountID.String()
+		reply.Payload = nil
+		return nil
+	}
 
-	// Write the user data into the node configuration
-	publicKey := ""
-	node.Manager.WriteUserData(args.Operator.ID, args.Operator.Username, args.Operator.Email, args.Operator.AccountID, publicKey)
+	// STEP 4: Sign up with the storage service
+	if args.Step == "storage" {
 
+		// TODO: Implement sign up with Filecoin service
+
+		// create reply for the RPC client
+		reply.Message = "Successfully signed up with the Filecoin service"
+		reply.NodeAccountID = node.Manager.Node.HederaAccount.AccountID
+		reply.Payload = nil
+		return nil
+	}
+
+	// STEP 5: Finalize the signup
+	if args.Step == "finalize" {
+
+		// TODO: Implement finalization (if required)
+
+	}
 	// create reply for the RPC client
 	reply.Message = "New operator was signed up: " + args.Operator.Username + "!"
 	return nil
@@ -155,24 +280,11 @@ func (ops *OperatorService) GetSignInPayload(r *http.Request, args *GetSignInPay
 	Manager.Mutex.Lock()
 	defer Manager.Mutex.Unlock()
 
-	// Open the node configuration file
-	file, err := os.Open(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, "node.json"))
+	// Get the hash value of the node configuration file
+	hash, err := node.Manager.HashNodeData()
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
-	// Create a new SHA-256 hasher
-	hasher := sha256.New()
-
-	// Copy the file content to the hasher and calculate the fingerprint
-	_, err = io.Copy(hasher, file)
-	if err != nil {
-		return err
-	}
-
-	// Get the hash value
-	hash := hasher.Sum(nil)
 
 	// create reply for the RPC client
 	reply.Payload = hash
@@ -187,8 +299,7 @@ func (ops *OperatorService) GetSignInPayload(r *http.Request, args *GetSignInPay
 
 // Arguments and reply
 type SignInArgs struct {
-	UserSignature []byte
-	SignedPayload []byte
+	Passphrase string
 }
 type SignInReply struct {
 	Message  string
@@ -210,24 +321,13 @@ func (ops *OperatorService) SignIn(r *http.Request, args *SignInArgs, reply *Sig
 	// log info
 	logger.Manager.Main.Info().Msg("Received sign-in request from frontend.")
 
-	// (1) VERIFY THE SIGNATURE
-	verifiedSignature := node.Manager.User.UserAccount.PublicKey.Verify(args.SignedPayload, args.UserSignature)
-	if !verifiedSignature {
-		return errors.New("Invalid user signature")
-	}
-
-	// (2) DERIVE THE PASSPHRASE FROM THE SIGNED PAYLOAD
-	hasher := sha256.New()
-	hasher.Write(args.UserSignature)
-	passphrase := hex.EncodeToString(hasher.Sum(nil))
-
 	// log info
-	logger.Manager.Main.Info().Msg("Decrypting node account details and signing in ...")
+	logger.Manager.Main.Info().Msg(" [#] Decrypting node private key and signing in ...")
 
-	// (3) LOAD ACCOUNT DETAILS AND DECRYPT THE NODE's PRIVATE KEY
-	err = hedera.Manager.LoadAccount(node.Manager.Node.HederaAccount.AccountID, passphrase, node.Manager.Node.HederaAccount.PublicKey)
+	// LOAD ACCOUNT DETAILS AND DECRYPT THE NODE's PRIVATE KEY
+	err = hedera.Manager.LoadAccount(node.Manager.Node.HederaAccount.AccountID, args.Passphrase, node.Manager.Node.HederaAccount.PublicKey)
 	if err != nil {
-		return fmt.Errorf("Failed to load account details: %v", err)
+		return fmt.Errorf("Failed to load private key: %v", err)
 	}
 
 	// GENERATE A SESSION JWT
@@ -355,7 +455,7 @@ func (ops *OperatorService) SignOut(r *http.Request, args *SignOutArgs, reply *S
 }
 
 // Method: GetInfo
-//			- obtain information about the node operator
+//			- obtain information about the node operator from local files
 // #############################################################################
 
 // Arguments and reply
@@ -368,7 +468,7 @@ type GetInfoReply struct {
 	UserAccount string
 
 	// Node Details
-	NodeAlias   string
+	NodeName    string
 	NodeAccount string
 }
 
@@ -379,11 +479,53 @@ func (ops *OperatorService) GetInfo(r *http.Request, args *GetInfoArgs, reply *G
 	Manager.Mutex.Lock()
 	defer Manager.Mutex.Unlock()
 
+	// node operator details
+	reply.Username = node.Manager.User.Username
+	reply.UserEmail = node.Manager.User.Email
+	reply.UserAccount = node.Manager.User.UserAccount.AccountID.String()
+
+	// node details
+	reply.NodeName = node.Manager.Node.Name
+	reply.NodeAccount = node.Manager.Node.HederaAccount.AccountID
+
+	return nil
+}
+
+// Method: GetContractInfo
+//			- obtain information about the node operator from the smart contract
+// #############################################################################
+
+// Arguments and reply
+type GetContractInfoArgs struct {
+	AccountID string
+}
+
+type GetContractInfoReply struct {
+	// Operator details
+	Username    string
+	UserEmail   string
+	UserAccount string
+
+	// Node Details
+	NodeAlias   string
+	NodeAccount string
+}
+
+// Get info about the operator from the smart contract via the operator accountid
+func (ops *OperatorService) GetContractInfo(r *http.Request, args *GetContractInfoArgs, reply *GetContractInfoReply) error {
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Query the mirror node to check if the operator account id is known
+	//		 to the smart contract
+
 	// create reply with info abou the operator and the node for the client
 	reply.Username = node.Manager.User.Username
 	reply.UserEmail = node.Manager.User.Email
 	reply.UserAccount = node.Manager.User.UserAccount.AccountID.String()
-	reply.NodeAlias = node.Manager.Node.Alias
+	reply.NodeAlias = node.Manager.Node.Name
 	reply.NodeAccount = node.Manager.Node.HederaAccount.AccountID
 
 	return nil

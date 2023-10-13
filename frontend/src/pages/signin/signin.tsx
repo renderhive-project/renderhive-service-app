@@ -1,4 +1,3 @@
-
 import { appConfig } from "../../config";
 import { useContext, useEffect, useState } from 'react';
 import { useSession } from '../../contexts/SessionContext';
@@ -19,6 +18,8 @@ import { connectToMetamask } from "../../services/wallets/metamask/metamaskClien
 
 // images & icons
 import RenderhiveLogo from "../../assets/renderhive-logo.svg";
+import InputField from "../../components/form/InputField";
+import { Form, Formik } from "formik";
 
 
 const SignIn = () => {
@@ -29,18 +30,21 @@ const SignIn = () => {
   const { signedIn, setSignedIn, operatorInfo, setOperatorInfo, nodeInfo, setNodeInfo } = useSession();
 
   // function to handle the login
-  const handleSignIn = async () => {
+  const handleSignIn = async e => {
     try {
 
+        // status update
         setLoading(true);
         setErrorMessage("");
-        setStatusMessage("Preparing sign in data ...");
+        setStatusMessage("Loading node data ...");
 
-        // Request payload from backend in a first RPC request
-        const response_payload = await axios.post(appConfig.api.jsonrpc.url, {
+        // Send the signed payload to the backend for signing in
+        const response_signin = await axios.post(appConfig.api.jsonrpc.url, {
           jsonrpc: '2.0',
-          method: 'OperatorService.GetSignInPayload',
-          params: [{}],
+          method: 'OperatorService.SignIn',
+          params: [{
+              Passphrase: e.node_passphrase,
+          }],
           id: uuidv4()
         }, {
           headers: {
@@ -49,81 +53,31 @@ const SignIn = () => {
           withCredentials: true, // This will include cookies in the request
         });
 
-        // Request signing of the payload from the wallet app
-        if (response_payload.data && response_payload.data.result) {
-
+        // if successfully signed in
+        if (response_signin.data && response_signin.data.result) {
+            
             // status update
-            setStatusMessage("Waiting for user verification ...");
+            setStatusMessage("Signed in sucessfully!");
 
-            // Grab the topic and account to sign from the last pairing event
-            const pairingData = hashConnect.hcData.pairingData[hashConnect.hcData.pairingData.length - 1];
+            // update status
+            setLoading(false);
+            setErrorMessage("");
+            setStatusMessage("");
+            setSignedIn(response_signin.data.result.SignedIn)
 
-            // request signing of the data
-            const response_signature = await hashConnect.sign(pairingData.topic, pairingData.accountIds[0], response_payload.data.result.Payload);
-            if (response_signature.success) {
-
-                // status update
-                setStatusMessage("Signing in and loading data ...");
-
-                // obtain the Uint8Array representations for submission to the backend
-                let userSignature = response_signature.userSignature as Uint8Array;
-                let signedPayload = new Uint8Array(Buffer.from(JSON.stringify(response_signature.signedPayload)))
-
-                // Send the signed payload to the backend for signing in
-                const response_signin = await axios.post(appConfig.api.jsonrpc.url, {
-                  jsonrpc: '2.0',
-                  method: 'OperatorService.SignIn',
-                  params: [{
-                      UserSignature: Array.from(userSignature),
-                      SignedPayload: Array.from(signedPayload)
-                  }],
-                  id: uuidv4()
-                }, {
-                  headers: {
-                      'Content-Type': 'application/json',
-                  },
-                  withCredentials: true, // This will include cookies in the request
-                });
-
-                // if successfully signed in
-                if (response_signin.data && response_signin.data.result) {
-                    
-                    // status update
-                    setStatusMessage("Signed in sucessfully!");
-
-                    // update status
-                    setLoading(false);
-                    setErrorMessage("");
-                    setStatusMessage("");
-                    setSignedIn(response_signin.data.result.SignedIn)
-
-                    // TODO: HANDLE SESSION CONTEXT
-                    // AFTER THE USER WAS VERIFIED BY ITS SIGNATURE, WE NEED A SESSION
-                    // HANDLING
-                    //    - create a session token
-                    //    - create a SessionClient component that checks if the user is in an active session using the token and the backend
-                    //    - look at the HashconnectClient instance for example
-
-                } else {
-                    console.log()
-                    setLoading(false);
-                    setStatusMessage("");
-                    setErrorMessage(`Error: ${response_signin.data.error.message}. Are you connected to the correct wallet?`);
-                    console.error('Error signing in:', response_signin.data.error.message);
-                }
-
-            } else {
-              setLoading(false);
-              setStatusMessage("");
-              setErrorMessage(`Error signing in: '${response_signature.error}'. Please try again.`);
-              console.error('Error signing in:', response_signature.error);
-            }
+            // TODO: HANDLE SESSION CONTEXT
+            // AFTER THE USER WAS VERIFIED BY ITS SIGNATURE, WE NEED A SESSION
+            // HANDLING
+            //    - create a session token
+            //    - create a SessionClient component that checks if the user is in an active session using the token and the backend
+            //    - look at the HashconnectClient instance for example
 
         } else {
+            console.log()
             setLoading(false);
             setStatusMessage("");
-            setErrorMessage('Unexpected server response.');
-            console.error("Unexpected response format:", response_payload.data);
+            setErrorMessage(`Error: ${response_signin.data.error.message}. Are you connected to the correct wallet?`);
+            console.error('Error signing in:', response_signin.data.error.message);
         }
 
         
@@ -139,7 +93,7 @@ const SignIn = () => {
 
   // return page content
   return (
-    <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="80vh">
+    <Box bgcolor="background.default" display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="75vh" mt="60px">
 
         {/* Sign in form */}
         <FormContainer>
@@ -174,17 +128,30 @@ const SignIn = () => {
                     <WalletSelector/>
                   ) : (
                     <>
-                      <TextField disabled name="node_alias" label="Sign in to your Renderhive node:" value={nodeInfo.alias}/>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        onClick={async () => {
-                          await handleSignIn();
-                        }}
-                      >
-                        Sign In
-                        
-                      </Button>
+                    <Formik
+                      initialValues={{
+                        node_name: (nodeInfo ? nodeInfo.name : ''),
+                        node_passphrase: '',
+                      }}
+                      onSubmit={handleSignIn}
+                    >
+                      {(formik) => (
+                          <Form>
+
+                            <InputField disabled name="node_name" label="Sign in to your Renderhive node:" value={nodeInfo.name}/>
+                            <InputField type="password" name="node_passphrase" label="Node Passphrase"/>
+                            
+                            <Button
+                              fullWidth
+                              variant="outlined"
+                              type="submit"
+                              sx={{ marginTop: "25px" }}
+                            >
+                              Sign In
+                            </Button>
+                          </Form>
+                        )}
+                    </Formik>
                   
                     </>
                   )}
@@ -196,33 +163,6 @@ const SignIn = () => {
                       <Typography color="error" variant="body2">{errorMessage}</Typography>
                     </Box>
                   }
-                  
-                  <Divider>
-                    <Typography variant="h6" color="text.primary">or</Typography>
-                  </Divider>
-    
-                  {accountId && 
-                    <>
-                      <Button
-                        fullWidth
-                        disabled={!accountId}
-                        variant='contained'
-                        sx={{
-                          ml: "auto"
-                        }}
-                        onClick={() => {
-                          walletInterface.disconnect()
-                        }}
-                      >
-                        Disconnect Wallet
-                      </Button>
-                    </>
-                  }
-    
-                  <Button fullWidth href="/signup" variant="contained" color="primary">
-                    SIGN UP
-                  </Button>
-    
                   <Box marginTop="20px">
                     <Typography fontSize={12}>
                       Never used Renderhive before? <br></br>

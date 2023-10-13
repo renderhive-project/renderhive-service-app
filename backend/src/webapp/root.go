@@ -341,6 +341,7 @@ func (webappm *PackageManager) authenticationMiddleware(next http.Handler) http.
 	whitelistMethods := map[string]bool{
 		"OperatorService.GetSignInPayload": true,
 		"OperatorService.GetInfo":          true,
+		"OperatorService.SignUp":           true,
 		"OperatorService.SignIn":           true,
 	}
 

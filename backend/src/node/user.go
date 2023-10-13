@@ -126,7 +126,9 @@ func (nm *PackageManager) ReadUserData() error {
 	// Open the configuration file
 	file, err := os.Open(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, "operator.json"))
 	if err != nil {
-		return err
+		logger.Manager.Package["node"].Error().Msg(err.Error())
+		logger.Manager.Package["node"].Error().Msg("Continue without operator information.")
+		return nil
 	}
 	defer file.Close()
 
