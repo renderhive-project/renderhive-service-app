@@ -53,7 +53,7 @@ const MultiStepForm = ({ children, initialValues, onSubmit, showStepper }: Props
     return (
         <div>
             <Formik
-                initialValues={{}}
+                initialValues={formValues}
                 onSubmit={handleSubmit}
                 validationSchema={step.props.validationSchema}
             >
@@ -61,7 +61,7 @@ const MultiStepForm = ({ children, initialValues, onSubmit, showStepper }: Props
                     <Form>
 
                         {/* render a step visualization */}
-                        { showStepper && <Stepper alternativeLabel activeStep={stepNumber} style={{marginTop: 25, marginBottom: 25}}>
+                        { showStepper && <Stepper alternativeLabel activeStep={stepNumber} style={{marginTop: 10, marginBottom: 25}}>
                             {steps.map(currentStep => {
                                 const label = currentStep.props.stepName;
 

@@ -115,3 +115,15 @@ func GetPublicIPv6() (string, error) {
 	return string(body), nil
 
 }
+
+// check if a given path is a file (i.e., if it exists and is no directory)
+func IsFile(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return !info.IsDir(), nil
+}

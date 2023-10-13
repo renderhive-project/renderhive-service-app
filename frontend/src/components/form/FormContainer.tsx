@@ -3,10 +3,11 @@ import {Box} from '@mui/material';
 
 interface FormContainerProps {
   children: ReactNode;
+  width?: string;
   height?: string;
 }
 
-const FormContainer: React.FC<FormContainerProps> = ({ children, height }) => {
+const FormContainer: React.FC<FormContainerProps> = ({ children, width = "25%", height }) => {
 
   return (
     <Box
@@ -17,7 +18,7 @@ const FormContainer: React.FC<FormContainerProps> = ({ children, height }) => {
           //boxShadow: '0px 2px 5px 0px rgba(0,0,0,0.25)',
           border: '1px solid #222222',
           padding: '20px',
-          width: '25%',
+          width: {width},
           height: {height},
           margin: '20px auto'
       }}

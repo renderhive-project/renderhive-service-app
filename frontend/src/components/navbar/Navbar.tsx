@@ -21,7 +21,7 @@ import "./navbar.scss"
 
 const NavBar = () => {
   const [userMenu, setUserMenu] = useState(null);
-  const {accountId, walletInterface} = useWalletInterface();
+  const { accountId, walletInterface } = useWalletInterface();
   const navigate = useNavigate();
   const { signedIn, setSignedIn, operatorInfo, setOperatorInfo, nodeInfo, setNodeInfo } = useSession();
 
@@ -72,7 +72,7 @@ const NavBar = () => {
     }
 
     // close the menu
-    handleMenuClose()
+    handleMenuClose();
     navigate("/signin");
   };
 
@@ -87,47 +87,62 @@ const NavBar = () => {
         </Box>
         <Box sx={{ flexGrow: 1 }} />
 
-        {/* if a wallet is connected */}
-        {accountId && (
-          <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <IconButton
-              color="inherit"
-              sx={{ borderRadius: '0%', padding: '16px' }}
-            >
-              <Badge badgeContent={0} color="error">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-            {/* <IconButton
-              sx={{ borderRadius: '0%', padding: '12px' }}
-            >
-              <Avatar alt="Node Operator" src="/static/images/avatar/2.jpg" />
-            </IconButton> */}
+        {/* if a wallet is connected and the account signed in*/}
+        {((accountId && signedIn) ?
+          <>
+            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+              <IconButton
+                color="inherit"
+                sx={{ borderRadius: '0%', padding: '16px' }}
+              >
+                <Badge badgeContent={0} color="error">
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+              {/* <IconButton
+                sx={{ borderRadius: '0%', padding: '12px' }}
+              >
+                <Avatar alt="Node Operator" src="/static/images/avatar/2.jpg" />
+              </IconButton> */}
 
-            <IconButton
-              edge="end"
-              color="inherit"
-              sx={{ borderRadius: '0%', padding: '16px' }}
-              onClick={handleMenuOpen}
-            >
-              <SettingsIcon />
-            </IconButton>
-            
-            {/* The basic user menu, which allows actions like logging out */}
-            <Menu
-              anchorEl={userMenu}
-              open={Boolean(userMenu)}
-              onClose={handleMenuClose}
-            >
-              <MenuItem onClick={() => {
-                handleMenuLogout();
-              }}>
-                Logout
-              </MenuItem>
-            </Menu>
-          </Box>
+              <IconButton
+                edge="end"
+                color="inherit"
+                sx={{ borderRadius: '0%', padding: '16px' }}
+                onClick={handleMenuOpen}
+              >
+                <SettingsIcon />
+              </IconButton>
+              
+              {/* The basic user menu, which allows actions like logging out */}
+              <Menu
+                anchorEl={userMenu}
+                open={Boolean(userMenu)}
+                onClose={handleMenuClose}
+              >
+                <MenuItem onClick={() => {
+                  handleMenuLogout();
+                }}>
+                  Logout
+                </MenuItem>
+              </Menu>
+            </Box>
+          </>
+        : 
+          <Button
+            disabled={!accountId}
+            variant='contained'
+            sx={{
+              ml: "auto",
+            }}
+            onClick={() => {
+              (walletInterface && walletInterface.disconnect())
+            }}
+          >
+            {(!accountId) ? "Connect Wallet" : `Disconnect ${accountId}`}
+          </Button>
         )}
-
+     
       </Toolbar>
       <Divider />
     </AppBar>

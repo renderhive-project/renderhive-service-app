@@ -100,7 +100,7 @@ type TransactionInfo struct {
 	ChargedTxFee             int         `json:"charged_tx_fee"`
 	ConsensusTimestamp       string      `json:"consensus_timestamp"`
 	EntityID                 string      `json:"entity_id"`
-	MaxFee                   int         `json:"max_fee"`
+	MaxFee                   string      `json:"max_fee"`
 	MemoBase64               interface{} `json:"memo_base64"`
 	Name                     string      `json:"name"`
 	Node                     string      `json:"node"`
@@ -125,7 +125,7 @@ type TransactionInfo struct {
 		Amount     int    `json:"amount"`
 		IsApproval bool   `json:"is_approval"`
 	} `json:"transfers"`
-	ValidDurationSeconds int    `json:"valid_duration_seconds"`
+	ValidDurationSeconds string `json:"valid_duration_seconds"`
 	ValidStartTimestamp  string `json:"valid_start_timestamp"`
 }
 
@@ -237,4 +237,62 @@ func (m *MirrorNode) Transactions(accountID string, limit int, order string, tra
 
 	return &TransactionResponse.Transactions, err
 
+}
+
+// Query a specific transaction ID
+// https://mainnet-public.mirrornode.hedera.com/api/v1/transactions/${transactionID}
+func (m *MirrorNode) GetTransactionInfo(transactionID string) (*TransactionInfo, error) {
+	var err error
+	var command []string
+
+	// log query
+	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf("Query the transaction with Id: %v", transactionID))
+
+	// bring transactionID into the coorect form
+	parts := strings.Split(transactionID, "@")
+	parts[1] = strings.ReplaceAll(parts[1], ".", "-")
+	transactionID = parts[0] + "-" + parts[1]
+
+	// prepare the base command
+	command = append(command, m.URL, "api", "v1", "transactions", transactionID)
+
+	// log the command
+	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Command: %v", strings.Join(command, "/")))
+
+	// query the transaction
+	httpResponse, err := http.Get(strings.Join(command, "/"))
+	if err != nil {
+		return nil, err
+	}
+	defer httpResponse.Body.Close()
+
+	// read the complete data
+	httpResponseBody, err := io.ReadAll(httpResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// parse the transaction response
+	var TransactionResponse TransactionInfoResponse
+	err = json.Unmarshal(httpResponseBody, &TransactionResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	// log number of transactions
+	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Mirror node responded with %v transactions", len(TransactionResponse.Transactions)))
+
+	// parse the transaction response
+	if len(TransactionResponse.Transactions) > 0 {
+
+		// get the transaction information
+		TransactionInfo := TransactionResponse.Transactions[0]
+
+		// log number of transactions
+		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Mirror node responded with: %v", TransactionInfo))
+
+		return &TransactionInfo, err
+	}
+
+	return nil, fmt.Errorf("transaction not found")
 }

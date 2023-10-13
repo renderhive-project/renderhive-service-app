@@ -186,7 +186,7 @@ export const createRenderhiveTheme = (mode: PaletteMode) => {
           dark: "#f1a83b",
           main: "#F6C849",
           light: "#f8d64b",
-          contrastText: "#01080D",
+          contrastText: "#050F15",
         },
         background: {
           default: "#01080D",
@@ -194,7 +194,7 @@ export const createRenderhiveTheme = (mode: PaletteMode) => {
         },
         text: {
           primary: "#7f878d",
-          secondary: "#050F15",
+          secondary: "#7f878d",
           disabled: "#ececec",
         }
       },
@@ -246,9 +246,9 @@ export const ColorModeContext = createContext<any>({ toggleColorMode: () => {} }
 
 // create a hook for the color mode and theme
 export const  useMode = () => {
-   // Initialize the mode from local storage or default to 'light'
+   // Initialize the mode from local storage or default to 'dark'
    const [mode, setMode] = useState<PaletteMode>(
-    () => window.localStorage.getItem('themeMode') as PaletteMode || 'light'
+    () => window.localStorage.getItem('themeMode') as PaletteMode || 'dark'
   );
 
   useEffect(() => {

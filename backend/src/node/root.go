@@ -35,6 +35,7 @@ import (
 
 	// standard
 
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -57,8 +58,8 @@ import (
 
 // Node data of the node running this service app instance
 type NodeData struct {
-	ID    int    // Renderhive Node ID given by the Renderhive Smart Contract
-	Alias string // A alias name for the node, which makes it human identifiable
+	ID   int    // Renderhive Node ID given by the Renderhive Smart Contract
+	Name string // A name for the node, which makes it human identifiable
 
 	// Configuration
 	ClientNode    bool // True, if the node acts as a client node
@@ -72,7 +73,7 @@ type NodeData struct {
 // Define the JSON data structure for the node data
 type NodeDataJSON struct {
 	ID            int    `json:"ID"`
-	Alias         string `json:"Alias"`
+	Name          string `json:"Name"`
 	ClientNode    bool   `json:"ClientNode"`
 	RenderNode    bool   `json:"RenderNode"`
 	HederaAccount struct {
@@ -174,8 +175,44 @@ func (nm *PackageManager) DeInit() error {
 
 }
 
+// Write the details of the node to the configuration file
+func (nm *PackageManager) WriteNodeData(id int, name string, client_node bool, render_node bool, accountid string, publicKey string) error {
+	var err error
+	var node NodeDataJSON
+
+	// log event
+	logger.Manager.Package["node"].Debug().Msg("Save node data in the configuration file ...")
+
+	// prepare the data for the JSON file
+	node.ID = id
+	node.Name = name
+	node.ClientNode = client_node
+	node.RenderNode = render_node
+	node.HederaAccount.AccountID = accountid
+	node.HederaAccount.PublicKey = publicKey
+
+	// store the operator data in a file, which can be loaded the next time
+	data, err := json.MarshalIndent(node, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal operator: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, "node.json"), data, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write to file: %v", err)
+	}
+
+	// read the user data into the node manager
+	err = nm.ReadNodeData(false)
+	if err != nil {
+		return fmt.Errorf("failed to read node date: %v", err)
+	}
+
+	return err
+
+}
+
 // Read the details of the node from the configuration file
-func (nm *PackageManager) ReadNodeData() error {
+func (nm *PackageManager) ReadNodeData(allowSkipping bool) error {
 	var err error
 	var node NodeDataJSON
 
@@ -185,6 +222,13 @@ func (nm *PackageManager) ReadNodeData() error {
 	// Open the configuration file
 	file, err := os.Open(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, "node.json"))
 	if err != nil {
+
+		// do not generate an error if skipping is enabled
+		if allowSkipping {
+			logger.Manager.Package["node"].Error().Msg(err.Error())
+			logger.Manager.Package["node"].Error().Msg("Continue without node configuration.")
+			return nil
+		}
 		return err
 	}
 	defer file.Close()
@@ -203,7 +247,7 @@ func (nm *PackageManager) ReadNodeData() error {
 
 	// read the node data into the node manager
 	nm.Node.ID = node.ID
-	nm.Node.Alias = node.Alias
+	nm.Node.Name = node.Name
 	nm.Node.ClientNode = node.ClientNode
 	nm.Node.RenderNode = node.RenderNode
 	nm.Node.HederaAccount.AccountID = node.HederaAccount.AccountID
@@ -211,13 +255,38 @@ func (nm *PackageManager) ReadNodeData() error {
 
 	// log event
 	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Node ID: %v", nm.Node.ID))
-	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Alias: %v", nm.Node.Alias))
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Name: %v", nm.Node.Name))
 	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Client node: %v", nm.Node.ClientNode))
 	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Render node: %v", nm.Node.RenderNode))
 	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] [*] Public Key: %v", nm.Node.HederaAccount.PublicKey))
 
 	return err
 
+}
+
+// Hash the node from the configuration file
+func (nm *PackageManager) HashNodeData() ([]byte, error) {
+	var err error
+
+	// Open the node configuration file
+	file, err := os.Open(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, "node.json"))
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	// Create a new SHA-256 hasher
+	hasher := sha256.New()
+
+	// Copy the file content to the hasher and calculate the fingerprint
+	_, err = io.Copy(hasher, file)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the hash value
+	hash := hasher.Sum(nil)
+	return hash, nil
 }
 
 // Load the node configuration from the configuration file
@@ -234,7 +303,7 @@ func (nm *PackageManager) LoadConfiguration() error {
 	}
 
 	// Read the node data
-	err = nm.ReadNodeData()
+	err = nm.ReadNodeData(true)
 	if err != nil {
 		return err
 	}

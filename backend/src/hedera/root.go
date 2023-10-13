@@ -121,7 +121,7 @@ func (hm *PackageManager) Init(NetworkType int) error {
 	return err
 }
 
-// Deinitialize the Hedera manager
+// Load the account from the local data
 func (hm *PackageManager) LoadAccount(account_id string, passphrase string, publickey string) error {
 	var err error
 
@@ -149,15 +149,15 @@ func (hm *PackageManager) LoadAccount(account_id string, passphrase string, publ
 	// set this account as the operator
 	hm.NetworkClient.SetOperator(hm.Operator.AccountID, hm.Operator.PrivateKey)
 
+	// // query the account balance from the Hedera network
+	// queryCost, err := hm.Operator.QueryBalance(hm)
+	// logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", hm.Operator.Info.Balance))
+	// logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
+
 	// query the complete account information from the Hedera network
 	queryCost, err := hm.Operator.QueryInfo(hm)
 	logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", hm.Operator.Info.Balance))
 	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
-
-	// // query the account balance from the Hedera network
-	// queryCost, err = Account.QueryBalance(hm)
-	// logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", Account.Info.Balance))
-	// logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
 
 	return err
 }
