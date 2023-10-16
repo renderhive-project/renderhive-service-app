@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { ReactNode, createContext, useContext, useEffect, useState } from "react";
 import { appConfig } from "../config";
 import { useWalletInterface } from "../services/wallets/useWalletInterface";
 
@@ -27,18 +27,18 @@ type SessionContextType = {
 
 const defaultValue: SessionContextType = {
     signedIn: false,
-    setSignedIn: (newValue: boolean) => { },
+    setSignedIn: () => { },
     operatorInfo: {
         accountId: '',
         username: '',
         email: ''
     },
-    setOperatorInfo: (newValue: OperatorInfo) => { },
+    setOperatorInfo: () => { },
     nodeInfo: {
         accountId: '',
         name: '',
     },
-    setNodeInfo: (newValue: NodeInfo) => { },
+    setNodeInfo: () => { },
 }
 
 export const SessionContext = createContext<SessionContextType>(defaultValue);
@@ -49,8 +49,8 @@ export const useSession = () => {
   return context;
 };
 
-export const SessionContextProvider = ({ children }) => {
-  const {accountId, walletInterface} = useWalletInterface();
+export const SessionContextProvider = (props: { children: ReactNode | undefined }) => {
+  const {accountId } = useWalletInterface();
   const [signedIn, setSignedIn] = useState(defaultValue.signedIn);
   const [operatorInfo, setOperatorInfo] = useState(defaultValue.operatorInfo);
   const [nodeInfo, setNodeInfo] = useState(defaultValue.nodeInfo);
@@ -66,7 +66,8 @@ export const SessionContextProvider = ({ children }) => {
           jsonrpc: '2.0',
           method: 'OperatorService.GetInfo',
           params: [{}],
-          id: uuidv4()
+          id: uuidv4(),
+          timeout: appConfig.constants.BACKEND_JSONRPC_TIMEOUT,
         }, {
           headers: {
               'Content-Type': 'application/json',
@@ -116,7 +117,8 @@ export const SessionContextProvider = ({ children }) => {
             jsonrpc: '2.0',
             method: 'OperatorService.IsSessionValid',
             params: [{}],
-            id: uuidv4()
+            id: uuidv4(),
+            timeout: appConfig.constants.BACKEND_JSONRPC_TIMEOUT,
           }, {
             headers: {
                 'Content-Type': 'application/json',
@@ -146,18 +148,16 @@ export const SessionContextProvider = ({ children }) => {
 
   }, [])
 
-  const contextValue = {
+  return (
+    <SessionContext.Provider value={{
       signedIn,
       setSignedIn,
       operatorInfo,
       setOperatorInfo,
       nodeInfo,
       setNodeInfo,
-    };
-
-  return (
-    <SessionContext.Provider value={contextValue}>
-      {children}
+    }}>
+      {props.children}
     </SessionContext.Provider>
   );
 };

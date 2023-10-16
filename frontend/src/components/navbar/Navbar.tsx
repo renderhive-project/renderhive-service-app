@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 
 // components
-import { AppBar, Avatar, Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Toolbar, Typography } from '@mui/material';
+import { AppBar, Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Toolbar, Typography } from '@mui/material';
 
 // icons
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -23,9 +23,9 @@ const NavBar = () => {
   const [userMenu, setUserMenu] = useState(null);
   const { accountId, walletInterface } = useWalletInterface();
   const navigate = useNavigate();
-  const { signedIn, setSignedIn, operatorInfo, setOperatorInfo, nodeInfo, setNodeInfo } = useSession();
+  const { signedIn, setSignedIn } = useSession();
 
-  const handleMenuOpen = (event) => {
+  const handleMenuOpen = (event: any) => {
     setUserMenu(event.currentTarget);
   };
   

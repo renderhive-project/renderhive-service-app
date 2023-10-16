@@ -18,10 +18,13 @@
 
 # This Dockerfile describes the containerization of the Renderhive Service App's backend
 
-# COMPILE THE APP
+# COMPILE THE BACKEND SOURCE CODE
 # #############################################################################
 # Builder stage to build the Go binary
 FROM golang:1.18-alpine as builder
+
+# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
+RUN addgroup -S docker && adduser -S renderhive -G docker
 
 # Set the working directory inside the container
 WORKDIR /app/src/
@@ -37,6 +40,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o renderhive-service ./
 # Final stage to create a small image
 FROM alpine:latest
 
+# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
+RUN addgroup -S docker && adduser -S renderhive -G docker
+
 # install the w3up CLI with the Node.js and npm dependency
 RUN apk add --update nodejs npm
 RUN npm install -g @web3-storage/w3cli
@@ -44,24 +50,25 @@ RUN npm install -g @web3-storage/w3cli
 # Set the working directory inside the container
 WORKDIR /app
 
-# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
-RUN addgroup -S docker && adduser -S renderhive -G docker
-
 # Copy the binary from the builder stage
 COPY --from=builder /app/src/renderhive-service /app/renderhive-service
 
 # create required directories
-RUN mkdir hedera
 RUN mkdir tmp
+RUN mkdir config
+RUN mkdir data
 
-# Copy the testnet.env into the container
-COPY /backend/src/hedera/testnet.env ./hedera/testnet.env
+# copy server certificates
+COPY ../server/certificates ./webapp/cert
 
 # Assign ownership of the /app directory to the local container user
 RUN chown -R renderhive:docker /app
 
 # Switch to user 'renderhive'
 USER renderhive
+
+# Expose port 5174
+EXPOSE 5174
 
 # Run the binary
 CMD ["/app/renderhive-service"]

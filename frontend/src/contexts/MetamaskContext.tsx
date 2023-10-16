@@ -1,8 +1,13 @@
 import { createContext, ReactNode, useState } from "react";
 
-const defaultValue = {
+type MetamaskContextType = {  
+  metamaskAccountAddress: string,
+  setMetamaskAccountAddress: (newValue: string) => void,
+};
+
+const defaultValue: MetamaskContextType = {
   metamaskAccountAddress: '',
-  setMetamaskAccountAddress: (newValue: string) => { },
+  setMetamaskAccountAddress: () => { },
 }
 
 export const MetamaskContext = createContext(defaultValue)

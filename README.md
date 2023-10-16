@@ -17,11 +17,13 @@ This repository contains the open source code of the Renderhive Service App. Thi
 
 ### Get started
 
-#### 1. Install Docker
+#### 1. Install software
 
-Renderhive is shipped as a containerized solution. This ensure that the Renderhive software runs consistently on different systems, reduces platform-dependent bugs, contains all required dependencies, and simplifies maintanence. Please download Docker from the official website:
+Please download and install the following software, if you want to test the Renderhive software:
 
-https://www.docker.com
+- [Docker](https://www.docker.com/get-started/)
+- [Chrome browser](https://www.google.com/chrome/)
+- [Hashpack wallet app](https://www.hashpack.app/download)
 
 #### 2. Clone the repository
 
@@ -31,31 +33,35 @@ git clone https://github.com/renderhive-projects/renderhive-service-app.git
 
 #### 3. Create a Hedera testnet account
 
-The app currently runs on the Hedera testnet only and, thus, expects a `testnet.env` file in the `backend/src/hedera` folder, which contains your account credentials. Therefore, you need to [create a Hedera testnet account](https://docs.hedera.com/guides/testnet/testnet-access) for yourself and add the `testnet.env` to your local copy of this repository. The file should contain the following two lines:
+The app currently runs on the Hedera testnet only and requires you to create a testnet account. This can be achieved [via the Hedera developer portal](https://docs.hedera.com/guides/testnet/testnet-access) or using the [Hashpack wallet](https://www.hashpack.app). 
 
-```
-TESTNET_ACCOUNT_ID=$YOUR_ID$
-TESTNET_PRIVATE_KEY=$YOUR_PRIVATE_KEY$
-```
+#### 4. Build the docker images
 
-`$YOUR_ID$` and `$YOUR_PRIVATE_KEY$` need to be replaces with your account details.
-
-#### 4. Create the docker images and the container
-
-You can use the Docker Desktop app to create the containers or simply the command-line interface:
+Once the `docker-compose.yml` was modified, `cd` into main folder of the code to build the renderhive images using the `docker-compose` command:
 
 ```bash
+cd ..
 docker-compose -p renderhive build
 ```
 
-#### 5. Start the renderhive container
+Depending on your hardware, the compilation process may take a while (e.g., 5 - 10 min on an (Intel-based) MacBook Pro 2020).
 
-To spin up the renderhive service app, you run the docker containers via `docker-compose`
+#### 5. Run the docker container
+
+To spin up the renderhive service app, you now need to start the docker containers via `docker-compose`
 
 ```bash
 docker-compose -p renderhive up
 ```
 
+#### 6. Renderhive webapp
+
+Since the code base is still under heavy construction, the existing development frontend is mainly there to test important functionalities during the development. Therefore, the workflows are not streamlined yet. For example, the Renderhive app uses a self-signed SSL certificate to establish a HTTPS connection between the backend and frontend. When you open the frontend via:
+
+`https://localhost:5173/`
+
+the browser will warn you about the self-signed (not trusted) certificate. Please skip the warning. You should now see the development frontend.
+
 ### Contributing
 
-If you want to contribute, feel free to create a pull request. When creating pushing commits, make sure that the `testnet.env` file is not included, since it contains your private testnet account details.
+If you want to contribute, feel free to create a pull request. When pushing commits, make sure that local files (e.g., your configuration files) are not included, since it contains your private testnet account details.

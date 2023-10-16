@@ -1,20 +1,20 @@
 import { appConfig } from "../../config";
-import { useContext, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSession } from '../../contexts/SessionContext';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
 // components
 import FormContainer from '../../components/form/FormContainer';
-import { Box, Button, CircularProgress, Divider, Link, TextField, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, Link, Typography } from "@mui/material";
 import Stack from '@mui/material/Stack';
 
 // Web3 services
 import { useWalletInterface } from '../../services/wallets/useWalletInterface';
 import { WalletSelector } from '../../components/wallets/SignInWalletSelector';
-import { connectToBladeWallet } from "../../services/wallets/blade/bladeClient";
-import { hashConnect } from "../../services/wallets/hashconnect/hashconnectClient";
-import { connectToMetamask } from "../../services/wallets/metamask/metamaskClient";
+// import { connectToBladeWallet } from "../../services/wallets/blade/bladeClient";
+// import { hashConnect } from "../../services/wallets/hashconnect/hashconnectClient";
+// import { connectToMetamask } from "../../services/wallets/metamask/metamaskClient";
 
 // images & icons
 import RenderhiveLogo from "../../assets/renderhive-logo.svg";
@@ -24,13 +24,13 @@ import { Form, Formik } from "formik";
 
 const SignIn = () => {
   const [loading, setLoading] = useState(false);
-  const { accountId, walletInterface } = useWalletInterface();
+  const { accountId } = useWalletInterface();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const { signedIn, setSignedIn, operatorInfo, setOperatorInfo, nodeInfo, setNodeInfo } = useSession();
+  const { signedIn, setSignedIn, operatorInfo, nodeInfo } = useSession();
 
   // function to handle the login
-  const handleSignIn = async e => {
+  const handleSignIn = async (event: any) => {
     try {
 
         // status update
@@ -43,9 +43,10 @@ const SignIn = () => {
           jsonrpc: '2.0',
           method: 'OperatorService.SignIn',
           params: [{
-              Passphrase: e.node_passphrase,
+              Passphrase: event.node_password,
           }],
-          id: uuidv4()
+          id: uuidv4(),
+          timeout: appConfig.constants.BACKEND_JSONRPC_TIMEOUT,
         }, {
           headers: {
               'Content-Type': 'application/json',
@@ -131,15 +132,15 @@ const SignIn = () => {
                     <Formik
                       initialValues={{
                         node_name: (nodeInfo ? nodeInfo.name : ''),
-                        node_passphrase: '',
+                        node_password: '',
                       }}
                       onSubmit={handleSignIn}
                     >
-                      {(formik) => (
+                      {() => (
                           <Form>
 
                             <InputField disabled name="node_name" label="Sign in to your Renderhive node:" value={nodeInfo.name}/>
-                            <InputField type="password" name="node_passphrase" label="Node Passphrase"/>
+                            <InputField type="password" name="node_password" label="Node Password"/>
                             
                             <Button
                               fullWidth

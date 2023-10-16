@@ -32,10 +32,10 @@ services:
       - "127.0.0.1:5174:5174"
     volumes:
       - ./backend/src:/app
-      - ./config:/app/config
-      - ./data:/app/data
+      - config:/app/config
+      - data:/app/data
     networks:
-      - app-network
+      - renderhive-container-network
 
   frontend_dev:
     build:
@@ -54,8 +54,21 @@ services:
     depends_on:
       - backend_dev
     networks:
-      - app-network
+      - renderhive-container-network
 
+# NETWORK CONFIGURATION
 networks:
-  app-network:
+  renderhive-container-network:
     driver: bridge
+
+# VOLUME CONFIGURATION
+volumes:
+  config:
+    labels:
+      project-name: "Renderhive"
+      project-version: "0.0.1"
+
+  data:
+    labels:
+      project-name: "Renderhive"
+      project-version: "0.0.1"
