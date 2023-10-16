@@ -23,28 +23,46 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    user: "renderhive"
     ports:
       # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
-      #       If not specified, other machines could access the web app (if the firewall rules would allow for that)
-      - "127.0.0.1:8080:8080"
-      - "127.0.0.1:8443:8443"
+      #       If not specified, other machines could access the backend server of this host machine
+      #       (if the firewall rules would allow for that)
+      - "127.0.0.1:5174:5174"
     volumes:
-      # $YOUR_APP_CONFIG_PATH$ needs to be replaced with the path to the directory on
-      # the host machine, where Renderhive will store persistent configuration data 
-      - $YOUR_APP_CONFIG_PATH$:/app/config
-      # $YOUR_APP_DATA_PATH$ needs to be replaced with the path to the directory on
-      # the host machine, where Renderhive will store persistent app data 
-      # (i.e., benchmarks, blender files, render results, etc.)
-      - $YOUR_APP_DATA_PATH$:/app/data
+      - config:/app/config
+      - data:/app/data
+    networks:
+      - renderhive-container-network
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    # user: "renderhive" # TODO: Would it make sense to create a non-root user in the frontend container as well?
     ports:
       # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
-      #       If not specified, other machines could access the web app (if the firewall rules would allow for that)
-      - "127.0.0.1:80:80"
-      - "127.0.0.1:443:443"
+      #       If not specified, other machines could access the nginx server of this host machine
+      #       (if the firewall rules would allow for that)
+      - "127.0.0.1:5173:443"
     depends_on:
       - backend
+    networks:
+      - renderhive-container-network
+
+# NETWORK CONFIGURATION
+networks:
+  renderhive-container-network:
+    driver: bridge
+
+# VOLUME CONFIGURATION
+volumes:
+  config:
+    labels:
+      project-name: "Renderhive"
+      project-version: "0.0.1"
+
+  data:
+    labels:
+      project-name: "Renderhive"
+      project-version: "0.0.1"

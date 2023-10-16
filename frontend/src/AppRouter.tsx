@@ -1,7 +1,8 @@
 import { createBrowserRouter, RouterProvider, Outlet, Navigate, useLocation } from "react-router-dom";
-import { Box, CircularProgress, CssBaseline, Toolbar, Typography } from "@mui/material";
+import { Box, CircularProgress, CssBaseline, Toolbar } from "@mui/material";
 import { useWalletInterface } from "./services/wallets/useWalletInterface";
 import { useLoading } from "./contexts/LoaderContext";
+import { useSession } from "./contexts/SessionContext";
 
 // components
 import Navbar from "./components/navbar/Navbar";
@@ -14,15 +15,13 @@ import SignIn from "./pages/signin/signin";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Users from "./pages/users/Users";
 import Products from "./pages/products/Products";
-import { useContext } from "react";
-import { SessionContext, useSession } from "./contexts/SessionContext";
 
 export default function AppRouter() {
   const { signedIn, operatorInfo, nodeInfo } = useSession();
   const { accountId } = useWalletInterface();
-  const { isLoading, setLoading } = useLoading();
-  // console.log("Signed in:", signedIn)
-  // console.log(operatorInfo, nodeInfo, accountId)
+  const { isLoading } = useLoading();
+  console.log("Signed in:", signedIn)
+  console.log(operatorInfo, nodeInfo, accountId)
 
   const Layout = () => {
     const location = useLocation();

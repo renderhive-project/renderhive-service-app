@@ -7,6 +7,8 @@ import { ContractFunctionParameterBuilder } from "../contractFunctionParameterBu
 import { appConfig } from "../../../config";
 import { useLoading } from "../../../contexts/LoaderContext";
 
+// icons
+import RenderhiveLogo from "../../../assets/renderhive-logo.svg";
 
 const currentNetworkConfig = appConfig.networks.testnet;
 const hederaNetwork = currentNetworkConfig.network;
@@ -113,9 +115,9 @@ const hashConnectInitPromise = new Promise(async (resolve) => {
       wallet can display what app is requesting access from the user
   */
   const appMetadata: HashConnectTypes.AppMetadata = {
-    name: "Renderhive",
+    name: "Renderhive Service App",
     description: "The first blockchain-based crowdrender network for Blender",
-    icon: window.location.origin + "/logo192.png"
+    icon: new URL(RenderhiveLogo, import.meta.url).href // window.location.origin + "/logo192.png"
   };
   const initResult = await hashConnect.init(appMetadata, hederaNetwork, true)
   resolve(initResult);
@@ -123,7 +125,7 @@ const hashConnectInitPromise = new Promise(async (resolve) => {
 
 // this component will sync the hashconnect state with the context
 export const HashConnectClient = () => {
-  const { isLoading, setLoading } = useLoading();
+  const { setLoading } = useLoading();
   // use the HashpackContext to keep track of the hashpack account and connection
   const { setAccountId, setIsConnected } = useContext(HashconnectContext);
 

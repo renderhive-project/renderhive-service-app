@@ -90,4 +90,4 @@ const MultiStepForm = ({ children, initialValues, onSubmit, showStepper }: Props
 }
 
 export default MultiStepForm;
-export const FormStep = ({ stepName = '', children }: any) => children;
+export const FormStep = ({ children }: any) => children;

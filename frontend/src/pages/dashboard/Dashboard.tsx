@@ -1,14 +1,14 @@
-import React from 'react'
-import { Box, Grid, Typography, useTheme } from '@mui/material'
+// import React from 'react'
+import { Box, Grid, Typography } from '@mui/material'
 
 // styles
 import "./dashboard.scss"
-import { tokens } from '../../theme'
-import BasicCard from '../../components/cards/BasicCard'
+// import { tokens } from '../../theme'
+// import BasicCard from '../../components/cards/BasicCard'
 
 const Dashboard = () => {
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
+  // const theme = useTheme();
+  // const colors = tokens(theme.palette.mode);
 
   return (
     <Box className="dashboard">

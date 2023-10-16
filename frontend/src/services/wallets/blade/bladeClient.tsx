@@ -154,7 +154,7 @@ export const connectToBladeWallet = async (skipKillSession: boolean = false) => 
 
 export const BladeClient = () => {
   const [usedBlade, setUsedBlade] = useState(false);
-  const { isLoading, setLoading } = useLoading();
+  const { setLoading } = useLoading();
 
   // use the BladeContext to keep track of the hashpack account and connection
   const { setAccountId, setIsConnected } = useContext(BladeContext);

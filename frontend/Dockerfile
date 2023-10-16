@@ -18,14 +18,13 @@
 
 # This Dockerfile describes the containerization of the Renderhive Service App's frontend
 
+# COMPILE THE FRONTEND SOURCE CODE
+# #############################################################################
 # Build the React application
 FROM node:18-alpine as builder
 
 # Set the working directory inside the container
 WORKDIR /app
-
-# Create a non-root user 'renderhive' and a usergroup 'docker' for the container
-RUN addgroup -S docker && adduser -S renderhive -G docker
 
 # Install dependencies and build static assets
 COPY frontend/package.json frontend/package-lock.json ./
@@ -33,20 +32,24 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
+
+# BUILD THE DOCKER IMAGE
+# #############################################################################
 # Serve the React application using Nginx
 FROM nginx:alpine
 
 # Copy the build static assets from the builder stage
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Assign ownership of the /app directory to the local container user
-RUN chown -R renderhive:docker /app
+# Copy SSL/TLS certificates
+COPY server/certificates /etc/nginx/ssl
 
-# Switch to user 'renderhive'
-USER renderhive
+# Copy Nginx configuration file
+COPY server/nginx/nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 80
+# Expose ports 80 and 443
 EXPOSE 80
+EXPOSE 443
 
 # Start Nginx
 CMD ["nginx", "-g", "daemon off;"]

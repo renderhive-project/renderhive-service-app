@@ -1,17 +1,24 @@
 import { createContext, useState, ReactNode } from "react";
 
-const defaultValue = {
+type HashconnectContextType = {  
+  accountId: string,
+  setAccountId: (newValue: string) => void,
+  isConnected: boolean,
+  setIsConnected: (newValue: boolean) => void,
+};
+
+const defaultValue: HashconnectContextType = {
   accountId: '',
-  setAccountId: (newValue: string) => { },
+  setAccountId: () => { },
   isConnected: false,
-  setIsConnected: (newValue: boolean) => { },
+  setIsConnected: () => { },
 }
 
 export const HashconnectContext = createContext(defaultValue);
 
 export const HashconnectContextProvider = (props: { children: ReactNode | undefined }) => {
-  const [accountId, setAccountId] = useState(defaultValue.accountId);
-  const [isConnected, setIsConnected] = useState(defaultValue.isConnected);
+  const [accountId, setAccountId] = useState<string>(defaultValue.accountId);
+  const [isConnected, setIsConnected] = useState<boolean>(defaultValue.isConnected);
 
   return (
     <HashconnectContext.Provider

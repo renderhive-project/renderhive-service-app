@@ -31,47 +31,19 @@ const validationSchema_PersonForm = yup.object({
 
 const SignUp = () => {
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
   const { accountId, walletInterface } = useWalletInterface();
-  const [{ account }, { loadAgent, unloadAgent, authorize, cancelAuthorize }] = useKeyring()
+  const [{ }, { loadAgent }] = useKeyring()
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const { signedIn, setSignedIn, operatorInfo, setOperatorInfo, nodeInfo, setNodeInfo } = useSession();
+  const { operatorInfo, nodeInfo, setNodeInfo } = useSession();
   const navigate = useNavigate();
 
-  // sign up process steps
-  const steps = [
-    {
-      label: 'Call Smart Contract',
-      description: `Please confirm the transaction to sign up the operator account ${accountId} as node operator in the Renderhive smart contract.`,
-    },
-    {
-      label: 'Sign up this ',
-      description:
-        'An ad group contains one or more ads which target a shared set of keywords.',
-    },
-    {
-      label: 'Create an ad',
-      description: `Try out different ad text to see what brings in the most customers,
-                and learn how to enhance your ads using features like ad extensions.
-                If you run into any problems with your ads, find out how to tell if
-                they're running and how to resolve approval issues.`,
-    },
-  ];
-
-  // get the connected wallet / Hedera account
-  useEffect(() => {
-    if (accountId) {
-      setOpen(false);
-    }
-  }, [accountId])
-
-  // load the w3Up agent - once.
+  // load the w3Up agent - once
   useEffect(() => { loadAgent() }, [])
 
   // handle form submission
-  const handleSubmit = async e => {
-    // e.preventDefault()
+  const handleSubmit = async (event: any) => {
+    // event.preventDefault()
     // setSubmitted(true)
 
     // if the wallet interface is initialized
@@ -93,13 +65,13 @@ const SignUp = () => {
     // prepare operator information
     if ((operatorInfo && accountId) && operatorInfo.accountId != accountId) {
       operatorInfo.accountId = accountId
-      operatorInfo.username = e.username
-      operatorInfo.email = e.email
+      operatorInfo.username = event.username
+      operatorInfo.email = event.email
     }
 
     // prepare node information
-    if (nodeInfo && e.node_name) {
-      nodeInfo.name = e.node_name
+    if (nodeInfo && event.node_name) {
+      nodeInfo.name = event.node_name
     }
     
     // STEP 1: Initialize the sign up procedure
@@ -110,9 +82,10 @@ const SignUp = () => {
         Step: 'init',
         Operator: operatorInfo,
         Node: nodeInfo,
-        Passphrase: e.node_passphrase,
+        Passphrase: event.node_password,
       }],
-      id: uuidv4()
+      id: uuidv4(),
+      timeout: appConfig.constants.BACKEND_JSONRPC_TIMEOUT,
     }, {
       headers: {
           'Content-Type': 'application/json',
@@ -130,6 +103,7 @@ const SignUp = () => {
 
         // request signing of the data
         const response_createaccount_txnId = await walletInterface.transferHBAR(AccountId.fromString(response_init.data.result.NodeAccountID), 10)
+        console.log(response_createaccount_txnId)
         if (response_createaccount_txnId) {
 
             // status update
@@ -143,10 +117,11 @@ const SignUp = () => {
                 Step: 'create',
                 Operator: operatorInfo,
                 Node: nodeInfo,
-                Passphrase: e.node_passphrase,
+                Passphrase: event.node_password,
                 AccountCreationTransactionID: response_createaccount_txnId,
               }],
-              id: uuidv4()
+              id: uuidv4(),
+              timeout: appConfig.constants.BACKEND_JSONRPC_TIMEOUT,
             }, {
               headers: {
                   'Content-Type': 'application/json',
@@ -277,7 +252,7 @@ const SignUp = () => {
                         email: ((operatorInfo && operatorInfo.accountId == accountId) ? operatorInfo.email : ''),
                         accountID: {accountId},
                         node_name: (nodeInfo ? nodeInfo.name : ''),
-                        node_passphrase: '',
+                        node_password: '',
                         w3up_signup: false,
                       }}
                       onSubmit={handleSubmit}
@@ -285,11 +260,12 @@ const SignUp = () => {
                     >
                       {/* STEP: Register operator account */}
                       { (!operatorInfo || (operatorInfo && operatorInfo.accountId != accountId)) && 
-                        <FormStep stepName="Node Operator Details" onSubmit={() => console.log('Step1 submit')} validationSchema={validationSchema_PersonForm}>
+                        <FormStep stepName="User Account" onSubmit={() => console.log('Step1 submit')} validationSchema={validationSchema_PersonForm}>
                           <Alert severity="info" sx={{ textAlign: 'justify', marginBottom: '20px' }}>
                             <AlertTitle>Info</AlertTitle>
-                            The operator details are used to identify your user on the Renderhive network. Your Email
-                            address is only stored locally on your machine and not shared without your consent.
+                            You are now signing up your user account on the Renderhive network. This account can be used
+                            to manage your Renderhive nodes. Your Email address is only stored locally on your machine and not 
+                            shared without your consent.
                           </Alert>
                           <InputField name="username" label="Username"/>
                           <InputField name="email" label="Email"/>
@@ -297,23 +273,23 @@ const SignUp = () => {
                       }
 
                       {/* STEP: Define node details */}
-                      <FormStep stepName="Node details" onSubmit={() => console.log('Step2 submit')}>
+                      <FormStep stepName="Node Details" onSubmit={() => console.log('Step2 submit')}>
                         <Alert severity="info" sx={{ textAlign: 'justify', marginBottom: '20px' }}>
                           <AlertTitle>Info</AlertTitle>
                           The node name is used to help you organize your Renderhive nodes and to identify your 
                           node on the Renderhive network.
                         </Alert>
                         <InputField name="node_name" label="Node Name"/>
-                        <InputField type="password" name="node_passphrase" label="Node Passphrase"/>
+                        <InputField type="password" name="node_password" label="Node Password"/>
                       </FormStep>
 
                       {/* STEP: Register with storage service */}
-                      <FormStep stepName="Storage space" onSubmit={() => console.log('Step3 submit')}>
+                      <FormStep stepName="Storage Space" onSubmit={() => console.log('Step3 submit')}>
                         <Alert severity="warning" sx={{ textAlign: 'justify', marginBottom: '20px' }}>
                           <AlertTitle>Note</AlertTitle>
                           Renderhive stores data connected to render jobs (e.g., Blender files) on the decentralized 
-                          Interplanatary File System (IPFS) via a Filecoin service provider. By signing up
-                          your Renderhive account, you automatically create a web3.storage / w3up account using your 
+                          Interplanatary File System (IPFS) via a Filecoin service provider. By signing up this node with
+                          your user account, you automatically create a w3up account using your 
                           previously provided email address.
                           <FormControlLabel required 
                             control={
@@ -323,11 +299,11 @@ const SignUp = () => {
                                 as={Checkbox}
                               />
                             } 
-                            label="Ok, sign me up with web3.storage" 
+                            label="Ok, sign me up with w3up!" 
                             sx={{marginTop: "15px"}}
                           />
                         </Alert>
-                        <InputField disabled name="email" label="Operator Email"/>
+                        <InputField disabled name="email" label="Email"/>
                       </FormStep>
 
                       {/* STEP: Start the sign up process */}
@@ -357,9 +333,6 @@ const SignUp = () => {
         </Stack>
 
       </FormContainer>
-
-      {/* Overlay for wallet selection */}
-      {/* <WalletSelectionDialog open={open} onClose={() => setOpen(false)} /> */}
 
     </Box>
     </KeyringProvider>

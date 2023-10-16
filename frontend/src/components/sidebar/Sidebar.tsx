@@ -1,9 +1,8 @@
-import { ChangeEvent, useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { IconButton, ListSubheader, Switch } from '@mui/material';
 import { styled, useTheme, Theme, CSSObject } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import MuiDrawer from '@mui/material/Drawer';
-import { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import List from '@mui/material/List';
 import Divider from '@mui/material/Divider';
@@ -65,11 +64,11 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
   }),
 );
 
-interface AppBarProps extends MuiAppBarProps {
-  open?: boolean;
-}
+// interface AppBarProps extends MuiAppBarProps {
+//   open?: boolean;
+// }
 
-const Sidebar = (props: AppBarProps) => {
+const Sidebar = () => {
   const theme = useTheme();
   const colorMode = useContext(ColorModeContext);
   const [open, setOpen] = useState(true);
@@ -88,7 +87,7 @@ const Sidebar = (props: AppBarProps) => {
       <Drawer variant="permanent" open={open}>
         <Toolbar />
         <List>
-          {['Navigation'].map((text, index) => (
+          {['Navigation'].map((text) => (
             <ListItem key={text} disablePadding sx={{ display: 'block' }}>
               <ListItemButton
                 sx={{
