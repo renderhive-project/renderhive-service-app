@@ -100,167 +100,209 @@ type SignUpReply struct {
 
 // Adds a known operator
 func (ops *OperatorService) SignUp(r *http.Request, args *SignUpArgs, reply *SignUpReply) error {
+	var err error
 
 	// lock the mutex
 	Manager.Mutex.Lock()
 	defer Manager.Mutex.Unlock()
 
-	// STEP 1: Initialize the sign up procedure
-	if args.Step == "init" {
+	// TODO: Implement further checks and security measures
 
-		// TODO: Implement further checks and security measures
-
-		// OPERATOR INFO
-		// if the node operator info is not yet available
-		if node.Manager.User.UserAccount.PublicKey.String() == "" {
-
-			// query the operator account information from a mirror node
-			accounts, err := hedera.Manager.MirrorNode.GetAccountInfo(args.Operator.AccountID, 1, "")
-			if err != nil || (accounts == nil || (accounts != nil && len(*accounts) == 0)) {
-				return fmt.Errorf("Error: %v", err)
-			}
-
-			// update the node data
-			node.Manager.User.UserAccount.AccountID, err = hederasdk.AccountIDFromString((*accounts)[0].Account)
-			if err != nil {
-				return fmt.Errorf("Error: %v", err)
-			}
-			node.Manager.User.UserAccount.PublicKey, err = hederasdk.PublicKeyFromString((*accounts)[0].Key.Key)
-			if err != nil {
-				return fmt.Errorf("Error: %v", err)
-			}
-
-			// write the user data to a file
-			err = node.Manager.WriteUserData(args.Operator.ID, args.Operator.Username, args.Operator.Email, args.Operator.AccountID, (*accounts)[0].Key.Key)
-			if err != nil {
-				return fmt.Errorf("Error: %v", err)
-			}
-		}
-
-		// NODE INFO
-		if args.Node.Name == "" {
-			return fmt.Errorf("Error: %v", "Node name is empty")
-		}
-
-		// if the node operator info is not yet available
-		if node.Manager.Node.HederaAccount.PublicKey == "" {
-
-			// generate a key pair
-			privateKey, err := hederasdk.PrivateKeyGenerateEd25519()
-			if err != nil {
-				return fmt.Errorf("Error: %v", err)
-			}
-			publicKey := privateKey.PublicKey()
-
-			// Assuming that the target shard and realm are known.
-			// For now they are virtually always 0 and 0.
-			aliasAccountId := *publicKey.ToAccountID(0, 0)
-			if aliasAccountId.AliasKey == nil {
-				return fmt.Errorf("Error: %v", "Could not generate alias key for node account")
-			}
-
-			// set Hedera operator for the network client
-			hedera.Manager.Operator.PublicKey = publicKey
-			hedera.Manager.Operator.PrivateKey = privateKey
-
-			// save the node's private key using the users passphrase
-			err = hedera.Manager.Operator.ToFile(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(aliasAccountId.String(), ".", "")+".key"), args.Passphrase)
-			if err != nil {
-				return fmt.Errorf("Failed to save private key: %v", err)
-			}
-
-			// create reply for the RPC client
-			reply.Message = "Successfully initialized sign up procedure"
-			reply.NodeAccountID = aliasAccountId.String()
-			reply.Payload = nil
-
-		}
-
-		return nil
-
+	// handle the different signup steps
+	switch args.Step {
+	case "init":
+		err = ops.signUpInit(args, reply)
+	case "create":
+		err = ops.signUpCreate(args, reply)
+	case "contract":
+		err = ops.signUpContract(args, reply)
+	case "storage":
+		err = ops.signUpStorage(args, reply)
+		reply.Message = "New operator was signed up: " + args.Operator.Username + "!"
+	case "finalize":
+		err = ops.signUpFinalize(args, reply)
+	default:
+		err = fmt.Errorf("Invalid step: %v", args.Step)
 	}
 
-	// STEP 2: Create the node account
-	if args.Step == "create" {
+	// create reply for the RPC client
+	return err
 
-		logger.Manager.Package["webapp"].Info().Msg(fmt.Sprintf("Waiting for transaction to land on the mirror node: %v", args.AccountCreationTransactionID))
+}
 
-		// wait some seconds to make sure the mirror node receives the transaction data
-		time.Sleep(5 * time.Second)
+// helper function to handle the init step of the sign up process
+func (ops *OperatorService) signUpInit(args *SignUpArgs, reply *SignUpReply) error {
+
+	// OPERATOR INFO
+	// if the node operator info is not yet available
+	if node.Manager.User.UserAccount.PublicKey.String() == "" {
 
 		// query the operator account information from a mirror node
-		transactionInfo, err := hedera.Manager.MirrorNode.GetTransactionInfo(args.AccountCreationTransactionID)
+		accounts, err := hedera.Manager.MirrorNode.GetAccountInfo(args.Operator.AccountID, 1, "")
+		if err != nil || (accounts == nil || (accounts != nil && len(*accounts) == 0)) {
+			return fmt.Errorf("Error: %v", err)
+		}
+
+		// update the node data
+		node.Manager.User.UserAccount.AccountID, err = hederasdk.AccountIDFromString((*accounts)[0].Account)
+		if err != nil {
+			return fmt.Errorf("Error: %v", err)
+		}
+		node.Manager.User.UserAccount.PublicKey, err = hederasdk.PublicKeyFromString((*accounts)[0].Key.Key)
 		if err != nil {
 			return fmt.Errorf("Error: %v", err)
 		}
 
-		// if the returned transaction is the account create transaction
-		if transactionInfo.Name != "CRYPTOCREATEACCOUNT" {
-			return fmt.Errorf("Error: Unexpected transaction type '%v'", transactionInfo.Name)
-		}
-
-		// Rename the original file to create a backup, if already on exists
-		keystorepath := filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(hedera.Manager.Operator.PublicKey.ToAccountID(0, 0).String(), ".", "")+".key")
-		if isFile, _ := utility.IsFile(keystorepath); isFile {
-			err = os.Rename(keystorepath, filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(transactionInfo.EntityID, ".", "")+".key"))
-			if err != nil {
-				return err // Handle the error appropriately.
-			}
-		}
-
-		// rename the keyfile
-		err = hedera.Manager.LoadAccount(transactionInfo.EntityID, args.Passphrase, hedera.Manager.Operator.PublicKey.String())
+		// write the user data to a file
+		err = node.Manager.WriteUserData(args.Operator.ID, args.Operator.Username, args.Operator.Email, args.Operator.AccountID, (*accounts)[0].Key.Key)
 		if err != nil {
 			return fmt.Errorf("Error: %v", err)
 		}
+	}
 
-		// Write the node data
-		err = node.Manager.WriteNodeData(-1, args.Node.Name, true, false, hedera.Manager.Operator.AccountID.String(), hedera.Manager.Operator.PublicKey.String())
+	// NODE INFO
+	if args.Node.Name == "" {
+		return fmt.Errorf("Error: %v", "Node name is empty")
+	}
+
+	// if the node operator info is not yet available
+	if node.Manager.Node.HederaAccount.PublicKey == "" {
+
+		// generate a key pair
+		privateKey, err := hederasdk.PrivateKeyGenerateEd25519()
 		if err != nil {
 			return fmt.Errorf("Error: %v", err)
 		}
+		publicKey := privateKey.PublicKey()
+
+		// Assuming that the target shard and realm are known.
+		// For now they are virtually always 0 and 0.
+		aliasAccountId := *publicKey.ToAccountID(0, 0)
+		if aliasAccountId.AliasKey == nil {
+			return fmt.Errorf("Error: %v", "Could not generate alias key for node account")
+		}
+
+		// set Hedera operator for the network client
+		hedera.Manager.Operator.PublicKey = publicKey
+		hedera.Manager.Operator.PrivateKey = privateKey
+
+		// save the node's private key using the users passphrase
+		err = hedera.Manager.Operator.ToFile(filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(aliasAccountId.String(), ".", "")+".key"), args.Passphrase)
+		if err != nil {
+			return fmt.Errorf("Failed to save private key: %v", err)
+		}
 
 		// create reply for the RPC client
-		reply.Message = "Successfully created the node account"
-		reply.NodeAccountID = hedera.Manager.Operator.AccountID.String()
+		reply.Message = "Successfully initialized sign up procedure"
+		reply.NodeAccountID = aliasAccountId.String()
 		reply.Payload = nil
-		return nil
-	}
-
-	// STEP 3: Register with the smart contract
-	if args.Step == "contract" {
-
-		// TODO: Implement registration with the smart contract
-
-		// create reply for the RPC client
-		reply.Message = "Successfully created the node account"
-		reply.NodeAccountID = hedera.Manager.Operator.AccountID.String()
-		reply.Payload = nil
-		return nil
-	}
-
-	// STEP 4: Sign up with the storage service
-	if args.Step == "storage" {
-
-		// TODO: Implement sign up with Filecoin service
-
-		// create reply for the RPC client
-		reply.Message = "Successfully signed up with the Filecoin service"
-		reply.NodeAccountID = node.Manager.Node.HederaAccount.AccountID
-		reply.Payload = nil
-		return nil
-	}
-
-	// STEP 5: Finalize the signup
-	if args.Step == "finalize" {
-
-		// TODO: Implement finalization (if required)
 
 	}
-	// create reply for the RPC client
-	reply.Message = "New operator was signed up: " + args.Operator.Username + "!"
+
 	return nil
 
+}
+
+// helper function to handle the create step of the sign up process
+func (ops *OperatorService) signUpCreate(args *SignUpArgs, reply *SignUpReply) error {
+	var err error
+	var transactionInfo *hedera.TransactionInfo
+
+	// log info
+	logger.Manager.Package["webapp"].Info().Msg(fmt.Sprintf("Waiting for transaction to land on the mirror node: %v", args.AccountCreationTransactionID))
+
+	// wait up to 10 seconds for the mirror node to receive the transaction data
+	ticker := time.NewTicker(2500 * time.Millisecond)
+	defer ticker.Stop()
+	attempt := 0
+	for attempt >= 0 && attempt < 5 {
+		select {
+		case <-ticker.C:
+			attempt++
+			// query the operator account information from a mirror node
+			transactionInfo, err = hedera.Manager.MirrorNode.GetTransactionInfo(args.AccountCreationTransactionID)
+			if err != nil {
+				logger.Manager.Package["webapp"].Info().Msg(fmt.Sprintf(" [#] Still waiting ... (attempt %v)", attempt))
+				continue
+				// fmt.Errorf("Error: %v", err)
+			} else {
+
+				// if the returned transaction is NOT the account create transaction
+				if transactionInfo.Name != "CRYPTOCREATEACCOUNT" {
+					return fmt.Errorf("Error: Unexpected transaction type '%v'", transactionInfo.Name)
+				} else {
+					attempt = -1
+					continue
+				}
+
+			}
+
+		}
+	}
+
+	// if the attempts to query the transaction info failed
+	if attempt == 5 || transactionInfo == nil {
+		return fmt.Errorf("Error: Could not query the transaction info from the mirror node.")
+	}
+
+	// Rename the original file to create a backup, if already on exists
+	keystorepath := filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(hedera.Manager.Operator.PublicKey.ToAccountID(0, 0).String(), ".", "")+".key")
+	if isFile, _ := utility.IsFile(keystorepath); isFile {
+		err = os.Rename(keystorepath, filepath.Join(RENDERHIVE_APP_DIRECTORY_CONFIG, strings.ReplaceAll(transactionInfo.EntityID, ".", "")+".key"))
+		if err != nil {
+			return err // Handle the error appropriately.
+		}
+	}
+
+	// rename the keyfile
+	err = hedera.Manager.LoadAccount(transactionInfo.EntityID, args.Passphrase, hedera.Manager.Operator.PublicKey.String())
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// Write the node data
+	err = node.Manager.WriteNodeData(-1, args.Node.Name, true, false, hedera.Manager.Operator.AccountID.String(), hedera.Manager.Operator.PublicKey.String())
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// create reply for the RPC client
+	reply.Message = "Successfully created the node account"
+	reply.NodeAccountID = hedera.Manager.Operator.AccountID.String()
+	reply.Payload = nil
+	return nil
+}
+
+// helper function to handle the contract step of the sign up process
+func (ops *OperatorService) signUpContract(args *SignUpArgs, reply *SignUpReply) error {
+
+	// TODO: Implement registration with the smart contract
+
+	// create reply for the RPC client
+	reply.Message = "Successfully created the node account"
+	reply.NodeAccountID = hedera.Manager.Operator.AccountID.String()
+	reply.Payload = nil
+	return nil
+
+}
+
+// helper function to handle the storage step of the sign up process
+func (ops *OperatorService) signUpStorage(args *SignUpArgs, reply *SignUpReply) error {
+
+	// TODO: Implement sign up with Filecoin service
+
+	// create reply for the RPC client
+	reply.Message = "Successfully signed up with the Filecoin service"
+	reply.NodeAccountID = node.Manager.Node.HederaAccount.AccountID
+	reply.Payload = nil
+	return nil
+
+}
+
+// helper function to handle the finalize step of the sign up process
+func (ops *OperatorService) signUpFinalize(args *SignUpArgs, reply *SignUpReply) error {
+	// TODO: Implement finalization (if required)
+	return nil
 }
 
 // Method: GetSignInPayload
