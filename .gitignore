@@ -10,8 +10,9 @@ coverage
 snippets
 initializer
 tmp
-/data
-/config
+data
+config
+/backend/src/webapp/cert
 
 # production
 build

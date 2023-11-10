@@ -58,8 +58,8 @@ RUN mkdir tmp
 RUN mkdir config
 RUN mkdir data
 
-# copy server certificates
-COPY ../server/certificates ./webapp/cert
+# copy server certificates to the container
+COPY ./server/certificates ./webapp/cert
 
 # Assign ownership of the /app directory to the local container user
 RUN chown -R renderhive:docker /app

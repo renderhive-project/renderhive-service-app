@@ -71,6 +71,8 @@ type PackageManager struct {
 	Server   http.Server
 	Listener net.Listener
 	Port     string
+	CertFile string
+	KeyFile  string
 
 	// Services
 	PingService     *PingService
@@ -220,17 +222,20 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
+	webappm.Port = port
+	webappm.CertFile = certFile
+	webappm.KeyFile = keyFile
 	webappm.Server = http.Server{
-		Addr:      ":" + port,
+		Addr:      ":" + webappm.Port,
 		TLSConfig: tlsConfig,
 		Handler:   router,
 	}
 
 	// log event
-	logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf("Server starting on port %v ...", webappm.Port))
+	logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf("JSON-RPC server starting on port %v ...", webappm.Port))
 
 	// Start the server
-	err = webappm.Server.ListenAndServeTLS(certFile, keyFile)
+	err = webappm.Server.ListenAndServeTLS(webappm.CertFile, webappm.KeyFile)
 	if err != nil {
 		return err
 	}
