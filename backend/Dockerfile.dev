@@ -40,13 +40,6 @@ RUN npm install -g @web3-storage/w3cli
 # Copy Go module files (since volume mapping is only active after the building stage)
 COPY ./backend/src/go.mod ./backend/src/go.sum ./
 
-# create required directories
-RUN mkdir config
-RUN mkdir data
-
-# copy server certificates
-COPY ../server/certificates ./webapp/cert
-
 # Load Go modules
 RUN go mod download
 RUN go install github.com/cosmtrek/air@latest
