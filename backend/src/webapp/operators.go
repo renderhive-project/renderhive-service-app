@@ -118,7 +118,6 @@ func (ops *OperatorService) SignUp(r *http.Request, args *SignUpArgs, reply *Sig
 		err = ops.signUpContract(args, reply)
 	case "storage":
 		err = ops.signUpStorage(args, reply)
-		reply.Message = "New operator was signed up: " + args.Operator.Username + "!"
 	case "finalize":
 		err = ops.signUpFinalize(args, reply)
 	default:
@@ -158,6 +157,9 @@ func (ops *OperatorService) signUpInit(args *SignUpArgs, reply *SignUpReply) err
 		if err != nil {
 			return fmt.Errorf("Error: %v", err)
 		}
+
+		// set a reply message
+		reply.Message = "New operator was signed up: " + args.Operator.Username + "!"
 	}
 
 	// NODE INFO
