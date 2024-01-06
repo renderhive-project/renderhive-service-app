@@ -43,7 +43,7 @@ import (
 	// "renderhive/node"
 	// "renderhive/hedera"
 	// "renderhive/ipfs"
-	// "renderhive/webapp"
+	// "renderhive/jsonrpc"
 	// "renderhive/cli"
 )
 

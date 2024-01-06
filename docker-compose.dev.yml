@@ -28,11 +28,11 @@ services:
     user: "renderhive"
     ports:
       # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
-      #       If not specified, other machines could access the web app (if the firewall rules would allow for that)
+      #       If not specified, other machines could access the JSON-RPC (if the firewall rules would allow for that)
       - "127.0.0.1:5174:5174"
     volumes:
       - ./backend/src:/app
-      - ./server/certificates:/app/webapp/cert
+      - ./server/certificates:/app/jsonrpc/cert
       - config:/app/config
       - data:/app/data
     networks:
@@ -48,7 +48,7 @@ services:
       - /usr/src/app/node_modules
     ports:
       # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
-      #       If not specified, other machines could access the web app (if the firewall rules would allow for that)
+      #       If not specified, other machines could access the JSON-RPC (if the firewall rules would allow for that)
       - "127.0.0.1:5173:5173"
     environment:
       - NODE_ENV=development

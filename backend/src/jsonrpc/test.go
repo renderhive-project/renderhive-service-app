@@ -18,7 +18,7 @@
  * ************************** END LICENSE BLOCK ********************************
  */
 
-package webapp
+package jsonrpc
 
 import "net/http"
 

@@ -42,21 +42,21 @@ import (
 	. "renderhive/globals"
 	"renderhive/hedera"
 	"renderhive/ipfs"
+	"renderhive/jsonrpc"
 	"renderhive/logger"
 	"renderhive/node"
-	"renderhive/webapp"
 )
 
 // Data required to manage the nodes
 type AppManager struct {
 
 	// Managers
-	LoggerManager *logger.PackageManager
-	NodeManager   *node.PackageManager
-	HederaManager *hedera.PackageManager
-	IPFSManager   *ipfs.PackageManager
-	WebAppManager *webapp.PackageManager
-	CLIManager    *cli.PackageManager
+	LoggerManager  *logger.PackageManager
+	NodeManager    *node.PackageManager
+	HederaManager  *hedera.PackageManager
+	IPFSManager    *ipfs.PackageManager
+	JsonRpcManager *jsonrpc.PackageManager
+	CLIManager     *cli.PackageManager
 
 	// Signaling channels
 	Quit chan bool
@@ -108,9 +108,9 @@ func (service *AppManager) Init() error {
 		return err
 	}
 
-	// initialize the web app manager
-	service.WebAppManager = &webapp.Manager
-	err = service.WebAppManager.Init()
+	// initialize the JSON-RPC manager
+	service.JsonRpcManager = &jsonrpc.Manager
+	err = service.JsonRpcManager.Init()
 	if err != nil {
 		return err
 	}
@@ -206,8 +206,8 @@ func (service *AppManager) DeInit() error {
 		return err
 	}
 
-	// deinitialize the web app manager
-	err = service.WebAppManager.DeInit()
+	// deinitialize the JSON-RPC manager
+	err = service.JsonRpcManager.DeInit()
 	if err != nil {
 		return err
 	}
