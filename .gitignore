@@ -12,7 +12,7 @@ initializer
 tmp
 data
 config
-/backend/src/webapp/cert
+/backend/src/jsonrpc/cert
 
 # production
 build

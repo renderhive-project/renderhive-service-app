@@ -46,9 +46,9 @@ import (
 	// . "renderhive/globals"
 	"renderhive/hedera"
 	"renderhive/ipfs"
+	"renderhive/jsonrpc"
 	"renderhive/logger"
 	"renderhive/node"
-	"renderhive/webapp"
 )
 
 // CLI STRUCTURES, VARIABLES & CONSTANTS
@@ -91,7 +91,7 @@ func (clim *PackageManager) Init() error {
 	clim.AddPackageCommand(node.Manager.CreateCommand())
 	clim.AddPackageCommand(hedera.Manager.CreateCommand())
 	clim.AddPackageCommand(ipfs.Manager.CreateCommand())
-	clim.AddPackageCommand(webapp.Manager.CreateCommand())
+	clim.AddPackageCommand(jsonrpc.Manager.CreateCommand())
 
 	return err
 }

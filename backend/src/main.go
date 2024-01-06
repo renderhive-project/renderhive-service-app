@@ -95,17 +95,17 @@ func main() {
 
 	// BACKEND SERVER
 	// ***************************************************************************
-	err := ServiceApp.WebAppManager.StartServer("5174", "webapp/cert/cert.pem", "webapp/cert/key.pem")
+	err := ServiceApp.JsonRpcManager.StartServer("5174", "jsonrpc/cert/cert.pem", "jsonrpc/cert/key.pem")
 	if err != nil {
 		if err == http.ErrServerClosed {
 
 			// log information
-			logger.Manager.Package["webapp"].Error().Msg("Server closed gracefully")
+			logger.Manager.Package["jsonrpc"].Error().Msg("Server closed gracefully")
 
 		} else {
 
 			// log information
-			logger.Manager.Package["webapp"].Error().Msg(fmt.Sprintf("Error starting server: %v", err))
+			logger.Manager.Package["jsonrpc"].Error().Msg(fmt.Sprintf("Error starting server: %v", err))
 
 		}
 

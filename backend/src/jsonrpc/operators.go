@@ -18,11 +18,11 @@
  * ************************** END LICENSE BLOCK ********************************
  */
 
-package webapp
+package jsonrpc
 
 /*
 
- The operator service enables the webapp to query and request actions regarding operator accounts.
+ The operator service enables the jsonrpc to query and request actions regarding operator accounts.
  Operators are the users, which are registered with a wallet address in the smart contract and that
  can manage one or several nodes. While node wallets are maintained by the node and can automatically
  send transactions, operator wallets ALWAYS require user interactions. Therefore, only the operator wallets
@@ -211,7 +211,7 @@ func (ops *OperatorService) signUpCreate(args *SignUpArgs, reply *SignUpReply) e
 	var transactionInfo *hedera.TransactionInfo
 
 	// log info
-	logger.Manager.Package["webapp"].Info().Msg(fmt.Sprintf("Waiting for transaction to land on the mirror node: %v", args.AccountCreationTransactionID))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Waiting for transaction to land on the mirror node: %v", args.AccountCreationTransactionID))
 
 	// wait up to 10 seconds for the mirror node to receive the transaction data
 	ticker := time.NewTicker(2500 * time.Millisecond)
@@ -224,7 +224,7 @@ func (ops *OperatorService) signUpCreate(args *SignUpArgs, reply *SignUpReply) e
 			// query the operator account information from a mirror node
 			transactionInfo, err = hedera.Manager.MirrorNode.GetTransactionInfo(args.AccountCreationTransactionID)
 			if err != nil {
-				logger.Manager.Package["webapp"].Info().Msg(fmt.Sprintf(" [#] Still waiting ... (attempt %v)", attempt))
+				logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Still waiting ... (attempt %v)", attempt))
 				continue
 				// fmt.Errorf("Error: %v", err)
 			} else {
@@ -608,7 +608,7 @@ func (ops *OperatorService) IsSessionValid(r *http.Request, args *IsSessionValid
 // #############################################################################
 
 // Read operator information known to this machine from a file
-func (webappm *PackageManager) FromFile(path string) error {
+func (jsonrpcm *PackageManager) FromFile(path string) error {
 
 	// read the operator file stored on this machine
 
@@ -616,14 +616,14 @@ func (webappm *PackageManager) FromFile(path string) error {
 }
 
 // helper function to generate the JSON Web Token for frontend session handling
-func (webappm *PackageManager) generateJWT(privateKey ed25519.PrivateKey) (string, error) {
+func (jsonrpcm *PackageManager) generateJWT(privateKey ed25519.PrivateKey) (string, error) {
 
 	// set expiry time to 1 hour
-	webappm.SessionToken.ExpiresAt = time.Now().Add(time.Hour * 1)
+	jsonrpcm.SessionToken.ExpiresAt = time.Now().Add(time.Hour * 1)
 
 	// define the token claims
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, jwt.MapClaims{
-		"exp": webappm.SessionToken.ExpiresAt.Unix(),
+		"exp": jsonrpcm.SessionToken.ExpiresAt.Unix(),
 	})
 
 	// create the JWT

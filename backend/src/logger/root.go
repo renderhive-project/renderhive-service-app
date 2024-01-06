@@ -121,7 +121,7 @@ func (logm *PackageManager) Init() error {
 	logm.AddPackageLogger("node")
 	logm.AddPackageLogger("hedera")
 	logm.AddPackageLogger("ipfs")
-	logm.AddPackageLogger("webapp")
+	logm.AddPackageLogger("jsonrpc")
 	logm.AddPackageLogger("cli")
 
 	return err

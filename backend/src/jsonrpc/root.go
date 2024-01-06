@@ -18,12 +18,12 @@
  * ************************** END LICENSE BLOCK ********************************
  */
 
-package webapp
+package jsonrpc
 
 /*
 
-The webapp package provides the communication layer between backend and frontend for the user UI, which will
-be served locally as a web app. It is basically a JSON RPC client-server model.
+The jsonrpc package provides the communication layer between backend and frontend for the user UI, which will
+be served locally as a JSON-RPC. It is basically a JSON RPC client-server model.
 
 */
 
@@ -62,7 +62,7 @@ import (
 	// "renderhive/hedera"
 )
 
-// structure for the web app manager
+// structure for the JSON-RPC manager
 type PackageManager struct {
 
 	// JSON RPC
@@ -98,39 +98,39 @@ type PackageManager struct {
 	}
 }
 
-// WEBAPP MANAGER
+// JSON-RPC MANAGER
 // #############################################################################
 // create the render manager variable
 var Manager = PackageManager{}
 
-// Initialize everything required for the web app management
-func (webappm *PackageManager) Init() error {
+// Initialize everything required for the JSON-RPC management
+func (jsonrpcm *PackageManager) Init() error {
 	var err error
 
 	// log information
-	logger.Manager.Package["webapp"].Info().Msg("Initializing the web app manager ...")
+	logger.Manager.Package["jsonrpc"].Info().Msg("Initializing the JSON-RPC manager ...")
 
 	// Create all services
-	webappm.OperatorService = new(OperatorService)
-	webappm.PingService = new(PingService)
+	jsonrpcm.OperatorService = new(OperatorService)
+	jsonrpcm.PingService = new(PingService)
 
 	return err
 
 }
 
-// Deinitialize the web app manager
-func (webappm *PackageManager) DeInit() error {
+// Deinitialize the JSON-RPC manager
+func (jsonrpcm *PackageManager) DeInit() error {
 	var err error
 
 	// log event
-	logger.Manager.Package["webapp"].Debug().Msg("Deinitializing the web app manager ...")
+	logger.Manager.Package["jsonrpc"].Debug().Msg("Deinitializing the JSON-RPC manager ...")
 
 	return err
 
 }
 
 // Start the JSON-RPC server
-func (webappm *PackageManager) StartServer(port string, certFile string, keyFile string) error {
+func (jsonrpcm *PackageManager) StartServer(port string, certFile string, keyFile string) error {
 	var err error
 
 	// Create the RPC server
@@ -140,11 +140,11 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 	s.RegisterCodec(json2.NewCodec(), "application/json")
 
 	// register all services
-	err = s.RegisterService(webappm.PingService, "PingService")
+	err = s.RegisterService(jsonrpcm.PingService, "PingService")
 	if err != nil {
 		return err
 	}
-	err = s.RegisterService(webappm.OperatorService, "OperatorService")
+	err = s.RegisterService(jsonrpcm.OperatorService, "OperatorService")
 	if err != nil {
 		return err
 	}
@@ -153,13 +153,13 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 	router := mux.NewRouter()
 
 	// Apply middleware to the router
-	router.Use(webappm.corsMiddleware)
-	router.Use(webappm.authenticationMiddleware)
+	router.Use(jsonrpcm.corsMiddleware)
+	router.Use(jsonrpcm.authenticationMiddleware)
 
 	// Handle OPTIONS requests on the JSON-RPC route
 	router.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
 		// log event
-		logger.Manager.Package["webapp"].Debug().Msg("Handling the OPTIONS Request")
+		logger.Manager.Package["jsonrpc"].Debug().Msg("Handling the OPTIONS Request")
 
 		// Respond to the OPTIONS request with CORS headers and 200 OK
 		w.WriteHeader(http.StatusOK)
@@ -170,14 +170,14 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 	// Define GET method separately for the JSON-RPC route
 	router.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
 		// log event
-		logger.Manager.Package["webapp"].Debug().Msg("Handling the GET Request")
+		logger.Manager.Package["jsonrpc"].Debug().Msg("Handling the GET Request")
 		w.Write([]byte("JSON-RPC server active. Please use POST requests for RPC calls."))
 	}).Methods("GET")
 
 	// Handle POST requests on the JSON-RPC route
 	router.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
 		// log event
-		logger.Manager.Package["webapp"].Debug().Msg("Handling the POST Request")
+		logger.Manager.Package["jsonrpc"].Debug().Msg("Handling the POST Request")
 		// Create a new response writer that buffers the response
 		// NOTE: We need this, so that we can write the session cookie after the SignIn request
 		bw := NewBufferedResponseWriter(w)
@@ -186,30 +186,30 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 		s.ServeHTTP(bw, r)
 
 		// if the JWT should be updated
-		if webappm.SessionToken.SignedString != "" && Manager.SessionToken.Update {
+		if jsonrpcm.SessionToken.SignedString != "" && Manager.SessionToken.Update {
 
 			// log event
-			logger.Manager.Package["webapp"].Debug().Msg("Setting HttpOnly cookie ...")
-			logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf(" [#] Name: ", webappm.SessionCookie.Name))
-			logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf(" [#] String: ", webappm.SessionToken.SignedString))
+			logger.Manager.Package["jsonrpc"].Debug().Msg("Setting HttpOnly cookie ...")
+			logger.Manager.Package["jsonrpc"].Debug().Msg(fmt.Sprintf(" [#] Name: ", jsonrpcm.SessionCookie.Name))
+			logger.Manager.Package["jsonrpc"].Debug().Msg(fmt.Sprintf(" [#] String: ", jsonrpcm.SessionToken.SignedString))
 
 			// set the cookie, which will expire at the same time as the token
 			http.SetCookie(w, &http.Cookie{
-				Name: webappm.SessionCookie.Name,
+				Name: jsonrpcm.SessionCookie.Name,
 				//Domain:   "localhost",
 				Path:     "/",
-				Value:    webappm.SessionToken.SignedString,
-				Expires:  webappm.SessionToken.ExpiresAt,
+				Value:    jsonrpcm.SessionToken.SignedString,
+				Expires:  jsonrpcm.SessionToken.ExpiresAt,
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteLaxMode,
 			})
 
 			// reset update status
-			webappm.SessionToken.Update = false
+			jsonrpcm.SessionToken.Update = false
 
 			// log event
-			logger.Manager.Package["webapp"].Info().Msg("Cookie set and user sucessfully logged in.")
+			logger.Manager.Package["jsonrpc"].Info().Msg("Cookie set and user sucessfully logged in.")
 
 		}
 
@@ -222,20 +222,20 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
-	webappm.Port = port
-	webappm.CertFile = certFile
-	webappm.KeyFile = keyFile
-	webappm.Server = http.Server{
-		Addr:      ":" + webappm.Port,
+	jsonrpcm.Port = port
+	jsonrpcm.CertFile = certFile
+	jsonrpcm.KeyFile = keyFile
+	jsonrpcm.Server = http.Server{
+		Addr:      ":" + jsonrpcm.Port,
 		TLSConfig: tlsConfig,
 		Handler:   router,
 	}
 
 	// log event
-	logger.Manager.Package["webapp"].Debug().Msg(fmt.Sprintf("JSON-RPC server starting on port %v ...", webappm.Port))
+	logger.Manager.Package["jsonrpc"].Debug().Msg(fmt.Sprintf("JSON-RPC server starting on port %v ...", jsonrpcm.Port))
 
 	// Start the server
-	err = webappm.Server.ListenAndServeTLS(webappm.CertFile, webappm.KeyFile)
+	err = jsonrpcm.Server.ListenAndServeTLS(jsonrpcm.CertFile, jsonrpcm.KeyFile)
 	if err != nil {
 		return err
 	}
@@ -245,30 +245,30 @@ func (webappm *PackageManager) StartServer(port string, certFile string, keyFile
 }
 
 // Stop the JSON RPC server
-func (webappm *PackageManager) StopServer() {
+func (jsonrpcm *PackageManager) StopServer() {
 
 	// log event
-	logger.Manager.Package["webapp"].Debug().Msg("Attempting to stop the server.")
+	logger.Manager.Package["jsonrpc"].Debug().Msg("Attempting to stop the server.")
 
-	if webappm.Listener != nil {
+	if jsonrpcm.Listener != nil {
 		// Create a context with a timeout to allow ongoing requests to complete
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		// Attempt to gracefully shutdown the server
-		if err := webappm.Server.Shutdown(ctx); err != nil {
+		if err := jsonrpcm.Server.Shutdown(ctx); err != nil {
 			// If the shutdown fails, log the error and force close the listener
-			logger.Manager.Package["webapp"].Error().Msgf("Server shutdown failed: %+v", err)
-			webappm.Listener.Close()
+			logger.Manager.Package["jsonrpc"].Error().Msgf("Server shutdown failed: %+v", err)
+			jsonrpcm.Listener.Close()
 		}
 	}
 
 	// log event
-	logger.Manager.Package["webapp"].Debug().Msg("Server was stopped.")
+	logger.Manager.Package["jsonrpc"].Debug().Msg("Server was stopped.")
 
 }
 
-// WEBAPP BUFFEREDRESPONSEWRITER
+// JSON-RPC BUFFEREDRESPONSEWRITER
 // #############################################################################
 type BufferedResponseWriter struct {
 	original http.ResponseWriter
@@ -313,11 +313,11 @@ func (b *BufferedResponseWriter) WriteBufferedResponse() {
 	b.original.Write(b.body.Bytes())
 }
 
-// WEBAPP MIDDLEWARE
+// JSON-RPC MIDDLEWARE
 // #############################################################################
 
 // CORS middleware handler for the router
-func (webappm *PackageManager) corsMiddleware(next http.Handler) http.Handler {
+func (jsonrpcm *PackageManager) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Set CORS headers
@@ -329,7 +329,7 @@ func (webappm *PackageManager) corsMiddleware(next http.Handler) http.Handler {
 		// Handling CORS preflight request
 		if r.Method == "OPTIONS" {
 			// log event
-			logger.Manager.Package["webapp"].Debug().Msg("Handling the OPTIONS Request")
+			logger.Manager.Package["jsonrpc"].Debug().Msg("Handling the OPTIONS Request")
 
 			w.WriteHeader(http.StatusOK)
 			return
@@ -340,7 +340,7 @@ func (webappm *PackageManager) corsMiddleware(next http.Handler) http.Handler {
 }
 
 // Authentication middleware handler for the router
-func (webappm *PackageManager) authenticationMiddleware(next http.Handler) http.Handler {
+func (jsonrpcm *PackageManager) authenticationMiddleware(next http.Handler) http.Handler {
 
 	// define a set of allowed methods that do not require authentication
 	whitelistMethods := map[string]bool{
@@ -353,7 +353,7 @@ func (webappm *PackageManager) authenticationMiddleware(next http.Handler) http.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// get the method name from the request
-		method, err := webappm.getRpcMethod(w, r)
+		method, err := jsonrpcm.getRpcMethod(w, r)
 		if err != nil {
 			http.Error(w, "Invalid request", http.StatusBadRequest)
 			return
@@ -365,7 +365,7 @@ func (webappm *PackageManager) authenticationMiddleware(next http.Handler) http.
 
 		// VERIFY THE JWT
 		// Extract JWT session token from HttpOnly cookie
-		cookie, err := r.Cookie(webappm.SessionCookie.Name)
+		cookie, err := r.Cookie(jsonrpcm.SessionCookie.Name)
 		if err != nil {
 
 			// No cookie, return Unauthorized response
@@ -381,7 +381,7 @@ func (webappm *PackageManager) authenticationMiddleware(next http.Handler) http.
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
 
-			return webappm.SessionToken.PublicKey, nil
+			return jsonrpcm.SessionToken.PublicKey, nil
 		}, jwt.WithValidMethods([]string{"EdDSA"}))
 		if err != nil {
 			// Invalid token, return Unauthorized response
@@ -395,7 +395,7 @@ func (webappm *PackageManager) authenticationMiddleware(next http.Handler) http.
 }
 
 // get the JSON-RPC method name from the HTTP request
-func (webappm *PackageManager) getRpcMethod(w http.ResponseWriter, r *http.Request) (string, error) {
+func (jsonrpcm *PackageManager) getRpcMethod(w http.ResponseWriter, r *http.Request) (string, error) {
 
 	// Get the name of the requested JSON-RPC method
 	bodyBytes, err := io.ReadAll(r.Body)
@@ -422,14 +422,14 @@ func (webappm *PackageManager) getRpcMethod(w http.ResponseWriter, r *http.Reque
 
 }
 
-// WEBAPP MANAGER COMMAND LINE INTERFACE
+// JSON-RPC MANAGER COMMAND LINE INTERFACE
 // #############################################################################
 // Create the command for the command line interface
-func (webappm *PackageManager) CreateCommand() *cobra.Command {
+func (jsonrpcm *PackageManager) CreateCommand() *cobra.Command {
 
 	// create the package command
-	webappm.Command = &cobra.Command{
-		Use:   "webapp",
+	jsonrpcm.Command = &cobra.Command{
+		Use:   "jsonrpc",
 		Short: "Commands for the web frontend of the Renderhive Service App",
 		Long:  "This command and its sub-commands enable the management of the web frontend for the Renderhive Service App.",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -439,6 +439,6 @@ func (webappm *PackageManager) CreateCommand() *cobra.Command {
 		},
 	}
 
-	return webappm.Command
+	return jsonrpcm.Command
 
 }
