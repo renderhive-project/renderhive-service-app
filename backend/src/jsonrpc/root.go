@@ -47,6 +47,7 @@ import (
 	// external
 	"net"
 	"net/http"
+	"net/http/httptest"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -67,12 +68,13 @@ type PackageManager struct {
 
 	// JSON RPC
 	// General
-	Mutex    sync.Mutex
-	Server   http.Server
-	Listener net.Listener
-	Port     string
-	CertFile string
-	KeyFile  string
+	Mutex         sync.Mutex
+	JsonRpcServer *rpc.Server
+	HttpServer    http.Server
+	Listener      net.Listener
+	Port          string
+	CertFile      string
+	KeyFile       string
 
 	// Services
 	PingService     *PingService
@@ -134,17 +136,17 @@ func (jsonrpcm *PackageManager) StartServer(port string, certFile string, keyFil
 	var err error
 
 	// Create the RPC server
-	s := rpc.NewServer()
+	jsonrpcm.JsonRpcServer = rpc.NewServer()
 
 	// set JSON codec
-	s.RegisterCodec(json2.NewCodec(), "application/json")
+	jsonrpcm.JsonRpcServer.RegisterCodec(json2.NewCodec(), "application/json")
 
 	// register all services
-	err = s.RegisterService(jsonrpcm.PingService, "PingService")
+	err = jsonrpcm.JsonRpcServer.RegisterService(jsonrpcm.PingService, "PingService")
 	if err != nil {
 		return err
 	}
-	err = s.RegisterService(jsonrpcm.OperatorService, "OperatorService")
+	err = jsonrpcm.JsonRpcServer.RegisterService(jsonrpcm.OperatorService, "OperatorService")
 	if err != nil {
 		return err
 	}
@@ -183,7 +185,7 @@ func (jsonrpcm *PackageManager) StartServer(port string, certFile string, keyFil
 		bw := NewBufferedResponseWriter(w)
 
 		// Call JSON-RPC method
-		s.ServeHTTP(bw, r)
+		jsonrpcm.JsonRpcServer.ServeHTTP(bw, r)
 
 		// if the JWT should be updated
 		if jsonrpcm.SessionToken.SignedString != "" && Manager.SessionToken.Update {
@@ -225,7 +227,7 @@ func (jsonrpcm *PackageManager) StartServer(port string, certFile string, keyFil
 	jsonrpcm.Port = port
 	jsonrpcm.CertFile = certFile
 	jsonrpcm.KeyFile = keyFile
-	jsonrpcm.Server = http.Server{
+	jsonrpcm.HttpServer = http.Server{
 		Addr:      ":" + jsonrpcm.Port,
 		TLSConfig: tlsConfig,
 		Handler:   router,
@@ -235,7 +237,7 @@ func (jsonrpcm *PackageManager) StartServer(port string, certFile string, keyFil
 	logger.Manager.Package["jsonrpc"].Debug().Msg(fmt.Sprintf("JSON-RPC server starting on port %v ...", jsonrpcm.Port))
 
 	// Start the server
-	err = jsonrpcm.Server.ListenAndServeTLS(jsonrpcm.CertFile, jsonrpcm.KeyFile)
+	err = jsonrpcm.HttpServer.ListenAndServeTLS(jsonrpcm.CertFile, jsonrpcm.KeyFile)
 	if err != nil {
 		return err
 	}
@@ -256,7 +258,7 @@ func (jsonrpcm *PackageManager) StopServer() {
 		defer cancel()
 
 		// Attempt to gracefully shutdown the server
-		if err := jsonrpcm.Server.Shutdown(ctx); err != nil {
+		if err := jsonrpcm.HttpServer.Shutdown(ctx); err != nil {
 			// If the shutdown fails, log the error and force close the listener
 			logger.Manager.Package["jsonrpc"].Error().Msgf("Server shutdown failed: %+v", err)
 			jsonrpcm.Listener.Close()
@@ -265,6 +267,38 @@ func (jsonrpcm *PackageManager) StopServer() {
 
 	// log event
 	logger.Manager.Package["jsonrpc"].Debug().Msg("Server was stopped.")
+
+}
+
+// Redirects a JSON-RPC request in string format to the JSON-RPC internally
+// NOTE: This is used to call JSON-RPC methods from within the backend, after receiving a request via Hedera topics (or possibly other channels)
+func (jsonrpcm *PackageManager) RedirectToServer(payload string) (string, error) {
+
+	// log event
+	logger.Manager.Package["jsonrpc"].Debug().Msg("Calling JSON-RPC method internally:")
+
+	// check if the JSON-RPC server is running
+	if jsonrpcm.HttpServer.Addr == "" || jsonrpcm.JsonRpcServer == nil {
+		return "", fmt.Errorf("JSON-RPC server is not ready")
+	}
+
+	// Create a new HTTP request with the JSON-RPC payload as the body
+	r, err := http.NewRequest("POST", "/jsonrpc", bytes.NewBuffer([]byte(payload)))
+	if err != nil {
+		return "", err
+	}
+	r.Header.Set("Content-Type", "application/json")
+
+	// Create a new ResponseRecorder to capture the response
+	w := httptest.NewRecorder()
+
+	// Call the ServeHTTP method of the RPC server, which executes the JSON-RPC method
+	jsonrpcm.JsonRpcServer.ServeHTTP(w, r)
+
+	// Extract the response from the ResponseRecorder
+	response := w.Body.String()
+
+	return response, nil
 
 }
 
