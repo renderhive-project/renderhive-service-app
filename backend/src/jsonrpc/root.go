@@ -78,6 +78,7 @@ type PackageManager struct {
 
 	// Services
 	PingService     *PingService
+	ContractService *ContractService
 	OperatorService *OperatorService
 
 	// Session data
@@ -113,8 +114,9 @@ func (jsonrpcm *PackageManager) Init() error {
 	logger.Manager.Package["jsonrpc"].Info().Msg("Initializing the JSON-RPC manager ...")
 
 	// Create all services
-	jsonrpcm.OperatorService = new(OperatorService)
 	jsonrpcm.PingService = new(PingService)
+	jsonrpcm.ContractService = new(ContractService)
+	jsonrpcm.OperatorService = new(OperatorService)
 
 	return err
 
@@ -143,6 +145,10 @@ func (jsonrpcm *PackageManager) StartServer(port string, certFile string, keyFil
 
 	// register all services
 	err = jsonrpcm.JsonRpcServer.RegisterService(jsonrpcm.PingService, "PingService")
+	if err != nil {
+		return err
+	}
+	err = jsonrpcm.JsonRpcServer.RegisterService(jsonrpcm.ContractService, "ContractService")
 	if err != nil {
 		return err
 	}
@@ -275,7 +281,8 @@ func (jsonrpcm *PackageManager) StopServer() {
 func (jsonrpcm *PackageManager) RedirectToServer(payload string) (string, error) {
 
 	// log event
-	logger.Manager.Package["jsonrpc"].Debug().Msg("Calling JSON-RPC method internally:")
+	logger.Manager.Package["jsonrpc"].Debug().Msg("Calling JSON-RPC method internally ...")
+	logger.Manager.Package["jsonrpc"].Debug().Msg(payload)
 
 	// check if the JSON-RPC server is running
 	if jsonrpcm.HttpServer.Addr == "" || jsonrpcm.JsonRpcServer == nil {
