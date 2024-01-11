@@ -4,6 +4,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import NodesIcon from '@mui/icons-material/Devices';
 import RenderJobsIcon from '@mui/icons-material/WorkHistory';
 import RenderResultsIcon from '@mui/icons-material/ViewInAr';
+import TerminalIcon from '@mui/icons-material/Terminal';
 
 
 // Sidbar style settings
@@ -29,6 +30,12 @@ export const menuItems = [
         items: [
             { text: 'Render Jobs', icon: <RenderJobsIcon />, link: '/render_jobs'  },
             { text: 'Render Results', icon: <RenderResultsIcon />, link: '/render_results'  },
+        ]
+    },
+    {
+        group: "Development",
+        items: [
+            { text: 'Playground', icon: <TerminalIcon />, link: '/playground'  },
         ]
     },
 

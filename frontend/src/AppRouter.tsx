@@ -15,6 +15,7 @@ import SignIn from "./pages/signin/signin";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Users from "./pages/users/Users";
 import Products from "./pages/products/Products";
+import Playground from "./pages/playground/Playground";
 
 export default function AppRouter() {
   const { signedIn, operatorInfo, nodeInfo } = useSession();
@@ -77,6 +78,10 @@ export default function AppRouter() {
         {
           path: "/products",
           element: ((accountId && signedIn) ? <Products /> : <Navigate to="/signin" replace />),
+        },
+        {
+          path: "/playground",
+          element: ((accountId && signedIn) ? <Playground /> : <Navigate to="/signin" replace />),
         },
         {
           path: "/signup",
