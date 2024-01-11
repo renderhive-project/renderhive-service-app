@@ -13,6 +13,8 @@ tmp
 data
 config
 /backend/src/jsonrpc/cert
+/backend/src/RenderhiveContract.abi
+/backend/src/RenderhiveContract.bin
 
 # production
 build
