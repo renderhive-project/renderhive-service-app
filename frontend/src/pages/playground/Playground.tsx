@@ -40,6 +40,35 @@ const jsonRpcTemplates = {
     }
   }`,
 
+  contractservice_unregisterOperator: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.UnregisterOperator",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "Gas": 90000
+    }
+  }`,
+
+  contractservice_depositOperatorFunds: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.DepositOperatorFunds",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "Amount": "1",
+      "Gas": 70000
+    }
+  }`,
+
+  contractservice_withdrawOperatorFunds: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.WithdrawOperatorFunds",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "Amount": "1",
+      "Gas": 70000
+    }
+  }`,
+
   contractservice_isOperator: `{
     "jsonrpc": "2.0",
     "method": "ContractService.IsOperator",
@@ -47,6 +76,16 @@ const jsonRpcTemplates = {
       "ContractID": "0.0.XXXX",
       "AccountID": "0.0.XXXX",
       "Gas": 22000
+    }
+  }`,
+
+  contractservice_getOperatorBalance: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.GetOperatorBalance",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "AccountID": "0.0.XXXX",
+      "Gas": 30000
     }
   }`,
   // Add more templates as needed
@@ -151,7 +190,11 @@ const Playground = () => {
                   >
                     <MenuItem value="contractservice_deploy">Deploy Smart Contract</MenuItem>
                     <MenuItem value="contractservice_registerOperator">Register Operator</MenuItem>
-                    <MenuItem value="contractservice_isOperator">Query Operator</MenuItem>
+                    <MenuItem value="contractservice_unregisterOperator">Delete Operator</MenuItem>
+                    <MenuItem value="contractservice_depositOperatorFunds">Deposit HBAR</MenuItem>
+                    <MenuItem value="contractservice_withdrawOperatorFunds">Withdraw HBAR</MenuItem>
+                    <MenuItem value="contractservice_getOperatorBalance">Get Operator Balance</MenuItem>
+                    <MenuItem value="contractservice_isOperator">Verify Operator</MenuItem>
                     {/* Add more menu items as needed */}
                   </Select>
                 </Box>

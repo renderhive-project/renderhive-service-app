@@ -377,6 +377,39 @@ func (contract *HederaSmartContract) CallFunction(name string, parameters *heder
 
 }
 
+// Call a smart contract function
+func (contract *HederaSmartContract) CallPayableFunction(name string, amount string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+	var err error
+
+	// get the amount as HBAR
+	_amount, err := hederasdk.HbarFromString(amount)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// create the cmart contract call
+	newContractExecuteTransaction := hederasdk.NewContractExecuteTransaction().
+		SetContractID(contract.ID).
+		SetGas(gas).
+		SetFunction(name, parameters).
+		SetPayableAmount(_amount)
+
+	// get the transaction response
+	transactionResponse, err := newContractExecuteTransaction.Execute(Manager.NetworkClient)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// get the transaction receipt
+	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	if err != nil {
+		return &transactionResponse, nil, err
+	}
+
+	return &transactionResponse, &transactionReceipt, err
+
+}
+
 // Call a smart contract function local (i.e., on a single node)
 func (contract *HederaSmartContract) CallFunctionLocal(name string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.ContractFunctionResult, error) {
 	var err error
