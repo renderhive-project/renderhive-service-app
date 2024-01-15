@@ -21,7 +21,7 @@
 # COMPILE THE BACKEND SOURCE CODE
 # #############################################################################
 # Builder stage to build the Go binary
-FROM golang:1.18-alpine as builder
+FROM golang:1.20-alpine as builder
 
 # Create a non-root user 'renderhive' and a usergroup 'docker' for the container
 RUN addgroup -S docker && adduser -S renderhive -G docker
@@ -44,7 +44,7 @@ FROM alpine:latest
 RUN addgroup -S docker && adduser -S renderhive -G docker
 
 # install the w3up CLI with the Node.js and npm dependency
-RUN apk add --update nodejs npm
+RUN apk add --update nodejs npm git
 RUN npm install -g @web3-storage/w3cli
 
 # Set the working directory inside the container

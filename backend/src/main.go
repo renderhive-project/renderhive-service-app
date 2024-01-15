@@ -95,6 +95,7 @@ func main() {
 
 	// BACKEND SERVER
 	// ***************************************************************************
+
 	// start the JSON-RPC server
 	err := ServiceApp.JsonRpcManager.StartServer("5174", "jsonrpc/cert/cert.pem", "jsonrpc/cert/key.pem")
 	if err != nil {
