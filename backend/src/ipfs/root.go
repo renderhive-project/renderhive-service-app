@@ -49,16 +49,16 @@ import (
 	"time"
 
 	// external
+	"github.com/ipfs/boxo/files"
+	"github.com/ipfs/boxo/path"
 	gocid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-libipfs/files"
-	icore "github.com/ipfs/interface-go-ipfs-core"
-	ioptions "github.com/ipfs/interface-go-ipfs-core/options"
-	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/ipfs/kubo/commands"
 	"github.com/ipfs/kubo/config"
 	"github.com/ipfs/kubo/core"
 	"github.com/ipfs/kubo/core/coreapi"
 	"github.com/ipfs/kubo/core/corehttp"
+	icore "github.com/ipfs/kubo/core/coreiface"
+	ioptions "github.com/ipfs/kubo/core/coreiface/options"
 	"github.com/ipfs/kubo/core/node/libp2p"
 	"github.com/ipfs/kubo/plugin/loader"
 	"github.com/ipfs/kubo/repo"
@@ -467,7 +467,13 @@ func (ipfsm *PackageManager) GetObject(cid_string string, outputPath string) (st
 	var err error
 
 	// get a CID object from the string
-	cidPath := icorepath.New(cid_string)
+	cidObject, err := gocid.Parse(cid_string)
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Not a valid CID string: %s", cid_string))
+	}
+
+	// get a path object from the CID object
+	cidPath := path.FromCid(cidObject)
 
 	// try to retrieve the file/directory
 	rootNode, err := ipfsm.IpfsAPI.Unixfs().Get(ipfsm.IpfsContext, cidPath)
@@ -493,8 +499,14 @@ func (ipfsm *PackageManager) PinObject(cid_string string) (bool, error) {
 		return false, errors.New(fmt.Sprintf("Could not pin IPFS object '%v': Not a valid CID.", cid_string))
 	}
 
-	// get a path object from the CID string
-	ipfsPath := icorepath.New(cid_string)
+	// get a CID object from the string
+	cidObject, err := gocid.Parse(cid_string)
+	if err != nil {
+		return false, errors.New(fmt.Sprintf("Not a valid CID string: %s", cid_string))
+	}
+
+	// get a path object from the CID object
+	ipfsPath := path.FromCid(cidObject)
 
 	// test, if file is already pinned
 	_, pinned, err := ipfsm.IpfsAPI.Pin().IsPinned(ipfsm.IpfsContext, ipfsPath)
@@ -543,8 +555,14 @@ func (ipfsm *PackageManager) PinObject(cid_string string) (bool, error) {
 func (ipfsm *PackageManager) UnPinObject(cid_string string) (bool, error) {
 	var err error
 
-	// get a path object from the CID string
-	ipfsPath := icorepath.New(cid_string)
+	// get a CID object from the string
+	cidObject, err := gocid.Parse(cid_string)
+	if err != nil {
+		return false, errors.New(fmt.Sprintf("Not a valid CID string: %s", cid_string))
+	}
+
+	// get a path object from the CID object
+	ipfsPath := path.FromCid(cidObject)
 
 	// unpin the file
 	err = ipfsm.IpfsAPI.Pin().Rm(ipfsm.IpfsContext, ipfsPath)
@@ -569,7 +587,7 @@ func (ipfsm *PackageManager) StartHTTPServer(path string) error {
 	var err error
 
 	var opts = []corehttp.ServeOption{
-		corehttp.GatewayOption(true, "/ipfs", "/ipns"),
+		corehttp.GatewayOption("/ipfs", "/ipns"),
 		corehttp.WebUIOption,
 		corehttp.CommandsOption(
 			commands.Context{
