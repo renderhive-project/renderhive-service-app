@@ -33,9 +33,10 @@ export const menuItems = [
         ]
     },
     {
-        group: "Development",
+        group: "Development Tools",
         items: [
-            { text: 'Playground', icon: <TerminalIcon />, link: '/playground'  },
+            { text: 'JSON-RPC Playground', icon: <TerminalIcon />, link: '/playground'  },
+            { text: 'HCS-20 ToolKit', icon: <TerminalIcon />, link: '/hcs20'  },
         ]
     },
 
