@@ -25,15 +25,12 @@ import (
 	// standard
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
-	"time"
 
 	//"errors"
 
 	// external
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
 	hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
 	// internal
@@ -64,7 +61,7 @@ type HederaSmartContract struct {
 func decodeEvent(eventName string, log []byte, topics [][]byte) ([]interface{}, error) {
 	var contractFilePath string
 
-	contractFilePath = "./RenderhiveTestContractAbi.json"
+	contractFilePath = "./RenderhiveContract.abi"
 
 	// Import and parse the compiled contract from the contract file
 	jsonData, err := os.ReadFile(contractFilePath)
@@ -364,13 +361,13 @@ func (contract *HederaSmartContract) CallFunction(name string, parameters *heder
 	// get the transaction response
 	transactionResponse, err := newContractExecuteTransaction.Execute(Manager.NetworkClient)
 	if err != nil {
-		return nil, nil, err
+		return &transactionResponse, nil, err
 	}
 
 	// get the transaction receipt
 	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
 	if err != nil {
-		return &transactionResponse, nil, err
+		return &transactionResponse, &transactionReceipt, err
 	}
 
 	return &transactionResponse, &transactionReceipt, err
@@ -397,13 +394,13 @@ func (contract *HederaSmartContract) CallPayableFunction(name string, amount str
 	// get the transaction response
 	transactionResponse, err := newContractExecuteTransaction.Execute(Manager.NetworkClient)
 	if err != nil {
-		return nil, nil, err
+		return &transactionResponse, nil, err
 	}
 
 	// get the transaction receipt
 	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
 	if err != nil {
-		return &transactionResponse, nil, err
+		return &transactionResponse, &transactionReceipt, err
 	}
 
 	return &transactionResponse, &transactionReceipt, err
@@ -434,9 +431,9 @@ func (contract *HederaSmartContract) CallFunctionLocal(name string, parameters *
 // TODO: Might be good, if the wallet address would be an indexed event parameter
 //
 //	This would later allow to scan the event history for the user. Useful?
-func (contract *HederaSmartContract) GetEventLog(callFunctionResponse *hederasdk.TransactionResponse, eventName string) ([]interface{}, error) {
+func (contract *HederaSmartContract) GetEventLog(callFunctionResponse *hederasdk.TransactionResponse, eventName string) ([][]interface{}, error) {
 	var err error
-	var event []interface{}
+	var events [][]interface{}
 
 	// get the transaction record
 	transactionRecord, err := callFunctionResponse.GetRecord(Manager.NetworkClient)
@@ -456,29 +453,14 @@ func (contract *HederaSmartContract) GetEventLog(callFunctionResponse *hederasdk
 		event, err := decodeEvent(eventName, log.Data, log.Topics)
 		if err != nil {
 			return nil, err
-		} else {
-
-			// convert event values to usable types
-			ID := event[0].(*big.Int)
-			Username := event[1].(string)
-			event_2 := event[2].(common.Address)
-			Address, _ := hederasdk.AccountIDFromSolidityAddress(event_2.Hex()[2:])
-			event_3 := event[3].(*big.Int)
-			RegistrationTime := time.Unix(event_3.Int64(), 0)
-
-			// Output the from address stored in the event
-			fmt.Println(
-				fmt.Sprintf(
-					"Record event '%v' (%v): User '%v' with ID '%v' for address '%v'",
-					eventName, RegistrationTime, Username, ID, Address.String(),
-				),
-			)
-
 		}
+
+		// Append the event to the slice
+		events = append(events, event)
 
 	}
 
-	return event, err
+	return events, err
 
 }
 
