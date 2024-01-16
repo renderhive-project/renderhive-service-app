@@ -5,7 +5,7 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
 // components
-import { Alert, Box, Grid, MenuItem, Select, SelectChangeEvent, Typography } from '@mui/material'
+import { Alert, Box, Divider, Grid, MenuItem, Select, SelectChangeEvent, Typography } from '@mui/material'
 import LoadingButton from "../../components/button/LoadingButton";
 
 // Code editor
@@ -21,6 +21,7 @@ import "./playground.scss"
 
 // define JSON-RPC call templates
 const jsonRpcTemplates = {
+  // GENERAL
   contractservice_deploy: `{
     "jsonrpc": "2.0",
     "method": "ContractService.Deploy",
@@ -30,6 +31,7 @@ const jsonRpcTemplates = {
     }
   }`,
 
+  // OPERATOR MANAGEMENT
   contractservice_registerOperator: `{
     "jsonrpc": "2.0",
     "method": "ContractService.RegisterOperator",
@@ -69,6 +71,26 @@ const jsonRpcTemplates = {
     }
   }`,
 
+  contractservice_getOperatorBalance: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.GetOperatorBalance",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "AccountID": "0.0.XXXX",
+      "Gas": 30000
+    }
+  }`,
+
+  contractservice_getReservedOperatorFunds: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.GetReservedOperatorFunds",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "AccountID": "0.0.XXXX",
+      "Gas": 30000
+    }
+  }`,
+
   contractservice_isOperator: `{
     "jsonrpc": "2.0",
     "method": "ContractService.IsOperator",
@@ -79,16 +101,27 @@ const jsonRpcTemplates = {
     }
   }`,
 
-  contractservice_getOperatorBalance: `{
+  // NODE MANAGEMENT
+  contractservice_addNode: `{
     "jsonrpc": "2.0",
-    "method": "ContractService.GetOperatorBalance",
+    "method": "ContractService.AddNode",
     "params": {
       "ContractID": "0.0.XXXX",
       "AccountID": "0.0.XXXX",
-      "Gas": 30000
+      "TopicID": "0.0.XXXX",
+      "Gas": 230000
     }
   }`,
-  // Add more templates as needed
+
+  contractservice_removeNode: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.RemoveNode",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "AccountID": "0.0.XXXX",
+      "Gas": 230000
+    }
+  }`,
 };
 
 const Playground = () => {
@@ -117,6 +150,7 @@ const Playground = () => {
   const sendJsonRpcRequest = async () => {
     try {
       setLoading(true);
+      setSuccessMessage("");
   
       // get the request body from the editor
       let requestBody = JSON.parse(editorText);
@@ -194,7 +228,11 @@ const Playground = () => {
                     <MenuItem value="contractservice_depositOperatorFunds">Deposit HBAR</MenuItem>
                     <MenuItem value="contractservice_withdrawOperatorFunds">Withdraw HBAR</MenuItem>
                     <MenuItem value="contractservice_getOperatorBalance">Get Operator Balance</MenuItem>
+                    <MenuItem value="contractservice_getReservedOperatorFunds">Get Reserved Funds</MenuItem>
                     <MenuItem value="contractservice_isOperator">Verify Operator</MenuItem>
+                    <Divider />
+                    <MenuItem value="contractservice_addNode">Add Node</MenuItem>
+                    <MenuItem value="contractservice_removeNode">Remove Node</MenuItem>
                     {/* Add more menu items as needed */}
                   </Select>
                 </Box>
