@@ -119,7 +119,18 @@ const jsonRpcTemplates = {
     "params": {
       "ContractID": "0.0.XXXX",
       "AccountID": "0.0.XXXX",
-      "Gas": 230000
+      "Gas": 180000
+    }
+  }`,
+
+  contractservice_isNode: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.IsNode",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "NodeAccountID": "0.0.XXXX",
+      "OperatorAccountID": "0.0.XXXX",
+      "Gas": 40000
     }
   }`,
 };
@@ -233,6 +244,9 @@ const Playground = () => {
                     <Divider />
                     <MenuItem value="contractservice_addNode">Add Node</MenuItem>
                     <MenuItem value="contractservice_removeNode">Remove Node</MenuItem>
+                    <MenuItem value="contractservice_isNode">Verify Node</MenuItem>
+                    <MenuItem value="contractservice_depositNodeStake">Deposit Node Stake</MenuItem>
+                    <MenuItem value="contractservice_withdrawNodeStake">Withdraw Node Stake</MenuItem>
                     {/* Add more menu items as needed */}
                   </Select>
                 </Box>
@@ -246,28 +260,28 @@ const Playground = () => {
                   buttonText="Send Request"
                 />
 
-                {/* Error messages */}
-                {errorMessage && (
-                  <Box marginTop={2}>
-                    <Alert severity="error" onClose={() => setErrorMessage("")} sx={{ marginBottom: '10px', marginTop: '10px' }}>
-                        {errorMessage}
-                    </Alert>
-                  </Box>
-                )}
-
-                {/* Success messages */}
-                {successMessage && (
-                  <Box marginTop={2}>
-                    <Alert severity="success" onClose={() => setSuccessMessage("")} sx={{ marginBottom: '10px', marginTop: '10px' }}>
-                        {successMessage}
-                    </Alert>
-                  </Box>
-                )}
               </Grid>
             </Grid>
           </Grid>
         </Grid>
 
+        {/* Error messages */}
+        {errorMessage && (
+          <Box marginTop={2}>
+            <Alert severity="error" onClose={() => setErrorMessage("")} sx={{ marginBottom: '10px', marginTop: '10px' }}>
+                {errorMessage}
+            </Alert>
+          </Box>
+        )}
+
+        {/* Success messages */}
+        {successMessage && (
+          <Box marginTop={2}>
+            <Alert severity="success" onClose={() => setSuccessMessage("")} sx={{ marginBottom: '10px', marginTop: '10px' }}>
+                {successMessage}
+            </Alert>
+          </Box>
+        )}
       </Box>
 
     </Box>
