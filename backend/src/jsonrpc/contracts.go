@@ -215,7 +215,7 @@ func (ops *ContractService) UnregisterOperator(r *http.Request, args *Unregister
 
 }
 
-// Method: withdrawOperatorFunds
+// Method: depositOperatorFunds
 // 			- deposit HBAR for an operator in the Renderhive Smart Contract
 // #############################################################################
 
@@ -227,7 +227,6 @@ type DepositOperatorFundsArgs struct {
 }
 type DepositOperatorFundsReply struct {
 	Message string
-	Value   bool
 }
 
 // Method
@@ -305,7 +304,6 @@ type WithdrawOperatorFundsArgs struct {
 }
 type WithdrawOperatorFundsReply struct {
 	Message string
-	Value   bool
 }
 
 // Method
@@ -637,6 +635,7 @@ type AddNodeArgs struct {
 	ContractID string // the ID of the smart contract
 	AccountID  string // the AccountID of the node to be added
 	TopicID    string // the TopicID of the nodes's HCS topic
+	NodeStake  string // the amount of HBAR to deposit as node stake
 
 	Gas uint64 // the gas limit for the transaction
 }
@@ -680,7 +679,7 @@ func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *A
 	params = params.AddString(args.TopicID)
 
 	// call the function
-	response, _, err := contract.CallPayableFunction("addNode", "100", params, args.Gas)
+	response, _, err := contract.CallPayableFunction("addNode", args.NodeStake, params, args.Gas)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -880,6 +879,147 @@ func (ops *ContractService) IsNode(r *http.Request, args *IsNodeArgs, reply *IsN
 	// set a reply message
 	reply.Value = functionResult.GetBool(0)
 	reply.Message = "IsNode function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
+
+	// create reply for the RPC client
+	return nil
+
+}
+
+// Method: depositNodeStake
+// 			- deposit HBAR for an operator in the Renderhive Smart Contract
+// #############################################################################
+
+// Arguments and reply
+type DepositNodeStakeArgs struct {
+	ContractID    string // the ID of the smart contract
+	NodeAccountID string // the account ID of the node to deposit for
+	NodeStake     string // the amount of HBAR to deposit as node stake
+
+	Gas uint64 // the gas limit for the transaction
+}
+type DepositNodeStakeReply struct {
+	Message string
+}
+
+// Method
+func (ops *ContractService) DepositNodeStake(r *http.Request, args *DepositNodeStakeArgs, reply *DepositNodeStakeReply) error {
+	var err error
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Implement further checks and security measures
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Calling a smart contract function (Gas: %v)", args.Gas))
+
+	// prepare the contract object
+	contractID, err := hederasdk.ContractIDFromString(args.ContractID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	contract := hedera.HederaSmartContract{ID: contractID}
+
+	// prepare the passed AccountID
+	nodeAccountID, err := hederasdk.AccountIDFromString(args.NodeAccountID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// prepare the parameters for the function call
+	params := hederasdk.NewContractFunctionParameters()
+
+	// add node account ID to the parameters
+	params, err = params.AddAddress(nodeAccountID.ToSolidityAddress())
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// call the payable function
+	response, receipt, err := contract.CallPayableFunction("depositNodeStake", args.NodeStake, params, args.Gas)
+	fmt.Println("Response:", response)
+	fmt.Println("Receipt:", receipt)
+	if err != nil {
+
+		// fmt.Println("Error (%v): %v", err, "No details available")
+		return fmt.Errorf("Error (%v): %v", err, "No details available")
+	}
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+
+	// set a reply message
+	reply.Message = "depositNodeStake function was called with transaction: " + response.TransactionID.String()
+
+	// create reply for the RPC client
+	return nil
+
+}
+
+// Method: withdrawNodeStake
+// 			- withdraw the complete node stake from the Renderhive Smart Contract
+// #############################################################################
+
+// Arguments and reply
+type WithdrawNodeStakeArgs struct {
+	ContractID    string // the ID of the smart contract
+	NodeAccountID string // the account ID of the node to withdraw the stake from
+
+	Gas uint64 // the gas limit for the transaction
+}
+type WithdrawNodeStakeReply struct {
+	Message string
+}
+
+// Method
+func (ops *ContractService) WithdrawNodeStake(r *http.Request, args *WithdrawNodeStakeArgs, reply *WithdrawNodeStakeReply) error {
+	var err error
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Implement further checks and security measures
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Calling a smart contract function (Gas: %v)", args.Gas))
+
+	// prepare the contract object
+	contractID, err := hederasdk.ContractIDFromString(args.ContractID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	contract := hedera.HederaSmartContract{ID: contractID}
+
+	// prepare the passed AccountID
+	nodeAccountID, err := hederasdk.AccountIDFromString(args.NodeAccountID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// prepare the parameters for the function call
+	params := hederasdk.NewContractFunctionParameters()
+
+	// add node account ID to the parameters
+	params, err = params.AddAddress(nodeAccountID.ToSolidityAddress())
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	// call the payable function
+	response, receipt, err := contract.CallFunction("withdrawNodeStake", params, args.Gas)
+	fmt.Println("Response:", response)
+	fmt.Println("Receipt:", receipt)
+	fmt.Println("Error:", err)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+
+	// set a reply message
+	reply.Message = "withdrawNodeStake function was called with transaction: " + response.TransactionID.String()
 
 	// create reply for the RPC client
 	return nil
