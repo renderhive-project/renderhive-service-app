@@ -109,6 +109,7 @@ const jsonRpcTemplates = {
       "ContractID": "0.0.XXXX",
       "AccountID": "0.0.XXXX",
       "TopicID": "0.0.XXXX",
+      "NodeStake": "75",
       "Gas": 230000
     }
   }`,
@@ -133,6 +134,28 @@ const jsonRpcTemplates = {
       "Gas": 40000
     }
   }`,
+
+  contractservice_depositNodeStake: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.DepositNodeStake",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "NodeAccountID": "0.0.XXXX",
+      "NodeStake": "75",
+      "Gas": 100000
+    }
+  }`,
+
+  contractservice_withdrawNodeStake: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.WithdrawNodeStake",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "NodeAccountID": "0.0.XXXX",
+      "Gas": 65000
+    }
+  }`,
+
 };
 
 const Playground = () => {
