@@ -436,20 +436,21 @@ func (ops *ContractService) GetOperatorBalance(r *http.Request, args *GetOperato
 	if err != nil {
 		return fmt.Errorf("Error getting contract response record: %v", err)
 	}
-
 	functionResult, err := record.GetContractExecuteResult()
 	if err != nil {
 		return fmt.Errorf("Error getting contract execute result: %v", err)
 	}
 
-	// set a reply message
+	// set a reply value
 	reply.Value = new(big.Int).SetBytes(functionResult.GetInt256(0))
 
+	// convert tℏ to ℏ
 	amount, err := hederasdk.HbarFromString(reply.Value.String() + " tℏ")
-
 	if err != nil {
 		return fmt.Errorf("Error getting contract response record: %v", err)
 	}
+
+	// set a reply message
 	reply.Message = "getOperatorBalance function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", amount)
 
 	// create reply for the RPC client
@@ -521,20 +522,22 @@ func (ops *ContractService) GetReservedOperatorFunds(r *http.Request, args *GetR
 	if err != nil {
 		return fmt.Errorf("Error getting contract response record: %v", err)
 	}
-
 	functionResult, err := record.GetContractExecuteResult()
 	if err != nil {
 		return fmt.Errorf("Error getting contract execute result: %v", err)
 	}
 
-	// set a reply message
+	// set a reply value
 	reply.Value = new(big.Int).SetBytes(functionResult.GetInt256(0))
 
+	// convert tℏ to ℏ
 	amount, err := hederasdk.HbarFromString(reply.Value.String() + " tℏ")
 
 	if err != nil {
 		return fmt.Errorf("Error getting contract response record: %v", err)
 	}
+
+	// set a reply messages
 	reply.Message = "getReservedOperatorFunds function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", amount)
 
 	// create reply for the RPC client
@@ -632,10 +635,10 @@ func (ops *ContractService) IsOperator(r *http.Request, args *IsOperatorArgs, re
 // Arguments and reply
 type AddNodeArgs struct {
 	// PublicKey       *ecdsa.PublicKey // the public key of the node
-	ContractID string // the ID of the smart contract
-	AccountID  string // the AccountID of the node to be added
-	TopicID    string // the TopicID of the nodes's HCS topic
-	NodeStake  string // the amount of HBAR to deposit as node stake
+	ContractID    string // the ID of the smart contract
+	NodeAccountID string // the AccountID of the node to be added
+	TopicID       string // the TopicID of the nodes's HCS topic
+	NodeStake     string // the amount of HBAR to deposit as node stake
 
 	Gas uint64 // the gas limit for the transaction
 }
@@ -663,8 +666,8 @@ func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *A
 	}
 	contract := hedera.HederaSmartContract{ID: contractID}
 
-	// prepare the passed AccountID
-	accountID, err := hederasdk.AccountIDFromString(args.AccountID)
+	// prepare the passed NodeAccountID
+	accountID, err := hederasdk.AccountIDFromString(args.NodeAccountID)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -717,8 +720,8 @@ func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *A
 
 // Arguments and reply
 type RemoveNodeArgs struct {
-	ContractID string // the ID of the smart contract
-	AccountID  string // the AccountID of the node to be deleted
+	ContractID    string // the ID of the smart contract
+	NodeAccountID string // the AccountID of the node to be deleted
 
 	Gas uint64 // the gas limit for the transaction
 }
@@ -746,8 +749,8 @@ func (ops *ContractService) RemoveNode(r *http.Request, args *RemoveNodeArgs, re
 	}
 	contract := hedera.HederaSmartContract{ID: contractID}
 
-	// prepare the passed AccountID
-	accountID, err := hederasdk.AccountIDFromString(args.AccountID)
+	// prepare the passed NodeAccountID
+	accountID, err := hederasdk.AccountIDFromString(args.NodeAccountID)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -921,7 +924,7 @@ func (ops *ContractService) DepositNodeStake(r *http.Request, args *DepositNodeS
 	}
 	contract := hedera.HederaSmartContract{ID: contractID}
 
-	// prepare the passed AccountID
+	// prepare the passed NodeAccountID
 	nodeAccountID, err := hederasdk.AccountIDFromString(args.NodeAccountID)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
@@ -992,7 +995,7 @@ func (ops *ContractService) WithdrawNodeStake(r *http.Request, args *WithdrawNod
 	}
 	contract := hedera.HederaSmartContract{ID: contractID}
 
-	// prepare the passed AccountID
+	// prepare the passed NodeAccountID
 	nodeAccountID, err := hederasdk.AccountIDFromString(args.NodeAccountID)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
@@ -1020,6 +1023,95 @@ func (ops *ContractService) WithdrawNodeStake(r *http.Request, args *WithdrawNod
 
 	// set a reply message
 	reply.Message = "withdrawNodeStake function was called with transaction: " + response.TransactionID.String()
+
+	// create reply for the RPC client
+	return nil
+
+}
+
+// Method: getNodeStake
+// 			- get the node stake of the Renderhive Smart Contract
+// #############################################################################
+
+// Arguments and reply
+type GetNodeStakeArgs struct {
+	ContractID    string // the ID of the smart contract
+	NodeAccountID string // the account ID of the node to get the stake of
+
+	Gas uint64 // the gas limit for the transaction
+}
+type GetNodeStakeReply struct {
+	Message string
+	Value   *big.Int
+}
+
+// Method
+func (ops *ContractService) GetNodeStake(r *http.Request, args *GetNodeStakeArgs, reply *GetNodeStakeReply) error {
+	var err error
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Implement further checks and security measures
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Calling a smart contract function (Gas: %v)", args.Gas))
+
+	// prepare the contract object
+	contractID, err := hederasdk.ContractIDFromString(args.ContractID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	contract := hedera.HederaSmartContract{ID: contractID}
+
+	// prepare the passed NodeAccountID
+	nodeAccountID, err := hederasdk.AccountIDFromString(args.NodeAccountID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// prepare the parameters for the function call
+	params := hederasdk.NewContractFunctionParameters()
+
+	// add node account ID to the parameters
+	params, err = params.AddAddress(nodeAccountID.ToSolidityAddress())
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	// call the payable function
+	response, receipt, err := contract.CallFunction("getNodeStake", params, args.Gas)
+	fmt.Println("Response:", response)
+	fmt.Println("Receipt:", receipt)
+	fmt.Println("Error:", err)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+
+	// get the result of the function call
+	record, err := response.GetRecord(hedera.Manager.NetworkClient)
+	if err != nil {
+		return fmt.Errorf("Error getting contract response record: %v", err)
+	}
+	functionResult, err := record.GetContractExecuteResult()
+	if err != nil {
+		return fmt.Errorf("Error getting contract execute result: %v", err)
+	}
+
+	// set a reply value
+	reply.Value = new(big.Int).SetBytes(functionResult.GetInt256(0))
+
+	// convert tℏ to ℏ
+	amount, err := hederasdk.HbarFromString(reply.Value.String() + " tℏ")
+	if err != nil {
+		return fmt.Errorf("Error getting contract response record: %v", err)
+	}
+
+	// set a reply message
+	reply.Message = "getNodeStake function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", amount)
 
 	// create reply for the RPC client
 	return nil

@@ -107,7 +107,7 @@ const jsonRpcTemplates = {
     "method": "ContractService.AddNode",
     "params": {
       "ContractID": "0.0.XXXX",
-      "AccountID": "0.0.XXXX",
+      "NodeAccountID": "0.0.XXXX",
       "TopicID": "0.0.XXXX",
       "NodeStake": "75",
       "Gas": 230000
@@ -119,7 +119,7 @@ const jsonRpcTemplates = {
     "method": "ContractService.RemoveNode",
     "params": {
       "ContractID": "0.0.XXXX",
-      "AccountID": "0.0.XXXX",
+      "NodeAccountID": "0.0.XXXX",
       "Gas": 180000
     }
   }`,
@@ -156,6 +156,15 @@ const jsonRpcTemplates = {
     }
   }`,
 
+  contractservice_getNodeStake: `{
+    "jsonrpc": "2.0",
+    "method": "ContractService.GetNodeStake",
+    "params": {
+      "ContractID": "0.0.XXXX",
+      "NodeAccountID": "0.0.XXXX",
+      "Gas": 30000
+    }
+  }`,
 };
 
 const Playground = () => {
@@ -270,6 +279,7 @@ const Playground = () => {
                     <MenuItem value="contractservice_isNode">Verify Node</MenuItem>
                     <MenuItem value="contractservice_depositNodeStake">Deposit Node Stake</MenuItem>
                     <MenuItem value="contractservice_withdrawNodeStake">Withdraw Node Stake</MenuItem>
+                    <MenuItem value="contractservice_getNodeStake">Get Node Stake</MenuItem>
                     {/* Add more menu items as needed */}
                   </Select>
                 </Box>
