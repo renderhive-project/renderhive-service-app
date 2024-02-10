@@ -449,7 +449,7 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite boo
 	}
 
 	// Prepare the creation of a local render request document file
-	request_document_filename := fmt.Sprintf("request-%v.json", request.ID)
+	request_document_filename := fmt.Sprintf("request-%v.json", request.BlenderFile.CID)
 	request_document_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS)
 	request.DocumentPath = filepath.Join(request_document_directory, request_document_filename)
 	if _, err := os.Stat(request.DocumentPath); os.IsNotExist(err) || overwrite {

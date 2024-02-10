@@ -388,8 +388,8 @@ func (contract *HederaSmartContract) CallPayableFunction(name string, amount str
 	newContractExecuteTransaction := hederasdk.NewContractExecuteTransaction().
 		SetContractID(contract.ID).
 		SetGas(gas).
-		SetFunction(name, parameters).
-		SetPayableAmount(_amount)
+		SetPayableAmount(_amount).
+		SetFunction(name, parameters)
 
 	// get the transaction response
 	transactionResponse, err := newContractExecuteTransaction.Execute(Manager.NetworkClient)
