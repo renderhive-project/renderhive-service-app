@@ -162,6 +162,45 @@ func (hm *PackageManager) LoadAccount(account_id string, passphrase string, publ
 	return err
 }
 
+// Set the account from the given account ID and private key
+func (hm *PackageManager) SetAccount(account_id string, privatekey string) error {
+	var err error
+
+	// read the node account ID into the node manager
+	hm.Operator.AccountID, err = hederasdk.AccountIDFromString(account_id)
+	if err != nil {
+		return err
+	}
+
+	// log info
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Account ID: %v", hm.Operator.AccountID))
+
+	// TODO: From this point on, the private key is in memory in clear text
+	//		 This needs to be improved from a security standpoint!!!
+
+	// read the private key from the keystore file and decrypt it
+	hm.Operator.PrivateKey, err = hederasdk.PrivateKeyFromString(privatekey)
+	hm.Operator.PublicKey = hm.Operator.PrivateKey.PublicKey()
+
+	// log info
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Public key: %v", hm.Operator.PublicKey))
+
+	// set this account as the operator
+	hm.NetworkClient.SetOperator(hm.Operator.AccountID, hm.Operator.PrivateKey)
+
+	// // query the account balance from the Hedera network
+	// queryCost, err := hm.Operator.QueryBalance(hm)
+	// logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", hm.Operator.Info.Balance))
+	// logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryBalance): %v", queryCost))
+
+	// query the complete account information from the Hedera network
+	queryCost, err := hm.Operator.QueryInfo(hm)
+	logger.Manager.Package["hedera"].Info().Msg(fmt.Sprintf(" [#] Account Balance: %v", hm.Operator.Info.Balance))
+	logger.Manager.Package["hedera"].Debug().Msg(fmt.Sprintf(" [#] Costs (QueryInfo): %v", queryCost))
+
+	return err
+}
+
 // Deinitialize the Hedera manager
 func (hm *PackageManager) DeInit() error {
 	var err error
