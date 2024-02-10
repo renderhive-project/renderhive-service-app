@@ -513,7 +513,7 @@ func (w3cli *w3cliAgent) UploadList() error {
 	var err error
 
 	// Only proceed, if the agent DID is known AND there are spaces
-	if w3cli.DIDkey == "" || len(w3cli.Spaces) > 0 {
+	if w3cli.DIDkey == "" || len(w3cli.Spaces) == 0 {
 		return fmt.Errorf("This w3up agent seems to be not initialized.")
 	}
 
@@ -620,7 +620,7 @@ func (w3cli *w3cliAgent) SpaceRegister() error {
 	var err error
 
 	// Only proceed, if the agent DID is known AND there are spaces
-	if w3cli.DIDkey == "" || len(w3cli.Spaces) > 0 {
+	if w3cli.DIDkey == "" || len(w3cli.Spaces) == 0 {
 		return fmt.Errorf("This w3up agent seems to be not initialized.")
 	}
 
@@ -651,7 +651,7 @@ func (w3cli *w3cliAgent) SpaceUse(did string) error {
 	var err error
 
 	// Only proceed, if the agent DID is known AND there are spaces
-	if w3cli.DIDkey == "" || len(w3cli.Spaces) > 0 {
+	if w3cli.DIDkey == "" || len(w3cli.Spaces) == 0 {
 		return fmt.Errorf("This w3up agent seems to be not initialized.")
 	}
 
