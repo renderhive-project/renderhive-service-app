@@ -120,6 +120,7 @@ const NavBar = () => {
                 open={Boolean(userMenu)}
                 onClose={handleMenuClose}
               >
+                <MenuItem disabled>Operator: {accountId}</MenuItem>
                 <MenuItem onClick={() => {
                   handleMenuLogout();
                 }}>

@@ -2,7 +2,7 @@ import { HashConnect, HashConnectTypes } from "hashconnect";
 import { HashconnectContext } from "../../../contexts/HashconnectContext";
 import { useCallback, useContext, useEffect } from 'react';
 import { WalletInterface } from "../walletInterface";
-import { AccountId, ContractExecuteTransaction, ContractId, TokenAssociateTransaction, TokenId, TransferTransaction } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractId, Hbar, TokenAssociateTransaction, TokenId, TransferTransaction, TransactionResponse } from "@hashgraph/sdk";
 import { ContractFunctionParameterBuilder } from "../contractFunctionParameterBuilder";
 import { appConfig } from "../../../config";
 import { useLoading } from "../../../contexts/LoaderContext";
@@ -75,7 +75,7 @@ class HashConnectWallet implements WalletInterface {
 
   // Purpose: build contract execute transaction and send to hashconnect for signing and execution
   // Returns: Promise<TransactionId | null>
-  async executeContractFunction(contractId: ContractId, functionName: string, functionParameters: ContractFunctionParameterBuilder, gasLimit: number) {
+  async executeContractFunction(contractId: ContractId, functionName: string, functionParameters: ContractFunctionParameterBuilder, gasLimit: number, amount?: Hbar) {
     // Grab the topic and account to sign from the last pairing event
     const pairingData = hashConnect.hcData.pairingData[hashConnect.hcData.pairingData.length - 1];
 
@@ -87,18 +87,28 @@ class HashConnectWallet implements WalletInterface {
       .setGas(gasLimit)
       .setFunction(functionName, functionParameters.buildHAPIParams());
 
+    // If amount is provided, set it as the payment amount
+    if (amount) {
+      tx.setPayableAmount(amount);
+    }
+    
     const txFrozen = await tx.freezeWithSigner(signer);
-    await txFrozen.executeWithSigner(signer);
+    const txResponse = await txFrozen.executeWithSigner(signer);
 
     // in order to read the contract call results, you will need to query the contract call's results form a mirror node using the transaction id
     // after getting the contract call results, use ethers and abi.decode to decode the call_result
     return txFrozen.transactionId;
   }
+
+  // disconnect wallet
   disconnect() {
     const pairingData = hashConnect.hcData.pairingData[hashConnect.hcData.pairingData.length - 1];
     hashConnect.disconnect(pairingData.topic);
   }
+
 };
+
+
 export const hashConnectWallet = new HashConnectWallet();
 
 const getPairingInfo = () => {

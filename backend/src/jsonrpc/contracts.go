@@ -29,7 +29,7 @@ package jsonrpc
 import (
 
 	// standard
-
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -93,6 +93,70 @@ func (ops *ContractService) Deploy(r *http.Request, args *DeployArgs, reply *Dep
 
 	// set a reply message
 	reply.Message = "New smart contract was deployed as " + receipt.ContractID.String() + " with transaction: " + response.TransactionID.String() + "!"
+
+	// create reply for the RPC client
+	return nil
+
+}
+
+// Method: GetCurrentHiveCycle
+// 			- get the current hive cycle from the contract
+// #############################################################################
+
+// Arguments and reply
+type GetCurrentHiveCycleArgs struct {
+	ContractID string
+	Gas        uint64
+}
+type GetCurrentHiveCycleReply struct {
+	Message string
+	Value   *big.Int
+}
+
+// Method
+func (ops *ContractService) GetCurrentHiveCycle(r *http.Request, args *GetCurrentHiveCycleArgs, reply *GetCurrentHiveCycleReply) error {
+	var err error
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Implement further checks and security measures
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Calling a smart contract function (Gas: %v)", args.Gas))
+
+	// prepare the contract object
+	contractID, err := hederasdk.ContractIDFromString(args.ContractID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	contract := hedera.HederaSmartContract{ID: contractID}
+
+	// call the function
+	response, _, err := contract.CallFunction("getCurrentHiveCycle", nil, args.Gas)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// get the result of the function call
+	record, err := response.GetRecord(hedera.Manager.NetworkClient)
+	if err != nil {
+		return fmt.Errorf("Error getting contract response record: %v", err)
+	}
+	functionResult, err := record.GetContractExecuteResult()
+	if err != nil {
+		return fmt.Errorf("Error getting contract execute result: %v", err)
+	}
+
+	// set a reply value
+	reply.Value = new(big.Int).SetBytes(functionResult.GetInt256(0))
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+
+	// set a reply message
+	reply.Message = "getCurrentHiveCycle function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
 
 	// create reply for the RPC client
 	return nil
@@ -193,13 +257,8 @@ func (ops *ContractService) UnregisterOperator(r *http.Request, args *Unregister
 	}
 	contract := hedera.HederaSmartContract{ID: contractID}
 
-	// prepare the parameters for the function call
-	params := hederasdk.NewContractFunctionParameters()
-	fmt.Println("Params:", contract.ID.String())
-	fmt.Println("Params:", params)
-
 	// call the function
-	response, _, err := contract.CallFunction("unregisterOperator", params, args.Gas)
+	response, _, err := contract.CallFunction("unregisterOperator", nil, args.Gas)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -249,13 +308,8 @@ func (ops *ContractService) DepositOperatorFunds(r *http.Request, args *DepositO
 	}
 	contract := hedera.HederaSmartContract{ID: contractID}
 
-	// prepare the parameters for the function call
-	params := hederasdk.NewContractFunctionParameters()
-	fmt.Println("Params:", contract.ID.String())
-	fmt.Println("Params:", params)
-
 	// call the payable function
-	response, receipt, err := contract.CallPayableFunction("depositOperatorFunds", args.Amount, params, args.Gas)
+	response, receipt, err := contract.CallPayableFunction("depositOperatorFunds", args.Amount, nil, args.Gas)
 	fmt.Println("Response:", response)
 	fmt.Println("Receipt:", receipt)
 	if err != nil {
@@ -619,6 +673,88 @@ func (ops *ContractService) IsOperator(r *http.Request, args *IsOperatorArgs, re
 	// set a reply message
 	reply.Value = functionResult.GetBool(0)
 	reply.Message = "IsOperator function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
+
+	// create reply for the RPC client
+	return nil
+
+}
+
+// Method: getOperatorLastActivity
+// 			- check if the given operator is registered in the Renderhive Smart Contract
+// #############################################################################
+
+// Arguments and reply
+type GetOperatorLastActivityArgs struct {
+	ContractID string // the ID of the smart contract
+	AccountID  string // the ID of the account to query for
+	Gas        uint64 // the gas limit for the transaction
+}
+type GetOperatorLastActivityReply struct {
+	Message string
+	Value   *big.Int
+}
+
+// Method
+func (ops *ContractService) GetOperatorLastActivity(r *http.Request, args *GetOperatorLastActivityArgs, reply *GetOperatorLastActivityReply) error {
+	var err error
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Implement further checks and security measures
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Calling a smart contract function (Gas: %v)", args.Gas))
+
+	// prepare the contract object
+	contractID, err := hederasdk.ContractIDFromString(args.ContractID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	contract := hedera.HederaSmartContract{ID: contractID}
+
+	// prepare the passed AccountID
+	accountID, err := hederasdk.AccountIDFromString(args.AccountID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// prepare the parameters for the function call
+	params, err := hederasdk.NewContractFunctionParameters().AddAddress(accountID.ToSolidityAddress())
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// call the function
+	response, receipt, err := contract.CallFunction("getOperatorLastActivity", params, args.Gas)
+	fmt.Println("Response:", response)
+	fmt.Println("Receipt:", receipt)
+	fmt.Println("Error:", err)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+
+	// get the result of the function call
+
+	record, err := response.GetRecord(hedera.Manager.NetworkClient)
+	if err != nil {
+		return fmt.Errorf("Error getting contract response record: %v", err)
+	}
+
+	functionResult, err := record.GetContractExecuteResult()
+	if err != nil {
+		return fmt.Errorf("Error getting contract execute result: %v", err)
+	}
+
+	// set a reply value
+	reply.Value = new(big.Int).SetBytes(functionResult.GetInt256(0))
+
+	// set a reply message
+	reply.Message = "GetOperatorLastActivity function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
 
 	// create reply for the RPC client
 	return nil
@@ -1112,6 +1248,185 @@ func (ops *ContractService) GetNodeStake(r *http.Request, args *GetNodeStakeArgs
 
 	// set a reply message
 	reply.Message = "getNodeStake function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", amount)
+
+	// create reply for the RPC client
+	return nil
+
+}
+
+// RENDERHIVE SMART CONTRACT – RENDER JOB MANAGEMENT
+// #############################################################################
+
+// Method: addRenderJob
+// 			- add a new render job to the Renderhive Smart Contract
+// #############################################################################
+
+// Arguments and reply
+type AddRenderJobArgs struct {
+	ContractID string // the ID of the smart contract
+	JobCID     string // the CID of the render job document
+	Work       uint64 // the estimated render work in BBh
+	Funding    string // the amount of HBAR to deposit as funding for the render job
+
+	Gas uint64 // the gas limit for the transaction
+}
+type AddRenderJobReply struct {
+	Message string
+}
+
+// Method
+func (ops *ContractService) AddRenderJob(r *http.Request, args *AddRenderJobArgs, reply *AddRenderJobReply) error {
+	var err error
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Implement further checks and security measures
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Calling a smart contract function (Gas: %v)", args.Gas))
+
+	// prepare the contract object
+	contractID, err := hederasdk.ContractIDFromString(args.ContractID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	contract := hedera.HederaSmartContract{ID: contractID}
+
+	// prepare the parameters for the function call
+	params := hederasdk.NewContractFunctionParameters().AddString(args.JobCID)
+	params = params.AddUint256BigInt(new(big.Int).SetUint64(args.Work))
+
+	// call the function
+	response, _, err := contract.CallPayableFunction("addRenderJob", args.Funding, params, args.Gas)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+
+	// // get the event log
+	// events, err := contract.GetEventLog(response, "AddedNode")
+	// if err != nil {
+	// 	return fmt.Errorf("Error: %v", err)
+	// }
+
+	// // convert event values to usable types
+	// fmt.Println("Events:", events)
+	// callingAddress, _ := hederasdk.AccountIDFromSolidityAddress(events[0][0].(common.Address).Hex()[2:])
+	// nodeAddress, _ := hederasdk.AccountIDFromSolidityAddress(events[0][1].(common.Address).Hex()[2:])
+	// nodeTopic := events[0][2].(string)
+	// RegistrationTime := time.Unix(events[0][3].(*big.Int).Int64(), 0)
+
+	// // log info
+	// logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract Event Log: 'Added Node: %v, %v, %v, %v'", callingAddress.String(), nodeAddress.String(), nodeTopic, RegistrationTime.String()))
+
+	// set a reply message
+	reply.Message = "addRenderJob function was called with transaction: " + response.TransactionID.String()
+
+	// create reply for the RPC client
+	return nil
+
+}
+
+// Method: claimRenderJob
+// 			- claim a render job in the Renderhive Smart Contract
+// #############################################################################
+
+// Arguments and reply
+type ClaimRenderJobArgs struct {
+	ContractID    string // the ID of the smart contract
+	JobCID        string // the CID of the render job document
+	HiveCycle     uint64 // the current hive cycle
+	NodeCount     uint8  // the number of nodes to claim the job
+	NodeShare     uint64 // the share of work to be rendered by this node (in parts per 10,000 of the total work, i.e. 1% = 100 parts per 10,000)
+	ConsensusRoot string // the root of the consensus merkle tree for the hive cycle
+	JobRoot       string // the root of the job's merkle tree for the hive cycle
+
+	Gas uint64 // the gas limit for the transaction
+}
+type ClaimRenderJobReply struct {
+	Message string
+}
+
+// Method
+func (ops *ContractService) ClaimRenderJob(r *http.Request, args *ClaimRenderJobArgs, reply *ClaimRenderJobReply) error {
+	var err error
+
+	// lock the mutex
+	Manager.Mutex.Lock()
+	defer Manager.Mutex.Unlock()
+
+	// TODO: Implement further checks and security measures
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf("Calling a smart contract function (Gas: %v)", args.Gas))
+
+	// prepare the contract object
+	contractID, err := hederasdk.ContractIDFromString(args.ContractID)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	contract := hedera.HederaSmartContract{ID: contractID}
+
+	// convert consensus root string from hex encoded string (0x15645...) to [32]bytes
+	var consensusRoot [32]byte
+	var jobRoot [32]byte
+
+	_consensusRoot, err := hex.DecodeString(args.ConsensusRoot[2:])
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	_jobRoot, err := hex.DecodeString(args.JobRoot[2:])
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+	if len(_consensusRoot) != 32 || len(_jobRoot) != 32 {
+		return fmt.Errorf("Error: %v", "_consensusRoot and _jobRoot must be 32 bytes long")
+	} else {
+		// convert to [32]byte
+		copy(consensusRoot[:], _consensusRoot)
+		copy(jobRoot[:], _jobRoot)
+
+	}
+
+	// prepare the parameters for the function call
+	params := hederasdk.NewContractFunctionParameters().AddString(args.JobCID)
+	params = params.AddUint256BigInt(new(big.Int).SetUint64(args.HiveCycle))
+	params = params.AddUint8(args.NodeCount)
+	params = params.AddUint128BigInt(new(big.Int).SetUint64(args.NodeShare))
+	params = params.AddBytes32(consensusRoot)
+	params = params.AddBytes32(jobRoot)
+
+	// call the function
+	response, _, err := contract.CallFunction("claimRenderJob", params, args.Gas)
+	if err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	// log info
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+
+	// // get the event log
+	// events, err := contract.GetEventLog(response, "AddedNode")
+	// if err != nil {
+	// 	return fmt.Errorf("Error: %v", err)
+	// }
+
+	// // convert event values to usable types
+	// fmt.Println("Events:", events)
+	// callingAddress, _ := hederasdk.AccountIDFromSolidityAddress(events[0][0].(common.Address).Hex()[2:])
+	// nodeAddress, _ := hederasdk.AccountIDFromSolidityAddress(events[0][1].(common.Address).Hex()[2:])
+	// nodeTopic := events[0][2].(string)
+	// RegistrationTime := time.Unix(events[0][3].(*big.Int).Int64(), 0)
+
+	// // log info
+	// logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract Event Log: 'Added Node: %v, %v, %v, %v'", callingAddress.String(), nodeAddress.String(), nodeTopic, RegistrationTime.String()))
+
+	// set a reply message
+	reply.Message = "claimRenderJob function was called with transaction: " + response.TransactionID.String()
 
 	// create reply for the RPC client
 	return nil
