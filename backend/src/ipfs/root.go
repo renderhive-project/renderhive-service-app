@@ -84,6 +84,7 @@ type PackageManager struct {
 	IpfsRepo          repo.Repo
 	IpfsNode          *core.IpfsNode
 	IpfsAPI           icore.CoreAPI
+	IpfsPlugins       *loader.PluginLoader
 
 	// w3up service
 	W3Agent w3cliAgent
@@ -196,17 +197,17 @@ func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
 	// IPFS Plugins
 	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	// Load any external plugins if available on externalPluginsPath
-	plugins, err := loader.NewPluginLoader(filepath.Join(ipfsm.IpfsRepoPath, "plugins"))
+	ipfsm.IpfsPlugins, err = loader.NewPluginLoader(filepath.Join(ipfsm.IpfsRepoPath, "plugins"))
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Error loading plugins: %s", err))
 	}
 
 	// Load preloaded and external plugins
-	if err := plugins.Initialize(); err != nil {
+	if err := ipfsm.IpfsPlugins.Initialize(); err != nil {
 		return nil, errors.New(fmt.Sprintf("Error initializing plugins: %s", err))
 	}
 
-	if err := plugins.Inject(); err != nil {
+	if err := ipfsm.IpfsPlugins.Inject(); err != nil {
 		return nil, errors.New(fmt.Sprintf("Error initializing plugins: %s", err))
 	}
 
@@ -256,6 +257,12 @@ func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
 
 	// Get node configuration
 	cfg, err := ipfsm.IpfsRepo.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	// empty the append announce addresses
+	cfg.Addresses.AppendAnnounce = []string{}
 
 	// get the public IPv4 and add it to the announced addresses
 	ipv4, err := GetPublicIPv4()
@@ -270,15 +277,15 @@ func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
 		cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip4/%v/udp/4001/quic-v1", ipv4))
 		cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip4/%v/udp/4001/quic-v1/webtransport", ipv4))
 
+		logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Queried IPv4 address: %v", ipv4))
 	}
-	logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Queried IPv4 address: %v", ipv4))
 
 	// get the public IPv6 and add it to the announced addresses
 	ipv6, err := GetPublicIPv6()
 	if err != nil {
 		return nil, err
 	}
-	if ipv6 != "" {
+	if ipv6 != "" && ipv6 != ipv4 {
 
 		// add the multiaddr with the public IP to the configuration
 		cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip6/%v/tcp/4001", ipv6))
@@ -286,8 +293,14 @@ func (ipfsm *PackageManager) StartLocalNode() (*core.IpfsNode, error) {
 		cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip6/%v/udp/4001/quic-v1", ipv6))
 		cfg.Addresses.AppendAnnounce = append(cfg.Addresses.AppendAnnounce, fmt.Sprintf("/ip6/%v/udp/4001/quic-v1/webtransport", ipv6))
 
+		logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Queried IPv6 address: %v", ipv6))
+
 	}
-	logger.Manager.Package["ipfs"].Info().Msg(fmt.Sprintf(" [#] Queried IPv6 address: %v", ipv6))
+
+	// Save the updated configuration back to the repo
+	if err := ipfsm.IpfsRepo.SetConfig(cfg); err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to save IPFS repo configuration: %v", err.Error()))
+	}
 
 	// Start IPFS Node
 	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -583,10 +596,10 @@ func (ipfsm *PackageManager) UnPinObject(cid_string string) (bool, error) {
 }
 
 // Start HTTP server and webUI
-func (ipfsm *PackageManager) StartHTTPServer(path string) error {
-	var err error
+func (ipfsm *PackageManager) StartHTTPServer() error {
 
 	var opts = []corehttp.ServeOption{
+		corehttp.HostnameOption(),
 		corehttp.GatewayOption("/ipfs", "/ipns"),
 		corehttp.WebUIOption,
 		corehttp.CommandsOption(
@@ -595,16 +608,24 @@ func (ipfsm *PackageManager) StartHTTPServer(path string) error {
 				ConstructNode: func() (*core.IpfsNode, error) {
 					return ipfsm.IpfsNode, nil
 				},
+				ReqLog:  &commands.ReqLog{},
+				Plugins: ipfsm.IpfsPlugins,
 			}),
 	}
+
 	proc := process.WithParent(process.Background())
+	errChan := make(chan error, 1)
 	proc.Go(func(p process.Process) {
-		if err := corehttp.ListenAndServe(ipfsm.IpfsNode, "/ip4/127.0.0.1/tcp/5001", opts...); err != nil {
-			return
-		}
+		errChan <- corehttp.ListenAndServe(ipfsm.IpfsNode, "/ip4/0.0.0.0/tcp/5001", opts...)
 	})
 
-	return err
+	// wait for a potential error of the ListenAndServe function in the go routine
+	select {
+	case err := <-errChan:
+		return err
+	case <-time.After(1 * time.Second):
+		return nil
+	}
 
 }
 

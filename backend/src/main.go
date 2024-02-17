@@ -93,24 +93,43 @@ func main() {
 
 	}
 
-	// BACKEND SERVER
+	// BACKEND SERVER(S)
 	// ***************************************************************************
 
-	// start the JSON-RPC server
-	err := ServiceApp.JsonRpcManager.StartServer("5174", "jsonrpc/cert/cert.pem", "jsonrpc/cert/key.pem")
+	// start local IPFS server in a goroutine (the function does this internally)
+	err := ServiceApp.IPFSManager.StartHTTPServer()
 	if err != nil {
 		if err == http.ErrServerClosed {
 
 			// log information
-			logger.Manager.Package["jsonrpc"].Error().Msg("Server closed gracefully")
+			logger.Manager.Package["ipfs"].Error().Msg("Server closed gracefully")
 
 		} else {
 
 			// log information
-			logger.Manager.Package["jsonrpc"].Error().Msg(fmt.Sprintf("Error starting server: %v", err))
+			logger.Manager.Package["ipfs"].Error().Msg(fmt.Sprintf("Error starting server: %v", err))
 
 		}
 
 	}
+
+	// start the JSON-RPC server in a goroutine
+	ServiceApp.WG.Add(1)
+	go func() {
+		defer ServiceApp.WG.Done()
+		err := ServiceApp.JsonRpcManager.StartServer("5174", "jsonrpc/cert/cert.pem", "jsonrpc/cert/key.pem")
+		if err != nil {
+			if err == http.ErrServerClosed {
+				// log information
+				logger.Manager.Package["jsonrpc"].Error().Msg("Server closed gracefully")
+			} else {
+				// log information
+				logger.Manager.Package["jsonrpc"].Error().Msg(fmt.Sprintf("Error starting server: %v", err))
+			}
+		}
+	}()
+
+	// wait for the wait group to finish
+	ServiceApp.WG.Wait()
 
 }
