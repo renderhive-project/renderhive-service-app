@@ -30,15 +30,18 @@ import (
 
 	// standard
 	// "fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
+
 	// "time"
 	// "sync"
 	// external
 	// hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+
 	// internal
-	// . "renderhive/globals"
+	. "renderhive/globals"
 	// "renderhive/logger"
 	// "renderhive/node"
 	// "renderhive/hedera"
@@ -72,7 +75,7 @@ func GetAppDataPath() string {
 		return ""
 	}
 
-	return app_data_path
+	return filepath.Join(app_data_path, RENDERHIVE_APP_DIRECTORY)
 
 }
 
@@ -87,7 +90,7 @@ func GetPublicIPv4() (string, error) {
 	defer resp.Body.Close()
 
 	// Read the response body and print the IP address
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +110,7 @@ func GetPublicIPv6() (string, error) {
 	defer resp.Body.Close()
 
 	// Read the response body and print the IP address
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

@@ -28,8 +28,11 @@ services:
     user: "renderhive"
     ports:
       # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"
-      #       If not specified, other machines could access the JSON-RPC (if the firewall rules would allow for that)
-      - "127.0.0.1:5174:5174"
+      #       If not specified, other machines could access the ports (if the firewall rules would allow for that)
+      - "127.0.0.1:5174:5174" # JSON-RPC (accissible from local machine only)
+      - "127.0.0.1:5001:5001" # IPFS API/WebUI (accissible from local machine only)
+      - "127.0.0.1:8080:8080" # IPFS Gatway (accissible from local machine only)
+      - "4001:4001" # IPFS swarm connections (accissible from other machines)
     volumes:
       - ./backend/src:/app
       - ./server/certificates:/app/jsonrpc/cert
