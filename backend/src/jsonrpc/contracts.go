@@ -39,7 +39,7 @@ import (
 	hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
 
 	// internal
-	// . "renderhive/globals"
+	. "renderhive/globals"
 	"renderhive/hedera"
 	"renderhive/logger"
 	"renderhive/node"
@@ -57,16 +57,6 @@ type ContractService struct{}
 // Method: Deploy
 // 			- deploy a given smart contract on Hedera
 // #############################################################################
-
-// Arguments and reply
-type DeployArgs struct {
-	ContractFilepath string
-	Gas              int64
-}
-type DeployReply struct {
-	Message          string
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) Deploy(r *http.Request, args *DeployArgs, reply *DeployReply) error {
@@ -106,17 +96,6 @@ func (ops *ContractService) Deploy(r *http.Request, args *DeployArgs, reply *Dep
 // Method: GetCurrentHiveCycle
 // 			- get the current hive cycle from the contract
 // #############################################################################
-
-// Arguments and reply
-type GetCurrentHiveCycleArgs struct {
-	ContractID string
-	Gas        uint64
-}
-type GetCurrentHiveCycleReply struct {
-	Message          string
-	Value            *big.Int
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) GetCurrentHiveCycle(r *http.Request, args *GetCurrentHiveCycleArgs, reply *GetCurrentHiveCycleReply) error {
@@ -177,19 +156,6 @@ func (ops *ContractService) GetCurrentHiveCycle(r *http.Request, args *GetCurren
 // 			- register a new operator in the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type RegisterOperatorArgs struct {
-	// PublicKey       *ecdsa.PublicKey // the public key of the operator
-	ContractID      string // the ID of the smart contract
-	OperatorTopicID string // the TopicID of the operator's HCS topic
-
-	Gas uint64 // the gas limit for the transaction
-}
-type RegisterOperatorReply struct {
-	Message          string
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) RegisterOperator(r *http.Request, args *RegisterOperatorArgs, reply *RegisterOperatorReply) error {
 	var err error
@@ -238,16 +204,6 @@ func (ops *ContractService) RegisterOperator(r *http.Request, args *RegisterOper
 // 			- unregister an operator from the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type UnregisterOperatorArgs struct {
-	ContractID string // the ID of the smart contract
-	Gas        uint64 // the gas limit for the transaction
-}
-type UnregisterOperatorReply struct {
-	Message          string
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) UnregisterOperator(r *http.Request, args *UnregisterOperatorArgs, reply *UnregisterOperatorReply) error {
 	var err error
@@ -290,17 +246,6 @@ func (ops *ContractService) UnregisterOperator(r *http.Request, args *Unregister
 // Method: depositOperatorFunds
 // 			- deposit HBAR for an operator in the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type DepositOperatorFundsArgs struct {
-	ContractID string // the ID of the smart contract
-	Amount     string // the amount of HBAR to deposit
-	Gas        uint64 // the gas limit for the transaction
-}
-type DepositOperatorFundsReply struct {
-	Message          string
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) DepositOperatorFunds(r *http.Request, args *DepositOperatorFundsArgs, reply *DepositOperatorFundsReply) error {
@@ -365,17 +310,6 @@ func (ops *ContractService) DepositOperatorFunds(r *http.Request, args *DepositO
 // Method: withdrawOperatorFunds
 // 			- withdraw HBAR from the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type WithdrawOperatorFundsArgs struct {
-	ContractID string // the ID of the smart contract
-	Amount     string // the amount of HBAR to withdraw
-	Gas        uint64 // the gas limit for the transaction
-}
-type WithdrawOperatorFundsReply struct {
-	Message          string
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) WithdrawOperatorFunds(r *http.Request, args *WithdrawOperatorFundsArgs, reply *WithdrawOperatorFundsReply) error {
@@ -448,18 +382,6 @@ func (ops *ContractService) WithdrawOperatorFunds(r *http.Request, args *Withdra
 // Method: getOperatorBalance
 // 			- check the balance of an registered operator in the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type GetOperatorBalanceArgs struct {
-	ContractID string // the ID of the smart contract
-	AccountID  string // the ID of the account to query for
-	Gas        uint64 // the gas limit for the transaction
-}
-type GetOperatorBalanceReply struct {
-	Message          string
-	Value            *big.Int
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) GetOperatorBalance(r *http.Request, args *GetOperatorBalanceArgs, reply *GetOperatorBalanceReply) error {
@@ -537,18 +459,6 @@ func (ops *ContractService) GetOperatorBalance(r *http.Request, args *GetOperato
 // Method: getReservedOperatorFunds
 // 			- check the reserved funds of an registered operator in the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type GetReservedOperatorFundsArgs struct {
-	ContractID string // the ID of the smart contract
-	AccountID  string // the ID of the account to query for
-	Gas        uint64 // the gas limit for the transaction
-}
-type GetReservedOperatorFundsReply struct {
-	Message          string
-	Value            *big.Int
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) GetReservedOperatorFunds(r *http.Request, args *GetReservedOperatorFundsArgs, reply *GetReservedOperatorFundsReply) error {
@@ -628,18 +538,6 @@ func (ops *ContractService) GetReservedOperatorFunds(r *http.Request, args *GetR
 // 			- check if the given operator is registered in the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type IsOperatorArgs struct {
-	ContractID string // the ID of the smart contract
-	AccountID  string // the ID of the account to query for
-	Gas        uint64 // the gas limit for the transaction
-}
-type IsOperatorReply struct {
-	Message          string
-	Value            bool
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) IsOperator(r *http.Request, args *IsOperatorArgs, reply *IsOperatorReply) error {
 	var err error
@@ -710,18 +608,6 @@ func (ops *ContractService) IsOperator(r *http.Request, args *IsOperatorArgs, re
 // Method: getOperatorLastActivity
 // 			- check if the given operator is registered in the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type GetOperatorLastActivityArgs struct {
-	ContractID string // the ID of the smart contract
-	AccountID  string // the ID of the account to query for
-	Gas        uint64 // the gas limit for the transaction
-}
-type GetOperatorLastActivityReply struct {
-	Message          string
-	Value            *big.Int
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) GetOperatorLastActivity(r *http.Request, args *GetOperatorLastActivityArgs, reply *GetOperatorLastActivityReply) error {
@@ -799,21 +685,6 @@ func (ops *ContractService) GetOperatorLastActivity(r *http.Request, args *GetOp
 // 			- add a new node for an operator in the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type AddNodeArgs struct {
-	// PublicKey       *ecdsa.PublicKey // the public key of the node
-	ContractID    string // the ID of the smart contract
-	NodeAccountID string // the AccountID of the node to be added
-	TopicID       string // the TopicID of the nodes's HCS topic
-	NodeStake     string // the amount of HBAR to deposit as node stake
-
-	Gas uint64 // the gas limit for the transaction
-}
-type AddNodeReply struct {
-	Message          string
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *AddNodeReply) error {
 	var err error
@@ -888,18 +759,6 @@ func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *A
 // 			- remove a node of an operator from the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type RemoveNodeArgs struct {
-	ContractID    string // the ID of the smart contract
-	NodeAccountID string // the AccountID of the node to be deleted
-
-	Gas uint64 // the gas limit for the transaction
-}
-type RemoveNodeReply struct {
-	Message          string
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) RemoveNode(r *http.Request, args *RemoveNodeArgs, reply *RemoveNodeReply) error {
 	var err error
@@ -970,20 +829,6 @@ func (ops *ContractService) RemoveNode(r *http.Request, args *RemoveNodeArgs, re
 // Method: isNode
 // 			- check if the given node is registered in the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type IsNodeArgs struct {
-	ContractID        string // the ID of the smart contract
-	NodeAccountID     string // the account ID of the node to query for
-	OperatorAccountID string // the account ID of the operator owning the node
-
-	Gas uint64 // the gas limit for the transaction
-}
-type IsNodeReply struct {
-	Message          string
-	Value            bool
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) IsNode(r *http.Request, args *IsNodeArgs, reply *IsNodeReply) error {
@@ -1068,19 +913,6 @@ func (ops *ContractService) IsNode(r *http.Request, args *IsNodeArgs, reply *IsN
 // 			- deposit HBAR for an operator in the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type DepositNodeStakeArgs struct {
-	ContractID    string // the ID of the smart contract
-	NodeAccountID string // the account ID of the node to deposit for
-	NodeStake     string // the amount of HBAR to deposit as node stake
-
-	Gas uint64 // the gas limit for the transaction
-}
-type DepositNodeStakeReply struct {
-	Message          string
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) DepositNodeStake(r *http.Request, args *DepositNodeStakeArgs, reply *DepositNodeStakeReply) error {
 	var err error
@@ -1143,18 +975,6 @@ func (ops *ContractService) DepositNodeStake(r *http.Request, args *DepositNodeS
 // 			- withdraw the complete node stake from the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type WithdrawNodeStakeArgs struct {
-	ContractID    string // the ID of the smart contract
-	NodeAccountID string // the account ID of the node to withdraw the stake from
-
-	Gas uint64 // the gas limit for the transaction
-}
-type WithdrawNodeStakeReply struct {
-	Message          string
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) WithdrawNodeStake(r *http.Request, args *WithdrawNodeStakeArgs, reply *WithdrawNodeStakeReply) error {
 	var err error
@@ -1214,19 +1034,6 @@ func (ops *ContractService) WithdrawNodeStake(r *http.Request, args *WithdrawNod
 // Method: getNodeStake
 // 			- get the node stake of the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type GetNodeStakeArgs struct {
-	ContractID    string // the ID of the smart contract
-	NodeAccountID string // the account ID of the node to get the stake of
-
-	Gas uint64 // the gas limit for the transaction
-}
-type GetNodeStakeReply struct {
-	Message          string
-	Value            *big.Int
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) GetNodeStake(r *http.Request, args *GetNodeStakeArgs, reply *GetNodeStakeReply) error {
@@ -1310,20 +1117,6 @@ func (ops *ContractService) GetNodeStake(r *http.Request, args *GetNodeStakeArgs
 // 			- add a new render job to the Renderhive Smart Contract
 // #############################################################################
 
-// Arguments and reply
-type AddRenderJobArgs struct {
-	ContractID string // the ID of the smart contract
-	JobCID     string // the CID of the render job document
-	Work       uint64 // the estimated render work in BBh
-	Funding    string // the amount of HBAR to deposit as funding for the render job
-
-	Gas uint64 // the gas limit for the transaction
-}
-type AddRenderJobReply struct {
-	Message          string
-	TransactionBytes string
-}
-
 // Method
 func (ops *ContractService) AddRenderJob(r *http.Request, args *AddRenderJobArgs, reply *AddRenderJobReply) error {
 	var err error
@@ -1370,23 +1163,6 @@ func (ops *ContractService) AddRenderJob(r *http.Request, args *AddRenderJobArgs
 // Method: claimRenderJob
 // 			- claim a render job in the Renderhive Smart Contract
 // #############################################################################
-
-// Arguments and reply
-type ClaimRenderJobArgs struct {
-	ContractID    string // the ID of the smart contract
-	JobCID        string // the CID of the render job document
-	HiveCycle     uint64 // the current hive cycle
-	NodeCount     uint8  // the number of nodes to claim the job
-	NodeShare     uint64 // the share of work to be rendered by this node (in parts per 10,000 of the total work, i.e. 1% = 100 parts per 10,000)
-	ConsensusRoot string // the root of the consensus merkle tree for the hive cycle
-	JobRoot       string // the root of the job's merkle tree for the hive cycle
-
-	Gas uint64 // the gas limit for the transaction
-}
-type ClaimRenderJobReply struct {
-	Message          string
-	TransactionBytes string
-}
 
 // Method
 func (ops *ContractService) ClaimRenderJob(r *http.Request, args *ClaimRenderJobArgs, reply *ClaimRenderJobReply) error {

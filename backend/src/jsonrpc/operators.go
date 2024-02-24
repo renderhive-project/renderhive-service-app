@@ -58,45 +58,15 @@ import (
 // SERVICE INITIALIZATION
 // #############################################################################
 
-// Defines the operator information
-type OperatorInfo struct {
-	ID        int    `json:"userid"`     // a unique user id
-	Username  string `json:"username"`   // a unique username
-	Email     string `json:"email"`      // email address of the user
-	AccountID string `json:"accountid"`  // the 0.0.xxxx formated account id
-	PublicKey string `json:"public_key"` // public key of the Hedera account
-}
-
-// Defines the node information
-type NodeInfo struct {
-	ID         int    `json:"nodeid"`      // a unique user id
-	Name       string `json:"name"`        // a unique alias for this node
-	ClientNode bool   `json:"client_node"` // node is a client node
-	RenderNode bool   `json:"render_node"` // node is a render node
-	AccountID  string `json:"accountid"`   // the 0.0.xxxx formated Hedera account id
-	PublicKey  string `json:"public_key"`  // public key of the Hedera account
-}
-
 // export the OperatorService for net/rpc
 type OperatorService struct{}
+
+// RENDERHIVE OPERATOR SERVICE
+// #############################################################################
 
 // Method: SignUp
 // 			- register a new operator with the smart contract service
 // #############################################################################
-
-// Arguments and reply
-type SignUpArgs struct {
-	Step                         string
-	Operator                     OperatorInfo
-	Node                         NodeInfo
-	Passphrase                   string
-	AccountCreationTransactionID string
-}
-type SignUpReply struct {
-	Message       string
-	NodeAccountID string
-	Payload       []byte
-}
 
 // Adds a known operator
 func (ops *OperatorService) SignUp(r *http.Request, args *SignUpArgs, reply *SignUpReply) error {
@@ -311,12 +281,6 @@ func (ops *OperatorService) signUpFinalize(args *SignUpArgs, reply *SignUpReply)
 // 			- request the payload for the sign in process
 // #############################################################################
 
-// Arguments and reply
-type GetSignInPayloadArgs struct{}
-type GetSignInPayloadReply struct {
-	Payload []byte
-}
-
 // Signs in using a known operator account
 func (ops *OperatorService) GetSignInPayload(r *http.Request, args *GetSignInPayloadArgs, reply *GetSignInPayloadReply) error {
 
@@ -340,16 +304,6 @@ func (ops *OperatorService) GetSignInPayload(r *http.Request, args *GetSignInPay
 // Method: SignIn
 // 			- sign in with the operator wallet
 // #############################################################################
-
-// Arguments and reply
-type SignInArgs struct {
-	Passphrase string
-}
-type SignInReply struct {
-	Message  string
-	SignedIn bool
-	Token    string
-}
 
 // Signs in using a known operator account
 func (ops *OperatorService) SignIn(r *http.Request, args *SignInArgs, reply *SignInReply) error {
@@ -467,13 +421,6 @@ func (ops *OperatorService) SignIn(r *http.Request, args *SignInArgs, reply *Sig
 // 			- sign out of the frontend session
 // #############################################################################
 
-// Arguments and reply
-type SignOutArgs struct{}
-type SignOutReply struct {
-	Message  string
-	SignedIn bool
-}
-
 // Signs in using a known operator account
 func (ops *OperatorService) SignOut(r *http.Request, args *SignOutArgs, reply *SignOutReply) error {
 
@@ -502,20 +449,6 @@ func (ops *OperatorService) SignOut(r *http.Request, args *SignOutArgs, reply *S
 //			- obtain information about the node operator from local files
 // #############################################################################
 
-// Arguments and reply
-type GetInfoArgs struct{}
-
-type GetInfoReply struct {
-	// Operator details
-	Username    string
-	UserEmail   string
-	UserAccount string
-
-	// Node Details
-	NodeName    string
-	NodeAccount string
-}
-
 // Get info about the operator via the accountid
 func (ops *OperatorService) GetInfo(r *http.Request, args *GetInfoArgs, reply *GetInfoReply) error {
 
@@ -538,22 +471,6 @@ func (ops *OperatorService) GetInfo(r *http.Request, args *GetInfoArgs, reply *G
 // Method: GetContractInfo
 //			- obtain information about the node operator from the smart contract
 // #############################################################################
-
-// Arguments and reply
-type GetContractInfoArgs struct {
-	AccountID string
-}
-
-type GetContractInfoReply struct {
-	// Operator details
-	Username    string
-	UserEmail   string
-	UserAccount string
-
-	// Node Details
-	NodeAlias   string
-	NodeAccount string
-}
 
 // Get info about the operator from the smart contract via the operator accountid
 func (ops *OperatorService) GetContractInfo(r *http.Request, args *GetContractInfoArgs, reply *GetContractInfoReply) error {
@@ -580,13 +497,6 @@ func (ops *OperatorService) GetContractInfo(r *http.Request, args *GetContractIn
 //			- this call can only respond, if the JWT is set and valid (otherwise
 //			  the request will be blocked by the authenticationMiddleware)
 // #############################################################################
-
-// Arguments and reply
-type IsSessionValidArgs struct{}
-
-type IsSessionValidReply struct {
-	Valid bool
-}
 
 // Returns true to the frontend if the session is valid
 // NOTE: The function always returns true, but is only evaluated if the request from the frontend
