@@ -56,9 +56,15 @@ type HederaTopic struct {
 // These functions are extended by higher level functions which are introduced
 // for convenience purposes in the root file.
 
-// Create a new topic with a given name as the topic memo
-func (topic *HederaTopic) New(adminKey interface{}) (*hederasdk.TransactionReceipt, error) {
+// Create a new topic with a given name as the topic memo, without signing and executing the transaction
+func (topic *HederaTopic) New(adminKey interface{}, options ...TransactionOption) (*hederasdk.TransactionReceipt, []byte, error) {
 	var err error
+
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// create a new topic
 	newTopicCreateTransaction := hederasdk.NewTopicCreateTransaction()
@@ -78,7 +84,7 @@ func (topic *HederaTopic) New(adminKey interface{}) (*hederasdk.TransactionRecei
 		// while signing it)
 		frozenTopicCreateTransaction := newTopicCreateTransaction //.FreezeWith(Manager.NetworkClient)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// if the type of the passed key is a PrivateKey
@@ -114,37 +120,62 @@ func (topic *HederaTopic) New(adminKey interface{}) (*hederasdk.TransactionRecei
 		newTopicCreateTransaction = newTopicCreateTransaction.SetSubmitKey(topic.Info.SubmitKey)
 	}
 
-	// sign with client operator private key and submit the query to a Hedera network
-	transactionResponse, err := newTopicCreateTransaction.Execute(Manager.NetworkClient)
-	if err != nil {
-		return nil, err
+	// if the transaction should be directly executed
+	if settings.Execute {
+
+		// sign with client operator private key and submit the query to a Hedera network
+		transactionResponse, err := newTopicCreateTransaction.Execute(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// log the receipt status of the transaction
+		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+
+		// get the topic ID from the transaction receipt
+		topic.ID = *transactionReceipt.TopicID
+
+		// query the topic information from the network
+		_, err = topic.QueryInfo(&Manager)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return &transactionReceipt, nil, err
+
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	// freeze the transaction for signing
+	frozenTransaction, err := newTopicCreateTransaction.FreezeWith(Manager.NetworkClient)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// log the receipt status of the transaction
-	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
-
-	// get the topic ID from the transaction receipt
-	topic.ID = *transactionReceipt.TopicID
-
-	// query the topic information from the network
-	_, err = topic.QueryInfo(&Manager)
+	// get the transaction bytes
+	transactionBytes, err := frozenTransaction.ToBytes()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &transactionReceipt, err
+	return nil, transactionBytes, err
 
 }
 
 // Update the topic
-func (topic *HederaTopic) Update(updatedInfo *hederasdk.TopicInfo, oldAdminKey interface{}) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) Update(updatedInfo *hederasdk.TopicInfo, oldAdminKey interface{}, options ...TransactionOption) (*hederasdk.TransactionReceipt, []byte, error) {
 	var err error
+
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// delete the topic
 	newTopicUpdateTransaction := hederasdk.NewTopicUpdateTransaction().
@@ -172,7 +203,7 @@ func (topic *HederaTopic) Update(updatedInfo *hederasdk.TopicInfo, oldAdminKey i
 		// while signing it)
 		frozenTopicUpdateTransaction, err := newTopicUpdateTransaction.FreezeWith(Manager.NetworkClient)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// if the type of the passed key is a PrivateKey
@@ -204,47 +235,72 @@ func (topic *HederaTopic) Update(updatedInfo *hederasdk.TopicInfo, oldAdminKey i
 
 	}
 
-	// sign with client operator private key and submit the query to a Hedera network
-	// NOTE: This will only delete the topic, if the operator account's key was set
-	//       as admin key
-	transactionResponse, err := newTopicUpdateTransaction.Execute(Manager.NetworkClient)
-	if err != nil {
-		return nil, err
+	// if the transaction should be directly executed
+	if settings.Execute {
+
+		// sign with client operator private key and submit the query to a Hedera network
+		// NOTE: This will only delete the topic, if the operator account's key was set
+		//       as admin key
+		transactionResponse, err := newTopicUpdateTransaction.Execute(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// log the receipt status of the transaction
+		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+
+		// free the pointer
+		topic = nil //&HederaTopic{}
+
+		return &transactionReceipt, nil, err
+
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	// freeze the transaction for signing
+	frozenTransaction, err := newTopicUpdateTransaction.FreezeWith(Manager.NetworkClient)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// log the receipt status of the transaction
-	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+	// get the transaction bytes
+	transactionBytes, err := frozenTransaction.ToBytes()
+	if err != nil {
+		return nil, nil, err
+	}
 
-	// free the pointer
-	topic = nil //&HederaTopic{}
-
-	return &transactionReceipt, err
+	return nil, transactionBytes, err
 
 }
 
 // Delete the topic
-func (topic *HederaTopic) Delete(adminKey interface{}) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) Delete(adminKey interface{}, options ...TransactionOption) (*hederasdk.TransactionReceipt, []byte, error) {
 	var err error
+	var transaction interface{}
+
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// delete the topic
-	newTopicDeleteTransaction := hederasdk.NewTopicDeleteTransaction().
+	transaction = hederasdk.NewTopicDeleteTransaction().
 		SetTopicID(topic.ID)
+
+	// freeze the transaction for signing
+	transaction, err = _TransactionFreeze(transaction, options...)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// if the topic has a AdminKey
 	if topic.Info.AdminKey != nil {
-
-		// Freeze the transaction for signing (this prevents the transaction can be
-		// while signing it)
-		newTopicDeleteTransaction, err := newTopicDeleteTransaction.FreezeWith(Manager.NetworkClient)
-		if err != nil {
-			return nil, err
-		}
 
 		// if the type of the passed key is a PrivateKey
 		thisKey, ok := adminKey.(hederasdk.PrivateKey)
@@ -253,7 +309,10 @@ func (topic *HederaTopic) Delete(adminKey interface{}) (*hederasdk.TransactionRe
 			logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
 
 			// and sign the transaction with this key
-			newTopicDeleteTransaction = newTopicDeleteTransaction.Sign(thisKey)
+			transaction, err = hederasdk.TransactionSign(transaction, thisKey)
+			if err != nil {
+				return nil, nil, err
+			}
 
 		}
 
@@ -267,7 +326,10 @@ func (topic *HederaTopic) Delete(adminKey interface{}) (*hederasdk.TransactionRe
 				logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
 
 				// and sign the transaction with each key
-				newTopicDeleteTransaction = newTopicDeleteTransaction.Sign(thisKey)
+				transaction, err = hederasdk.TransactionSign(transaction, thisKey)
+				if err != nil {
+					return nil, nil, err
+				}
 
 			}
 
@@ -275,171 +337,145 @@ func (topic *HederaTopic) Delete(adminKey interface{}) (*hederasdk.TransactionRe
 
 	}
 
-	// sign with client operator private key and submit the query to a Hedera network
-	// NOTE: This will only delete the topic, if the operator account's key was set
-	//       as admin key
-	transactionResponse, err := newTopicDeleteTransaction.Execute(Manager.NetworkClient)
-	if err != nil {
-		return nil, err
+	// if the transaction should be directly executed
+	if settings.Execute {
+
+		// sign with client operator private key and submit the query to a Hedera network
+		// NOTE: This will only delete the topic, if the operator account's key was set
+		//       as admin key
+		transactionResponse, err := hederasdk.TransactionExecute(transaction, Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// log the receipt status of the transaction
+		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+
+		// free the pointer
+		topic = nil //&HederaTopic{}
+
+		return &transactionReceipt, nil, err
+
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	// get the transaction bytes
+	transactionBytes, err := hederasdk.TransactionToBytes(transaction)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// log the receipt status of the transaction
-	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
-
-	// free the pointer
-	topic = nil //&HederaTopic{}
-
-	return &transactionReceipt, err
+	return nil, transactionBytes, err
 
 }
 
 // Submit a message to the topic
-func (topic *HederaTopic) SubmitMessage(message string, submitKey interface{}, scheduleTxn bool, expirationTime *time.Time, waitForExpiry bool) (*hederasdk.TransactionReceipt, error) {
+func (topic *HederaTopic) SubmitMessage(message string, memo string, submitKey interface{}, options ...TransactionOption) (*hederasdk.TransactionReceipt, []byte, error) {
 	var err error
-	var newTopicMessageSubmitTransaction *hederasdk.TopicMessageSubmitTransaction
-	var newScheduledTransaction *hederasdk.ScheduleCreateTransaction
+	var transaction interface{}
 	var transactionResponse hederasdk.TransactionResponse
 
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// prepare the submit message transaction
-	newTopicMessageSubmitTransaction = hederasdk.NewTopicMessageSubmitTransaction().
+	transaction = hederasdk.NewTopicMessageSubmitTransaction().
 		SetTopicID(topic.ID).
+		SetTransactionMemo(memo).
 		SetMessage([]byte(message))
 
-	// if the transaction is to be scheduled
-	if scheduleTxn == true {
-
-		// create a scheduled transaction
-		newScheduledTransaction, err = hederasdk.NewScheduleCreateTransaction().
-			SetPayerAccountID(Manager.Operator.AccountID).
-			SetExpirationTime(*expirationTime).
-			SetWaitForExpiry(waitForExpiry).
-			SetScheduledTransaction(newTopicMessageSubmitTransaction)
-
+	// freeze the transaction for signing
+	transaction, err = _TransactionFreeze(transaction, options...)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// if the topic has a SubmitKey
 	if topic.Info.SubmitKey != nil {
 
-		// if the transaction is to be scheduled
-		if scheduleTxn == true {
+		// if the type of the passed key is a PrivateKey
+		thisKey, ok := submitKey.(hederasdk.PrivateKey)
+		if ok == true {
 
-			// Freeze the transaction for signing (this prevents the transaction can be
-			// while signing it)
-			newScheduledTransaction, err = newScheduledTransaction.FreezeWith(Manager.NetworkClient)
+			logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
+
+			// and sign the transaction with this key
+			transaction, err = hederasdk.TransactionSign(transaction, thisKey)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
-			// if the type of the passed key is a PrivateKey
-			thisKey, ok := submitKey.(hederasdk.PrivateKey)
-			if ok == true {
-
-				logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
-
-				// and sign the transaction with this key
-				newScheduledTransaction = newScheduledTransaction.Sign(thisKey)
-
-			}
-
-			// if the type of the passed key is a slice of PrivateKey
-			keyList, ok := submitKey.([]hederasdk.PrivateKey)
-			if ok == true {
-
-				// iterate through all keys
-				for i, thisKey := range keyList {
-
-					logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
-
-					// and sign the transaction with each key
-					newScheduledTransaction = newScheduledTransaction.Sign(thisKey)
-
-				}
-
-			}
-
-			// sign with client operator private key and submit the query to a Hedera network
-			// NOTE: If a submit key was set, this will only work, if the operator account's
-			//       key was set as submit key
-			transactionResponse, err = newScheduledTransaction.Execute(Manager.NetworkClient)
-			if err != nil {
-				return nil, err
-			}
-
-			// if the transaction is NOT to be scheduled
-		} else {
-
-			// Freeze the transaction for signing (this prevents the transaction can be
-			// while signing it)
-			newTopicMessageSubmitTransaction, err = newTopicMessageSubmitTransaction.FreezeWith(Manager.NetworkClient)
-			if err != nil {
-				return nil, err
-			}
-
-			// if the type of the passed key is a PrivateKey
-			thisKey, ok := submitKey.(hederasdk.PrivateKey)
-			if ok == true {
-
-				logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key of: %s", thisKey.PublicKey()))
-
-				// and sign the transaction with this key
-				newTopicMessageSubmitTransaction = newTopicMessageSubmitTransaction.Sign(thisKey)
-
-			}
-
-			// if the type of the passed key is a slice of PrivateKey
-			keyList, ok := submitKey.([]hederasdk.PrivateKey)
-			if ok == true {
-
-				// iterate through all keys
-				for i, thisKey := range keyList {
-
-					logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
-
-					// and sign the transaction with each key
-					newTopicMessageSubmitTransaction = newTopicMessageSubmitTransaction.Sign(thisKey)
-
-				}
-
-			}
-
-			// sign with client operator private key and submit the query to a Hedera network
-			// NOTE: If a submit key was set, this will only work, if the operator account's
-			//       key was set as submit key
-			transactionResponse, err = newTopicMessageSubmitTransaction.Execute(Manager.NetworkClient)
-			if err != nil {
-				return nil, err
-			}
 		}
 
-	} else {
+		// if the type of the passed key is a slice of PrivateKey
+		keyList, ok := submitKey.([]hederasdk.PrivateKey)
+		if ok == true {
+
+			// iterate through all keys
+			for i, thisKey := range keyList {
+
+				logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing message with private key (%v) of: %s", i, thisKey.PublicKey()))
+
+				// and sign the transaction with each key
+				transaction, err = hederasdk.TransactionSign(transaction, thisKey)
+				if err != nil {
+					return nil, nil, err
+				}
+
+			}
+
+		}
+
+	}
+
+	// schedule the transaction if required
+	transaction, err = _TransactionSchedule(transaction, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// if the transaction should be directly executed
+	if settings.Execute {
 
 		// sign with client operator private key and submit the query to a Hedera network
-		transactionResponse, err = newTopicMessageSubmitTransaction.Execute(Manager.NetworkClient)
+		// NOTE: If a submit key was set, this will only work, if the operator account's
+		//       key was set as submit key
+		transactionResponse, err = hederasdk.TransactionExecute(transaction, Manager.NetworkClient)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// log the receipt status of the transaction
+		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+		if settings.Schedule == true {
+			logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Schedule ID: %v", transactionReceipt.ScheduleID))
+		}
+
+		return &transactionReceipt, nil, err
+
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	// get the transaction bytes
+	transactionBytes, err := hederasdk.TransactionToBytes(transaction)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// log the receipt status of the transaction
-	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
-	if scheduleTxn == true {
-		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Schedule ID: %v", transactionReceipt.ScheduleID))
-	}
-
-	return &transactionReceipt, err
+	return nil, transactionBytes, err
 
 }
 
@@ -448,7 +484,7 @@ func (topic *HederaTopic) SignSubmitMessage(scheduleID hederasdk.ScheduleID, pri
 	var err error
 	var transactionResponse hederasdk.TransactionResponse
 
-	//Submit the first signature
+	// Submit the first signature
 	newScheduleSignTransaction, err := hederasdk.NewScheduleSignTransaction().
 		SetScheduleID(scheduleID).
 		FreezeWith(Manager.NetworkClient)

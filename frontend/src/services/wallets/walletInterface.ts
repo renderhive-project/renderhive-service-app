@@ -8,4 +8,5 @@ export interface WalletInterface {
   transferFungibleToken: (toAddress: AccountId, tokenId: TokenId, amount: number) => Promise<TransactionId | string | null>;
   transferNonFungibleToken: (toAddress: AccountId, tokenId: TokenId, serialNumber: number) => Promise<TransactionId | string | null>;
   associateToken: (tokenId: TokenId) => Promise<TransactionId | string | null>;
+  executeTransaction: (transactionBytes: string) => Promise<TransactionId | string | null>;
 }

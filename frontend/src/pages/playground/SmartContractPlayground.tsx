@@ -1,5 +1,6 @@
 import { appConfig } from "../../config";
 import { useState, useEffect } from 'react';
+import Linkify from 'react-linkify';
 import { useSession } from '../../contexts/SessionContext';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,7 +38,7 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.GetCurrentHiveCycle",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "Gas": 30000
     }
   }`,
@@ -47,11 +48,9 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.RegisterOperator",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Gas": 90000,
-      "funcParams": [
-        { "type": "string", "name":"_operatorTopic", "value": "0.0.XXXX"}
-      ]
+        "ContractID": "0.0.3566638",
+        "OperatorTopic": "0.0.XXXX",
+        "Gas": 90000
     }
   }`,
 
@@ -59,9 +58,8 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.UnregisterOperator",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Gas": 90000,
-      "funcParams": []
+        "ContractID": "0.0.3566638",
+        "Gas": 90000
     }
   }`,
 
@@ -69,10 +67,9 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.DepositOperatorFunds",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Amount": "1",
-      "Gas": 70000,
-      "funcParams": []
+        "ContractID": "0.0.3566638",
+        "Amount": "1",
+        "Gas": 70000
     }
   }`,
 
@@ -80,11 +77,9 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.WithdrawOperatorFunds",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Gas": 70000,
-      "funcParams": [
-        { "type": "hbar", "name":"_amount", "value": 1}
-      ]
+      "ContractID": "0.0.3566638",
+      "Amount": "1",
+      "Gas": 70000
     }
   }`,
 
@@ -92,7 +87,7 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.GetOperatorBalance",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "AccountID": "0.0.XXXX",
       "Gas": 30000
     }
@@ -102,7 +97,7 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.GetReservedOperatorFunds",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "AccountID": "0.0.XXXX",
       "Gas": 30000
     }
@@ -112,7 +107,7 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.IsOperator",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "AccountID": "0.0.XXXX",
       "Gas": 30000
     }
@@ -122,7 +117,7 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.GetOperatorLastActivity",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "AccountID": "0.0.XXXX",
       "Gas": 30000
     }
@@ -133,13 +128,11 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.AddNode",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Amount": "75",
-      "Gas": 230000,
-      "funcParams": [
-        { "type": "address", "name":"_nodeAccount", "value": "0.0.XXXX"},
-        { "type": "string", "name":"_nodeTopic", "value": "0.0.XXXX"}
-      ]
+      "ContractID": "0.0.3566638",
+      "NodeAccountID": "0.0.XXXX",
+      "TopicID": "0.0.XXXX",
+      "NodeStake": "75",
+      "Gas": 230000
     }
   }`,
 
@@ -147,11 +140,9 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.RemoveNode",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Gas": 180000,
-      "funcParams": [
-        { "type": "address", "name":"_nodeAccount", "value": "0.0.XXXX"}
-      ]
+      "ContractID": "0.0.3566638",
+      "NodeAccountID": "0.0.XXXX",
+      "Gas": 180000
     }
   }`,
 
@@ -159,7 +150,7 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.IsNode",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "NodeAccountID": "0.0.XXXX",
       "OperatorAccountID": "0.0.XXXX",
       "Gas": 40000
@@ -170,12 +161,10 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.DepositNodeStake",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Amount": "75",
-      "Gas": 100000,
-      "funcParams": [
-        { "type": "address", "name":"_nodeAccount", "value": "0.0.XXXX"}
-      ]
+      "ContractID": "0.0.3566638",
+      "NodeAccountID": "0.0.XXXX",
+      "NodeStake": "75",
+      "Gas": 100000
     }
   }`,
 
@@ -183,11 +172,9 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.WithdrawNodeStake",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Gas": 65000,
-      "funcParams": [
-        { "type": "address", "name":"_nodeAccount", "value": "0.0.XXXX"}
-      ]
+      "ContractID": "0.0.3566638",
+      "NodeAccountID": "0.0.XXXX",
+      "Gas": 65000
     }
   }`,
 
@@ -195,7 +182,7 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.GetNodeStake",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "NodeAccountID": "0.0.XXXX",
       "Gas": 30000
     }
@@ -206,13 +193,11 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.AddRenderJob",
     "params": {
-      "ContractID": "0.0.3160015",
-      "Amount": "1",
-      "Gas": 230000,
-      "funcParams": [
-        { "type": "string", "name":"_jobCID", "value": ""},
-        { "type": "uint256", "name":"_estimatedJobWork", "value": "200"}
-      ]
+      "ContractID": "0.0.3566638",
+      "JobCID": "",
+      "Work": 200,
+      "Funding": "1",
+      "Gas": 230000
     }
   }`,
 
@@ -220,14 +205,14 @@ const jsonRpcTemplates = {
     "jsonrpc": "2.0",
     "method": "ContractService.ClaimRenderJob",
     "params": {
-      "ContractID": "0.0.3160015",
+      "ContractID": "0.0.3566638",
       "JobCID": "",
       "HiveCycle": 1,
       "NodeCount": 1,
       "NodeShare": 1000,
       "ConsensusRoot": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
       "JobRoot": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-      "Gas": 230000
+      "Gas": 150000
     }
   }`,
 }
@@ -254,20 +239,10 @@ const SmartContractPlayground = () => {
     };
   
     // send a request to the backend (JSON-RPC)
-    const sendJsonRpcRequest = async () => {
+    const sendJsonRpcRequest = async (requestBody: object) => {
       try {
         setLoading(true);
         setSuccessMessage("");
-    
-        // get the request body from the editor
-        let requestBody = JSON.parse(editorText);
-  
-        // Add the id and timeout fields to the request body
-        requestBody = {
-          ...requestBody,
-          id: uuidv4(),
-          timeout: appConfig.constants.BACKEND_JSONRPC_TIMEOUT,
-        };
     
         // add headers, credentials, and send the request
         const response = await axios.post(appConfig.api.jsonrpc.url, requestBody, {
@@ -297,97 +272,80 @@ const SmartContractPlayground = () => {
   
     // execute the request
     const executeRequest = async () => {
-  
-      // define the requests that are processed by the frontend
-      const frontend_requests = ['ContractService._isNodeStaked', 'ContractService.RegisterOperator', 'ContractService.UnregisterOperator', 'ContractService.DepositOperatorFunds', 'ContractService.WithdrawOperatorFunds', 'ContractService.AddNode', 'ContractService.RemoveNode', 'ContractService.DepositNodeStake', 'ContractService.WithdrawNodeStake', 'ContractService.AddRenderJob'];
-  
-      // get the request body from the editor
-      let requestBody = JSON.parse(editorText);
-  
-      // if the request method is NOT in the frontend_requests array
-      if (!frontend_requests.includes(requestBody.method)) {
-          // send the request to the backend
-          return sendJsonRpcRequest();
-  
-      // execute the request in the frontend
-      } else {
-  
-          try {
-  
+
+        // define the requests that are processed by the frontend
+        const frontend_requests = ['ContractService._isNodeStaked', 'ContractService.RegisterOperator', 'ContractService.UnregisterOperator', 'ContractService.DepositOperatorFunds', 'ContractService.WithdrawOperatorFunds', 'ContractService.AddNode', 'ContractService.RemoveNode', 'ContractService.DepositNodeStake', 'ContractService.WithdrawNodeStake', 'ContractService.AddRenderJob'];
+
+        // get the request body from the editor
+        let requestBody = JSON.parse(editorText);
+
+        // Add the id and timeout fields to the request body
+        requestBody = {
+            ...requestBody,
+            id: uuidv4(),
+            timeout: appConfig.constants.BACKEND_JSONRPC_TIMEOUT,
+        };
+
+        // if the request method is NOT in the frontend_requests array
+        if (!frontend_requests.includes(requestBody.method)) {
+            // send the request to the backend
+            return sendJsonRpcRequest(requestBody);
+
+        // execute the request in the frontend
+        } else {
+
+            try {
+
             // set loading and success message
             setLoading(true);
             setSuccessMessage("");
-  
-            // get the contract ID
-            let contract_id = ContractId.fromString(requestBody.params.ContractID);
-            let amount = new Hbar(requestBody.params.Amount);
-            let gasLimit = requestBody.params.Gas;
-  
-            // get the method name
-            let method = requestBody.method;
-            let methodName = method.split('.')[1].charAt(0).toLowerCase() + method.split('.')[1].slice(1);
-  
-            // prepare the function parameters
-            let funcParams = requestBody.params.funcParams;
-            let functionParameters = new ContractFunctionParameterBuilder();
-            
-            // if there are function parameters
-            if (funcParams) {
-          
-                // loop through all parameters, convert them to the correct format, and add them to the functionParameters object
-                let param, type, value;
-                for (let i = 0; i < funcParams.length; i++) {
-                    param = funcParams[i];
-                    type = param.type;
-                    value = param.value;
-                    
-                    // convert parameters to the correct format
-                    if (param.type === "address") {
-                        let account_id = AccountId.fromString(param.value);
-                        value = account_id.toSolidityAddress();
-                    } else if (param.type === "hbar") {
-                        let hbar = new Hbar(param.value);
-                        type = "uint256";
-                        value = hbar.toTinybars();
-                    }
-  
-                    // add parameter to the transaction's function parameters
-                    functionParameters = functionParameters.addParam({type:type, name:param.name, value:value});
+
+            // add headers, credentials, and send the request
+            const response = await axios.post(appConfig.api.jsonrpc.url, requestBody, {
+                headers: {
+                'Content-Type': 'application/json',
+                },
+                withCredentials: true,
+            });
+            console.log(response.data.result);
+        
+            if (response.data && response.data.result) {
+                setSuccessMessage(response.data.result.Message);
+
+                // if a transaction in bytes is returned, send it to the Hedera network
+                if (response.data.result.TransactionBytes == undefined) {
+                    setLoading(false);
+                    throw new Error("Failed to retrieve transaction bytes from the backend");
                 }
-            }
-  
-            // prepare the hedera transaction to call the contract
-            let response_contractexecute_txnId;
-            if (amount !== undefined) {
-                response_contractexecute_txnId = await walletInterface.executeContractFunction(contract_id, methodName, functionParameters, gasLimit, amount);
+
+                // send the transaction to the Hedera network
+                const transactionBytes = response.data.result.TransactionBytes;
+                const response_execute_txnId = await walletInterface.executeTransaction(transactionBytes);
+                // if the transaction was executed successfully
+                if (response_execute_txnId) {
+
+                    // get the contract call's results form a mirror node using the transaction id
+                    console.log(response_execute_txnId);
+                    setSuccessMessage("Successfully executed transaction: http://hashscan.io/testnet/transaction/" + response_execute_txnId);
+                }
+
             } else {
-                response_contractexecute_txnId = await walletInterface.executeContractFunction(contract_id, methodName, functionParameters, gasLimit);
+                console.log()
+                setLoading(false);
+        
+                throw new Error(response.data.error.message);
             }
-            console.log(response_contractexecute_txnId);
-            if (response_contractexecute_txnId) {
-  
-                // get the contract call's results form a mirror node using the transaction id
-  
-  
-  
-                console.log(response_contractexecute_txnId);
-                setSuccessMessage(methodName + " function was called with transaction: " + response_contractexecute_txnId.toString());
-            }
-            // // request signing of the data
-            // const response_createaccount_txnId = await walletInterface.transferHBAR(AccountId.fromString(response_init.data.result.NodeAccountID), 10)
-            // console.log(response_createaccount_txnId)
-            // if (response_createaccount_txnId) {
-  
-          } catch (error) {
+
+            } catch (error) {
             setLoading(false);
             console.error('Error:', error);
             return Promise.reject(error);
-  
-          } finally {
+
+            } finally {
             setLoading(false);
-  
-          }
-      }
+
+            }
+        }
   
     };
 
@@ -463,7 +421,13 @@ const SmartContractPlayground = () => {
                 {errorMessage && (
                 <Box marginTop={2} width="100%">
                     <Alert severity="error" onClose={() => setErrorMessage("")} sx={{ marginBottom: '10px', marginTop: '10px' }}>
+                    <Linkify componentDecorator={(href, text, key) => (
+                        <a href={href} key={key} style={{ textDecoration: 'underline' }}>
+                          {text}
+                        </a>
+                      )}>
                         {errorMessage}
+                      </Linkify>
                     </Alert>
                 </Box>
                 )}
@@ -472,7 +436,13 @@ const SmartContractPlayground = () => {
                 {successMessage && (
                 <Box marginTop={2} width="100%">
                     <Alert severity="success" onClose={() => setSuccessMessage("")} sx={{ marginBottom: '10px', marginTop: '10px' }}>
+                      <Linkify componentDecorator={(href, text, key) => (
+                        <a href={href} key={key} style={{ textDecoration: 'underline' }}>
+                          {text}
+                        </a>
+                      )}>
                         {successMessage}
+                      </Linkify>
                     </Alert>
                 </Box>
                 )}

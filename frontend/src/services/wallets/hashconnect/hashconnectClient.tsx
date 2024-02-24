@@ -2,7 +2,7 @@ import { HashConnect, HashConnectTypes } from "hashconnect";
 import { HashconnectContext } from "../../../contexts/HashconnectContext";
 import { useCallback, useContext, useEffect } from 'react';
 import { WalletInterface } from "../walletInterface";
-import { AccountId, ContractExecuteTransaction, ContractId, Hbar, TokenAssociateTransaction, TokenId, TransferTransaction, TransactionResponse } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractId, Hbar, TokenAssociateTransaction, TokenId, TransferTransaction, Transaction, TransactionResponse } from "@hashgraph/sdk";
 import { ContractFunctionParameterBuilder } from "../contractFunctionParameterBuilder";
 import { appConfig } from "../../../config";
 import { useLoading } from "../../../contexts/LoaderContext";
@@ -76,12 +76,8 @@ class HashConnectWallet implements WalletInterface {
   // Purpose: build contract execute transaction and send to hashconnect for signing and execution
   // Returns: Promise<TransactionId | null>
   async executeContractFunction(contractId: ContractId, functionName: string, functionParameters: ContractFunctionParameterBuilder, gasLimit: number, amount?: Hbar) {
-    // Grab the topic and account to sign from the last pairing event
-    const pairingData = hashConnect.hcData.pairingData[hashConnect.hcData.pairingData.length - 1];
-
-    const provider = hashConnect.getProvider(hederaNetwork, pairingData.topic, pairingData.accountIds[0]);
-    const signer = hashConnect.getSigner(provider);
-
+    const signer = this.getSigner();
+    
     const tx = new ContractExecuteTransaction()
       .setContractId(contractId)
       .setGas(gasLimit)
@@ -100,6 +96,22 @@ class HashConnectWallet implements WalletInterface {
     return txFrozen.transactionId;
   }
 
+  // Purpose: takes a prepared transaction in hex encoding and signs it with the wallet
+  // Returns: Promise<TransactionId | null>
+  async executeTransaction(transactionBytes: string) {
+    const signer = this.getSigner();
+
+    // decode the transaction bytes
+    const bytes = Buffer.from(transactionBytes, "hex");
+
+    // create a transaction from the bytes and execute it with the signer
+    const transaction = Transaction.fromBytes(bytes);
+    const txResult = await transaction.executeWithSigner(signer);
+    
+    return txResult.transactionId;
+
+  }
+
   // disconnect wallet
   disconnect() {
     const pairingData = hashConnect.hcData.pairingData[hashConnect.hcData.pairingData.length - 1];
@@ -107,7 +119,6 @@ class HashConnectWallet implements WalletInterface {
   }
 
 };
-
 
 export const hashConnectWallet = new HashConnectWallet();
 

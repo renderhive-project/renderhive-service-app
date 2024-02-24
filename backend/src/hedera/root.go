@@ -30,6 +30,7 @@ services. This also includes a crypto wallet with very basic functionality.
 import (
 
 	// standard
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -209,6 +210,651 @@ func (hm *PackageManager) DeInit() error {
 	logger.Manager.Package["hedera"].Debug().Msg("Deinitializing the Hedera manager ...")
 
 	return err
+
+}
+
+// GENERAL TRANSACTION OPTIONS & FUNCTIONS
+// #############################################################################
+// define types to enable optional transaction options for functions
+type TransactionOption func(*TransactionSettings) error
+
+// define the type for the transaction settings
+type TransactionSettings struct {
+	Execute          bool
+	ExecuteAccountID hederasdk.AccountID
+
+	// NOTE: has not been implemented for any transaction type yet
+	Schedule              bool
+	ScheduleExpiration    time.Time
+	ScheduleWaitForExpiry bool
+}
+
+// create a settings object with the given options
+func MakeTransactionSettings(options ...TransactionOption) (*TransactionSettings, error) {
+
+	// default settings
+	settings := &TransactionSettings{
+		Execute:            true,
+		Schedule:           false,
+		ScheduleExpiration: time.Unix(0, 0),
+	}
+
+	// apply each option to the settings object
+	for _, txOption := range options {
+		err := txOption(settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return settings, nil
+}
+
+// create a type to enable transaction option functions
+type TransactionOpts struct{}
+
+// create a global variable to access the options
+var TransactionOptions TransactionOpts
+
+// SetExecute specifies whether the transaction should be directly executed or not
+func (TransactionOpts) SetExecute(use bool, accountID hederasdk.AccountID) TransactionOption {
+	return func(settings *TransactionSettings) error {
+		settings.Execute = use
+		settings.ExecuteAccountID = accountID
+		return nil
+	}
+}
+
+// SetSchedule specifies whether the transaction should be scheduled
+func (TransactionOpts) SetSchedule(use bool, experiationTime time.Time, wait bool) TransactionOption {
+	return func(settings *TransactionSettings) error {
+		settings.Schedule = use
+		settings.ScheduleExpiration = experiationTime
+		settings.ScheduleWaitForExpiry = wait
+		return nil
+	}
+}
+
+// helper function to freeze a transaction for signature by an external wallet
+func _TransactionFreeze(_transaction interface{}, options ...TransactionOption) (interface{}, error) {
+	var err error
+	var transaction interface{}
+
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, err
+	}
+
+	// if the transaction shall NOT be directly executed
+	if settings.Execute == false {
+
+		// get network accounts
+		nodeAccountIDs := []hederasdk.AccountID{}
+		for _, node := range Manager.NetworkClient.GetNetwork() {
+			nodeAccountIDs = append(nodeAccountIDs, node)
+		}
+
+		// set the transaction ID
+		transaction, err = hederasdk.TransactionSetTransactionID(_transaction, hederasdk.TransactionIDGenerate(settings.ExecuteAccountID))
+		if err != nil {
+			return nil, err
+		}
+
+		// set the transaction ID
+		transaction, err = hederasdk.TransactionSetNodeAccountIDs(transaction, nodeAccountIDs)
+		if err != nil {
+			return nil, err
+		}
+
+		// freeze the transaction
+		switch i := transaction.(type) {
+		case hederasdk.AccountCreateTransaction:
+			return i.Freeze()
+		case hederasdk.AccountDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.AccountUpdateTransaction:
+			return i.Freeze()
+		case hederasdk.AccountAllowanceApproveTransaction:
+			return i.Freeze()
+		case hederasdk.AccountAllowanceDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.ContractCreateTransaction:
+			return i.Freeze()
+		case hederasdk.ContractDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.ContractExecuteTransaction:
+			return i.Freeze()
+		case hederasdk.ContractUpdateTransaction:
+			return i.Freeze()
+		case hederasdk.FileAppendTransaction:
+			return i.Freeze()
+		case hederasdk.FileCreateTransaction:
+			return i.Freeze()
+		case hederasdk.FileDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.FileUpdateTransaction:
+			return i.Freeze()
+		case hederasdk.LiveHashAddTransaction:
+			return i.Freeze()
+		case hederasdk.LiveHashDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.ScheduleCreateTransaction:
+			return i.Freeze()
+		case hederasdk.ScheduleDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.ScheduleSignTransaction:
+			return i.Freeze()
+		case hederasdk.SystemDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.SystemUndeleteTransaction:
+			return i.Freeze()
+		case hederasdk.TokenAssociateTransaction:
+			return i.Freeze()
+		case hederasdk.TokenBurnTransaction:
+			return i.Freeze()
+		case hederasdk.TokenCreateTransaction:
+			return i.Freeze()
+		case hederasdk.TokenDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.TokenDissociateTransaction:
+			return i.Freeze()
+		case hederasdk.TokenFeeScheduleUpdateTransaction:
+			return i.Freeze()
+		case hederasdk.TokenFreezeTransaction:
+			return i.Freeze()
+		case hederasdk.TokenGrantKycTransaction:
+			return i.Freeze()
+		case hederasdk.TokenMintTransaction:
+			return i.Freeze()
+		case hederasdk.TokenRevokeKycTransaction:
+			return i.Freeze()
+		case hederasdk.TokenUnfreezeTransaction:
+			return i.Freeze()
+		case hederasdk.TokenUpdateTransaction:
+			return i.Freeze()
+		case hederasdk.TokenWipeTransaction:
+			return i.Freeze()
+		case hederasdk.TopicCreateTransaction:
+			return i.Freeze()
+		case hederasdk.TopicDeleteTransaction:
+			return i.Freeze()
+		case hederasdk.TopicMessageSubmitTransaction:
+			return i.Freeze()
+		case hederasdk.TopicUpdateTransaction:
+			return i.Freeze()
+		case hederasdk.TransferTransaction:
+			return i.Freeze()
+		case *hederasdk.AccountCreateTransaction:
+			return i.Freeze()
+		case *hederasdk.AccountDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.AccountUpdateTransaction:
+			return i.Freeze()
+		case *hederasdk.AccountAllowanceApproveTransaction:
+			return i.Freeze()
+		case *hederasdk.AccountAllowanceDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.ContractCreateTransaction:
+			return i.Freeze()
+		case *hederasdk.ContractDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.ContractExecuteTransaction:
+			return i.Freeze()
+		case *hederasdk.ContractUpdateTransaction:
+			return i.Freeze()
+		case *hederasdk.FileAppendTransaction:
+			return i.Freeze()
+		case *hederasdk.FileCreateTransaction:
+			return i.Freeze()
+		case *hederasdk.FileDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.FileUpdateTransaction:
+			return i.Freeze()
+		case *hederasdk.LiveHashAddTransaction:
+			return i.Freeze()
+		case *hederasdk.LiveHashDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.ScheduleCreateTransaction:
+			return i.Freeze()
+		case *hederasdk.ScheduleDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.ScheduleSignTransaction:
+			return i.Freeze()
+		case *hederasdk.SystemDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.SystemUndeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenAssociateTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenBurnTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenCreateTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenDissociateTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenFeeScheduleUpdateTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenFreezeTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenGrantKycTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenMintTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenRevokeKycTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenUnfreezeTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenUpdateTransaction:
+			return i.Freeze()
+		case *hederasdk.TokenWipeTransaction:
+			return i.Freeze()
+		case *hederasdk.TopicCreateTransaction:
+			return i.Freeze()
+		case *hederasdk.TopicDeleteTransaction:
+			return i.Freeze()
+		case *hederasdk.TopicMessageSubmitTransaction:
+			return i.Freeze()
+		case *hederasdk.TopicUpdateTransaction:
+			return i.Freeze()
+		case *hederasdk.TransferTransaction:
+			return i.Freeze()
+		default:
+			return transaction, errors.New("(BUG) non-exhaustive switch statement")
+		}
+
+	} else {
+
+		// don't change anything
+		transaction = _transaction
+
+		// freeze the transaction
+		switch i := transaction.(type) {
+		case hederasdk.AccountCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.AccountDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.AccountUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.AccountAllowanceApproveTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.AccountAllowanceDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.ContractCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.ContractDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.ContractExecuteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.ContractUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.FileAppendTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.FileCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.FileDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.FileUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.LiveHashAddTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.LiveHashDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.ScheduleCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.ScheduleDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.ScheduleSignTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.SystemDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.SystemUndeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenAssociateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenBurnTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenDissociateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenFeeScheduleUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenFreezeTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenGrantKycTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenMintTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenRevokeKycTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenUnfreezeTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TokenWipeTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TopicCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TopicDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TopicMessageSubmitTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TopicUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case hederasdk.TransferTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.AccountCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.AccountDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.AccountUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.AccountAllowanceApproveTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.AccountAllowanceDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.ContractCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.ContractDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.ContractExecuteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.ContractUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.FileAppendTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.FileCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.FileDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.FileUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.LiveHashAddTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.LiveHashDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.ScheduleCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.ScheduleDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.ScheduleSignTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.SystemDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.SystemUndeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenAssociateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenBurnTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenDissociateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenFeeScheduleUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenFreezeTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenGrantKycTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenMintTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenRevokeKycTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenUnfreezeTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TokenWipeTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TopicCreateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TopicDeleteTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TopicMessageSubmitTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TopicUpdateTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		case *hederasdk.TransferTransaction:
+			return i.FreezeWith(Manager.NetworkClient)
+		default:
+			return transaction, errors.New("(BUG) non-exhaustive switch statement")
+		}
+	}
+
+}
+
+// helper function to schedule a transaction
+func _TransactionSchedule(_transaction interface{}, options ...TransactionOption) (interface{}, error) {
+	var err error
+	var transaction interface{}
+
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, err
+	}
+
+	// if the transaction is to be scheduled
+	if settings.Schedule == true {
+
+		// create a scheduled transaction
+		newScheduleTransaction := hederasdk.NewScheduleCreateTransaction().
+			SetPayerAccountID(Manager.Operator.AccountID).
+			SetExpirationTime(settings.ScheduleExpiration).
+			SetWaitForExpiry(settings.ScheduleWaitForExpiry)
+
+		// add the scheduled transaction to the schedule transaction
+		switch i := _transaction.(type) {
+		case hederasdk.AccountCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.AccountDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.AccountUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.AccountAllowanceApproveTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.AccountAllowanceDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.ContractCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.ContractDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.ContractExecuteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.ContractUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.FileAppendTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.FileCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.FileDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.FileUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.LiveHashAddTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.LiveHashDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.ScheduleCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.ScheduleDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.ScheduleSignTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.SystemDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.SystemUndeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenAssociateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenBurnTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenDissociateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenFeeScheduleUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenFreezeTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenGrantKycTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenMintTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenRevokeKycTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenUnfreezeTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TokenWipeTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TopicCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TopicDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TopicMessageSubmitTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TopicUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case hederasdk.TransferTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(&i)
+		case *hederasdk.AccountCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.AccountDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.AccountUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.AccountAllowanceApproveTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.AccountAllowanceDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.ContractCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.ContractDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.ContractExecuteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.ContractUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.FileAppendTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.FileCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.FileDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.FileUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.LiveHashAddTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.LiveHashDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.ScheduleCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.ScheduleDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.ScheduleSignTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.SystemDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.SystemUndeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenAssociateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenBurnTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenDissociateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenFeeScheduleUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenFreezeTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenGrantKycTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenMintTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenRevokeKycTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenUnfreezeTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TokenWipeTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TopicCreateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TopicDeleteTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TopicMessageSubmitTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TopicUpdateTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		case *hederasdk.TransferTransaction:
+			newScheduleTransaction, err = newScheduleTransaction.SetScheduledTransaction(i)
+		default:
+			return nil, errors.New("(BUG) non-exhaustive switch statement")
+		}
+
+		// check if the schedule transaction was successfully created
+		if err != nil {
+			return nil, err
+		}
+
+		// freeze the transaction for signing
+		transaction, err = _TransactionFreeze(newScheduleTransaction, options...)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+
+		// don't change anything
+		transaction = _transaction
+
+	}
+
+	return transaction, nil
+
+}
+
+// helper function that takes any transaction bytes, signs it with the current operator, and sends it to the Hedera network
+func _ExecuteWithClient(transactionBytes []byte) (*hederasdk.TransactionReceipt, error) {
+	var err error
+	var transactionResponse hederasdk.TransactionResponse
+
+	// create a new transaction from the bytes
+	transactionInterface, err := hederasdk.TransactionFromBytes(transactionBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// execute the transaction
+	transactionResponse, err = hederasdk.TransactionExecute(transactionInterface, Manager.NetworkClient)
+	if err != nil {
+		return nil, err
+	}
+
+	// get the transaction receipt
+	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	if err != nil {
+		return nil, err
+	}
+
+	return &transactionReceipt, nil
 
 }
 

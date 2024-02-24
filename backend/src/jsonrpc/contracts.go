@@ -42,6 +42,7 @@ import (
 	// . "renderhive/globals"
 	"renderhive/hedera"
 	"renderhive/logger"
+	"renderhive/node"
 )
 
 // SERVICE INITIALIZATION
@@ -63,12 +64,14 @@ type DeployArgs struct {
 	Gas              int64
 }
 type DeployReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) Deploy(r *http.Request, args *DeployArgs, reply *DeployReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -83,7 +86,7 @@ func (ops *ContractService) Deploy(r *http.Request, args *DeployArgs, reply *Dep
 	contract := hedera.HederaSmartContract{}
 
 	// deploy the new contract
-	response, receipt, err := contract.NewFromBin(args.ContractFilepath, nil, args.Gas)
+	response, receipt, transactionBytes, err := contract.NewFromBin(args.ContractFilepath, nil, args.Gas)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -93,6 +96,7 @@ func (ops *ContractService) Deploy(r *http.Request, args *DeployArgs, reply *Dep
 
 	// set a reply message
 	reply.Message = "New smart contract was deployed as " + receipt.ContractID.String() + " with transaction: " + response.TransactionID.String() + "!"
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -109,13 +113,15 @@ type GetCurrentHiveCycleArgs struct {
 	Gas        uint64
 }
 type GetCurrentHiveCycleReply struct {
-	Message string
-	Value   *big.Int
+	Message          string
+	Value            *big.Int
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) GetCurrentHiveCycle(r *http.Request, args *GetCurrentHiveCycleArgs, reply *GetCurrentHiveCycleReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -134,7 +140,7 @@ func (ops *ContractService) GetCurrentHiveCycle(r *http.Request, args *GetCurren
 	contract := hedera.HederaSmartContract{ID: contractID}
 
 	// call the function
-	response, _, err := contract.CallFunction("getCurrentHiveCycle", nil, args.Gas)
+	response, _, transactionBytes, err := contract.CallFunction("getCurrentHiveCycle", nil, args.Gas)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -157,6 +163,7 @@ func (ops *ContractService) GetCurrentHiveCycle(r *http.Request, args *GetCurren
 
 	// set a reply message
 	reply.Message = "getCurrentHiveCycle function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -179,12 +186,14 @@ type RegisterOperatorArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type RegisterOperatorReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) RegisterOperator(r *http.Request, args *RegisterOperatorArgs, reply *RegisterOperatorReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -208,16 +217,17 @@ func (ops *ContractService) RegisterOperator(r *http.Request, args *RegisterOper
 	fmt.Println("Params:", params)
 
 	// call the function
-	response, _, err := contract.CallFunction("registerOperator", params, args.Gas)
+	_, _, transactionBytes, err = contract.CallFunction("registerOperator", params, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// set a reply message
-	reply.Message = "registerOperator function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"registerOperator function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -234,12 +244,14 @@ type UnregisterOperatorArgs struct {
 	Gas        uint64 // the gas limit for the transaction
 }
 type UnregisterOperatorReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) UnregisterOperator(r *http.Request, args *UnregisterOperatorArgs, reply *UnregisterOperatorReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -258,16 +270,17 @@ func (ops *ContractService) UnregisterOperator(r *http.Request, args *Unregister
 	contract := hedera.HederaSmartContract{ID: contractID}
 
 	// call the function
-	response, _, err := contract.CallFunction("unregisterOperator", nil, args.Gas)
+	_, _, transactionBytes, err = contract.CallFunction("unregisterOperator", nil, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// set a reply message
-	reply.Message = "unregisterOperator function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"unregisterOperator function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -285,12 +298,14 @@ type DepositOperatorFundsArgs struct {
 	Gas        uint64 // the gas limit for the transaction
 }
 type DepositOperatorFundsReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) DepositOperatorFunds(r *http.Request, args *DepositOperatorFundsArgs, reply *DepositOperatorFundsReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -309,7 +324,7 @@ func (ops *ContractService) DepositOperatorFunds(r *http.Request, args *DepositO
 	contract := hedera.HederaSmartContract{ID: contractID}
 
 	// call the payable function
-	response, receipt, err := contract.CallPayableFunction("depositOperatorFunds", args.Amount, nil, args.Gas)
+	response, receipt, transactionBytes, err := contract.CallPayableFunction("depositOperatorFunds", args.Amount, nil, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
 	fmt.Println("Response:", response)
 	fmt.Println("Receipt:", receipt)
 	if err != nil {
@@ -336,10 +351,11 @@ func (ops *ContractService) DepositOperatorFunds(r *http.Request, args *DepositO
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// set a reply message
-	reply.Message = "DepositOperatorFunds function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"DepositOperatorFunds function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -357,12 +373,14 @@ type WithdrawOperatorFundsArgs struct {
 	Gas        uint64 // the gas limit for the transaction
 }
 type WithdrawOperatorFundsReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) WithdrawOperatorFunds(r *http.Request, args *WithdrawOperatorFundsArgs, reply *WithdrawOperatorFundsReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -395,16 +413,16 @@ func (ops *ContractService) WithdrawOperatorFunds(r *http.Request, args *Withdra
 	fmt.Println("Params:", params)
 
 	// call the payable function
-	response, receipt, err := contract.CallFunction("withdrawOperatorFunds", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	_, _, transactionBytes, err = contract.CallFunction("withdrawOperatorFunds", params, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// get the result of the function call
 
@@ -419,7 +437,8 @@ func (ops *ContractService) WithdrawOperatorFunds(r *http.Request, args *Withdra
 	// }
 
 	// set a reply message
-	reply.Message = "WithdrawOperatorFunds function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"WithdrawOperatorFunds function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -437,13 +456,15 @@ type GetOperatorBalanceArgs struct {
 	Gas        uint64 // the gas limit for the transaction
 }
 type GetOperatorBalanceReply struct {
-	Message string
-	Value   *big.Int
+	Message          string
+	Value            *big.Int
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) GetOperatorBalance(r *http.Request, args *GetOperatorBalanceArgs, reply *GetOperatorBalanceReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -474,10 +495,10 @@ func (ops *ContractService) GetOperatorBalance(r *http.Request, args *GetOperato
 	}
 
 	// call the function
-	response, receipt, err := contract.CallFunction("getOperatorBalance", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	response, _, transactionBytes, err := contract.CallFunction("getOperatorBalance", params, args.Gas)
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -506,6 +527,7 @@ func (ops *ContractService) GetOperatorBalance(r *http.Request, args *GetOperato
 
 	// set a reply message
 	reply.Message = "getOperatorBalance function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", amount)
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -523,13 +545,15 @@ type GetReservedOperatorFundsArgs struct {
 	Gas        uint64 // the gas limit for the transaction
 }
 type GetReservedOperatorFundsReply struct {
-	Message string
-	Value   *big.Int
+	Message          string
+	Value            *big.Int
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) GetReservedOperatorFunds(r *http.Request, args *GetReservedOperatorFundsArgs, reply *GetReservedOperatorFundsReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -560,10 +584,10 @@ func (ops *ContractService) GetReservedOperatorFunds(r *http.Request, args *GetR
 	}
 
 	// call the function
-	response, receipt, err := contract.CallFunction("getReservedOperatorFunds", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	response, _, transactionBytes, err := contract.CallFunction("getReservedOperatorFunds", params, args.Gas)
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -593,6 +617,7 @@ func (ops *ContractService) GetReservedOperatorFunds(r *http.Request, args *GetR
 
 	// set a reply messages
 	reply.Message = "getReservedOperatorFunds function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", amount)
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -610,13 +635,15 @@ type IsOperatorArgs struct {
 	Gas        uint64 // the gas limit for the transaction
 }
 type IsOperatorReply struct {
-	Message string
-	Value   bool
+	Message          string
+	Value            bool
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) IsOperator(r *http.Request, args *IsOperatorArgs, reply *IsOperatorReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -647,10 +674,10 @@ func (ops *ContractService) IsOperator(r *http.Request, args *IsOperatorArgs, re
 	}
 
 	// call the function
-	response, receipt, err := contract.CallFunction("isOperator", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	response, _, transactionBytes, err := contract.CallFunction("isOperator", params, args.Gas)
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -673,6 +700,7 @@ func (ops *ContractService) IsOperator(r *http.Request, args *IsOperatorArgs, re
 	// set a reply message
 	reply.Value = functionResult.GetBool(0)
 	reply.Message = "IsOperator function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -690,13 +718,15 @@ type GetOperatorLastActivityArgs struct {
 	Gas        uint64 // the gas limit for the transaction
 }
 type GetOperatorLastActivityReply struct {
-	Message string
-	Value   *big.Int
+	Message          string
+	Value            *big.Int
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) GetOperatorLastActivity(r *http.Request, args *GetOperatorLastActivityArgs, reply *GetOperatorLastActivityReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -727,10 +757,10 @@ func (ops *ContractService) GetOperatorLastActivity(r *http.Request, args *GetOp
 	}
 
 	// call the function
-	response, receipt, err := contract.CallFunction("getOperatorLastActivity", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	response, _, transactionBytes, err := contract.CallFunction("getOperatorLastActivity", params, args.Gas)
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -755,6 +785,7 @@ func (ops *ContractService) GetOperatorLastActivity(r *http.Request, args *GetOp
 
 	// set a reply message
 	reply.Message = "GetOperatorLastActivity function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -779,12 +810,14 @@ type AddNodeArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type AddNodeReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *AddNodeReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -818,13 +851,13 @@ func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *A
 	params = params.AddString(args.TopicID)
 
 	// call the function
-	response, _, err := contract.CallPayableFunction("addNode", args.NodeStake, params, args.Gas)
+	_, _, transactionBytes, err = contract.CallPayableFunction("addNode", args.NodeStake, params, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// // get the event log
 	// events, err := contract.GetEventLog(response, "AddedNode")
@@ -843,7 +876,8 @@ func (ops *ContractService) AddNode(r *http.Request, args *AddNodeArgs, reply *A
 	// logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract Event Log: 'Added Node: %v, %v, %v, %v'", callingAddress.String(), nodeAddress.String(), nodeTopic, RegistrationTime.String()))
 
 	// set a reply message
-	reply.Message = "addNode function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"addNode function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -862,12 +896,14 @@ type RemoveNodeArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type RemoveNodeReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) RemoveNode(r *http.Request, args *RemoveNodeArgs, reply *RemoveNodeReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -898,13 +934,13 @@ func (ops *ContractService) RemoveNode(r *http.Request, args *RemoveNodeArgs, re
 	}
 
 	// call the function
-	response, _, err := contract.CallFunction("removeNode", params, args.Gas)
+	_, _, transactionBytes, err = contract.CallFunction("removeNode", params, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// // get the event log
 	// events, err := contract.GetEventLog(response, "RemovedNode")
@@ -923,7 +959,8 @@ func (ops *ContractService) RemoveNode(r *http.Request, args *RemoveNodeArgs, re
 	// logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract Event Log: 'Removed Node: %v, %v, %v, %v'", callingAddress.String(), nodeAddress.String(), nodeTopic, DeletionTime.String()))
 
 	// set a reply message
-	reply.Message = "removeNode function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"removeNode function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -943,13 +980,15 @@ type IsNodeArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type IsNodeReply struct {
-	Message string
-	Value   bool
+	Message          string
+	Value            bool
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) IsNode(r *http.Request, args *IsNodeArgs, reply *IsNodeReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -993,10 +1032,10 @@ func (ops *ContractService) IsNode(r *http.Request, args *IsNodeArgs, reply *IsN
 	}
 
 	// call the function
-	response, receipt, err := contract.CallFunction("isNode", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	response, _, transactionBytes, err := contract.CallFunction("isNode", params, args.Gas)
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -1018,6 +1057,7 @@ func (ops *ContractService) IsNode(r *http.Request, args *IsNodeArgs, reply *IsN
 	// set a reply message
 	reply.Value = functionResult.GetBool(0)
 	reply.Message = "IsNode function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", reply.Value)
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -1037,12 +1077,14 @@ type DepositNodeStakeArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type DepositNodeStakeReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) DepositNodeStake(r *http.Request, args *DepositNodeStakeArgs, reply *DepositNodeStakeReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -1076,9 +1118,9 @@ func (ops *ContractService) DepositNodeStake(r *http.Request, args *DepositNodeS
 	}
 
 	// call the payable function
-	response, receipt, err := contract.CallPayableFunction("depositNodeStake", args.NodeStake, params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
+	_, _, transactionBytes, err = contract.CallPayableFunction("depositNodeStake", args.NodeStake, params, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
 	if err != nil {
 
 		// fmt.Println("Error (%v): %v", err, "No details available")
@@ -1086,10 +1128,11 @@ func (ops *ContractService) DepositNodeStake(r *http.Request, args *DepositNodeS
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// set a reply message
-	reply.Message = "depositNodeStake function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"depositNodeStake function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -1108,12 +1151,14 @@ type WithdrawNodeStakeArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type WithdrawNodeStakeReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) WithdrawNodeStake(r *http.Request, args *WithdrawNodeStakeArgs, reply *WithdrawNodeStakeReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -1146,19 +1191,20 @@ func (ops *ContractService) WithdrawNodeStake(r *http.Request, args *WithdrawNod
 		return fmt.Errorf("Error: %v", err)
 	}
 	// call the payable function
-	response, receipt, err := contract.CallFunction("withdrawNodeStake", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	_, _, transactionBytes, err = contract.CallFunction("withdrawNodeStake", params, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// set a reply message
-	reply.Message = "withdrawNodeStake function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"withdrawNodeStake function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -1177,13 +1223,15 @@ type GetNodeStakeArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type GetNodeStakeReply struct {
-	Message string
-	Value   *big.Int
+	Message          string
+	Value            *big.Int
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) GetNodeStake(r *http.Request, args *GetNodeStakeArgs, reply *GetNodeStakeReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -1216,10 +1264,10 @@ func (ops *ContractService) GetNodeStake(r *http.Request, args *GetNodeStakeArgs
 		return fmt.Errorf("Error: %v", err)
 	}
 	// call the payable function
-	response, receipt, err := contract.CallFunction("getNodeStake", params, args.Gas)
-	fmt.Println("Response:", response)
-	fmt.Println("Receipt:", receipt)
-	fmt.Println("Error:", err)
+	response, _, transactionBytes, err := contract.CallFunction("getNodeStake", params, args.Gas)
+	// fmt.Println("Response:", response)
+	// fmt.Println("Receipt:", receipt)
+	// fmt.Println("Error:", err)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -1248,6 +1296,7 @@ func (ops *ContractService) GetNodeStake(r *http.Request, args *GetNodeStakeArgs
 
 	// set a reply message
 	reply.Message = "getNodeStake function was called with transaction: " + response.TransactionID.String() + "\n\n" + fmt.Sprintf("Result: %v", amount)
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -1271,12 +1320,14 @@ type AddRenderJobArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type AddRenderJobReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) AddRenderJob(r *http.Request, args *AddRenderJobArgs, reply *AddRenderJobReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -1299,32 +1350,17 @@ func (ops *ContractService) AddRenderJob(r *http.Request, args *AddRenderJobArgs
 	params = params.AddUint256BigInt(new(big.Int).SetUint64(args.Work))
 
 	// call the function
-	response, _, err := contract.CallPayableFunction("addRenderJob", args.Funding, params, args.Gas)
+	_, _, transactionBytes, err = contract.CallPayableFunction("addRenderJob", args.Funding, params, args.Gas, hedera.TransactionOptions.SetExecute(false, node.Manager.User.UserAccount.AccountID))
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
 
 	// log info
-	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract function called with transaction: %v", response.TransactionID.String()))
-
-	// // get the event log
-	// events, err := contract.GetEventLog(response, "AddedNode")
-	// if err != nil {
-	// 	return fmt.Errorf("Error: %v", err)
-	// }
-
-	// // convert event values to usable types
-	// fmt.Println("Events:", events)
-	// callingAddress, _ := hederasdk.AccountIDFromSolidityAddress(events[0][0].(common.Address).Hex()[2:])
-	// nodeAddress, _ := hederasdk.AccountIDFromSolidityAddress(events[0][1].(common.Address).Hex()[2:])
-	// nodeTopic := events[0][2].(string)
-	// RegistrationTime := time.Unix(events[0][3].(*big.Int).Int64(), 0)
-
-	// // log info
-	// logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Contract Event Log: 'Added Node: %v, %v, %v, %v'", callingAddress.String(), nodeAddress.String(), nodeTopic, RegistrationTime.String()))
+	logger.Manager.Package["jsonrpc"].Info().Msg(fmt.Sprintf(" [#] Sending transaction bytes to frontend for execution with operator wallet"))
 
 	// set a reply message
-	reply.Message = "addRenderJob function was called with transaction: " + response.TransactionID.String()
+	reply.Message = "" //"addRenderJob function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil
@@ -1348,12 +1384,14 @@ type ClaimRenderJobArgs struct {
 	Gas uint64 // the gas limit for the transaction
 }
 type ClaimRenderJobReply struct {
-	Message string
+	Message          string
+	TransactionBytes string
 }
 
 // Method
 func (ops *ContractService) ClaimRenderJob(r *http.Request, args *ClaimRenderJobArgs, reply *ClaimRenderJobReply) error {
 	var err error
+	var transactionBytes []byte
 
 	// lock the mutex
 	Manager.Mutex.Lock()
@@ -1401,7 +1439,7 @@ func (ops *ContractService) ClaimRenderJob(r *http.Request, args *ClaimRenderJob
 	params = params.AddBytes32(jobRoot)
 
 	// call the function
-	response, _, err := contract.CallFunction("claimRenderJob", params, args.Gas)
+	response, _, transactionBytes, err := contract.CallFunction("claimRenderJob", params, args.Gas)
 	if err != nil {
 		return fmt.Errorf("Error: %v", err)
 	}
@@ -1427,6 +1465,7 @@ func (ops *ContractService) ClaimRenderJob(r *http.Request, args *ClaimRenderJob
 
 	// set a reply message
 	reply.Message = "claimRenderJob function was called with transaction: " + response.TransactionID.String()
+	reply.TransactionBytes = hex.EncodeToString(transactionBytes)
 
 	// create reply for the RPC client
 	return nil

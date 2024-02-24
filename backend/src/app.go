@@ -126,10 +126,10 @@ func (service *AppManager) Init() error {
 	// *************************************************************************
 	if RENDERHIVE_TESTNET_TOPIC_HIVE_CYCLE_SYNCHRONIZATION != "" {
 
-		go func() {
+		// add call to wait group
+		service.WG.Add(1)
 
-			// add call to wait group
-			service.WG.Add(1)
+		go func() {
 
 			// loop forever
 			for {
