@@ -37,6 +37,7 @@ a network fee.
 import (
 
 	// standard
+	"encoding/base64"
 	"encoding/json"
 	// external
 	// "github.com/cockroachdb/apd"
@@ -48,6 +49,9 @@ import (
 
 // RENDERHIVE MESSAGING PROTOCOL
 // #############################################################################
+
+// define the version of the renderhive command protocol
+const RENDERHIVE_COMMAND_PROTOCOL_VERSION string = "1.0"
 
 // enum for service names
 const (
@@ -96,8 +100,9 @@ type JsonRpcMessage struct {
 // TODO: Should service and method be a string, or rather enums to save space and make renaming easier?
 // define the default message structure for the renderhive JSON-RPC
 type RenderhiveCommand struct {
-	Audience []string       `json:"audience"` // list of node account addresses that need to receive the message ('0.0.0' means network wide broadcast)
-	Message  JsonRpcMessage `json:"message"`  // the actual JSON-RPC message
+	Version  string   `json:"ver"` // version of the renderhive command protocol
+	Audience []string `json:"aud"` // list of node account addresses that need to receive the message (empty field means network wide broadcast)
+	Message  []byte   `json:"rpc"` // the actual JSON-RPC message encoded in base64
 
 	// // TODO: Add the following fields, which might be useful for verifying the network state in the smart contract later
 	// //       The basic idea would be, that whenever a node submits a command, it verifies the state of the network until the previous cycle.
@@ -147,15 +152,29 @@ func (nm *PackageManager) GetMethodName(method int) string {
 func (nm *PackageManager) EncodeCommand(audience []string, service int, method int, args interface{}) (string, error) {
 	var err error
 
-	// create the message
+	// prepare the JSON-RPC message to encode
+	rpc := JsonRpcMessage{
+		Jsonrpc: "2.0",
+		Method:  nm.GetServiceName(service) + "." + nm.GetMethodName(method),
+		Params:  args,
+		Id:      -1,
+	}
+
+	// convert the message to JSON
+	jsonMessage, err := json.Marshal(rpc)
+	if err != nil {
+		return "", err
+	}
+
+	// encode the JSON-RPC message in base64
+	encodedMessage := make([]byte, base64.StdEncoding.EncodedLen(len(jsonMessage)))
+	base64.StdEncoding.Encode(encodedMessage, jsonMessage)
+
+	// create the command
 	message := &RenderhiveCommand{
+		RENDERHIVE_COMMAND_PROTOCOL_VERSION,
 		audience,
-		JsonRpcMessage{
-			Jsonrpc: "2.0",
-			Method:  nm.GetServiceName(service) + "." + nm.GetMethodName(method),
-			Params:  args,
-			Id:      -1,
-		},
+		encodedMessage,
 	}
 
 	// convert the message to JSON
