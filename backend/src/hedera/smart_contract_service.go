@@ -96,109 +96,16 @@ func decodeEvent(eventName string, log []byte, topics [][]byte) ([]interface{}, 
 
 // SMART CONTRACT MANAGEMENT
 // #############################################################################
-// This function reads in a contract JSON file, creates a new contract with the contract.Object field as the bytecode,
-// deploys it on the Hedera network, and returns transaction receipt.
-func (contract *HederaSmartContract) NewFromJSON(contractFilePath string, adminKey interface{}, gas int64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
-	var err error
-
-	// Import and parse the compiled contract from the contract file
-	jsonData, err := os.ReadFile(contractFilePath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error reading contract file %q: %s", contractFilePath, err)
-	}
-
-	var contractData HederaSmartContractData = HederaSmartContractData{}
-	err = json.Unmarshal([]byte(jsonData), &contractData)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error unmarshaling the json file %q: %s", contractFilePath, err)
-	}
-
-	// read the bytecode
-	bytecode := []byte(contractData.Data.Bytecode.Object)
-
-	// create the transaction to deploy the contract bytecode on the Hedera network
-	newContractCreateFlowTransaction := hederasdk.NewContractCreateFlow().
-		SetBytecode(bytecode).
-		SetGas(gas)
-
-	// if a contract memo was passed
-	if contract.Info.ContractMemo != "" {
-		newContractCreateFlowTransaction = newContractCreateFlowTransaction.SetContractMemo(contract.Info.ContractMemo)
-	}
-
-	// if a admin key was passed
-	if contract.Info.AdminKey != nil {
-
-		// set it in the transaction
-		newContractCreateFlowTransaction = newContractCreateFlowTransaction.SetAdminKey(contract.Info.AdminKey)
-
-		// // Freeze the transaction for signing (this prevents the transaction can be
-		// // modified while signing it)
-		// newContractCreateFlowTransaction, err := newContractCreateFlowTransaction.FreezeWith(Manager.NetworkClient)
-		// if err != nil {
-		//     return nil, err
-		// }
-
-		// // if the type of the passed key is a PrivateKey
-		// thisKey, ok := adminKey.(hederasdk.PrivateKey)
-		// if ok == true {
-		//
-		//     logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key of: %s", thisKey.PublicKey()))
-		//
-		//     // and sign the transaction with this key
-		//     newContractCreateFlowTransaction = newContractCreateFlowTransaction.Sign(thisKey)
-		//
-		// }
-		//
-		// // if the type of the passed key is a slice of PrivateKey
-		// keyList, ok := adminKey.([]hederasdk.PrivateKey)
-		// if ok == true {
-		//
-		//     // iterate through all keys
-		//     for i, thisKey := range keyList {
-		//
-		//       logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Signing transaction with private key (%v) of: %s", i, thisKey.PublicKey()))
-		//
-		//       // and sign the transaction with each key
-		//       newContractCreateFlowTransaction = newContractCreateFlowTransaction.Sign(thisKey)
-		//
-		//     }
-		//
-		// }
-	}
-
-	// sign with client operator private key and submit the query to a Hedera network
-	transactionResponse, err := newContractCreateFlowTransaction.Execute(Manager.NetworkClient)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
-	if err != nil {
-		return &transactionResponse, nil, err
-	}
-
-	// log the receipt status of the transaction
-	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
-
-	// get the contract ID from the transaction receipt
-	contract.ID = *transactionReceipt.ContractID
-
-	// Return the contract ID
-	return &transactionResponse, &transactionReceipt, err
-
-}
 
 // This function reads in a contracts bytecode file, creates a new contract,
 // deploys it on the Hedera network, and returns transaction receipt.
-func (contract *HederaSmartContract) NewFromBin(contractFilePath string, adminKey interface{}, gas int64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) _New(bytecode []byte, adminKey interface{}, gas int64, options ...TransactionOption) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, []byte, error) {
 	var err error
 
-	// Import and parse the compiled contract from the contract file
-	bytecode, err := os.ReadFile(contractFilePath)
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error reading contract file %q: %s", contractFilePath, err)
+		return nil, nil, nil, err
 	}
 
 	// create the transaction to deploy the contract bytecode on the Hedera network
@@ -253,47 +160,103 @@ func (contract *HederaSmartContract) NewFromBin(contractFilePath string, adminKe
 		// }
 	}
 
-	// sign with client operator private key and submit the query to a Hedera network
-	transactionResponse, err := newContractCreateFlowTransaction.Execute(Manager.NetworkClient)
-	if err != nil {
-		return nil, nil, err
+	// if the transaction should be directly executed
+	if settings.Execute {
+
+		// sign with client operator private key and submit the query to a Hedera network
+		transactionResponse, err := newContractCreateFlowTransaction.Execute(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return &transactionResponse, nil, nil, err
+		}
+
+		// log the receipt status of the transaction
+		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+
+		// get the contract ID from the transaction receipt
+		contract.ID = *transactionReceipt.ContractID
+
+		// Return the contract ID
+		return &transactionResponse, &transactionReceipt, nil, err
+
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	// get the transaction bytes
+	transactionBytes, err := newContractCreateFlowTransaction.ToBytes()
 	if err != nil {
-		return &transactionResponse, nil, err
+		return nil, nil, nil, err
 	}
 
-	// log the receipt status of the transaction
-	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+	return nil, nil, transactionBytes, err
 
-	// get the contract ID from the transaction receipt
-	contract.ID = *transactionReceipt.ContractID
+}
 
-	// Return the contract ID
-	return &transactionResponse, &transactionReceipt, err
+// This function reads in a contract JSON file, creates a new contract with the contract.Object field as the bytecode,
+// deploys it on the Hedera network, and returns transaction receipt.
+func (contract *HederaSmartContract) NewFromJSON(contractFilePath string, adminKey interface{}, gas int64, options ...TransactionOption) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, []byte, error) {
+	var err error
+
+	// Import and parse the compiled contract from the contract file
+	jsonData, err := os.ReadFile(contractFilePath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error reading contract file %q: %s", contractFilePath, err)
+	}
+
+	var contractData HederaSmartContractData = HederaSmartContractData{}
+	err = json.Unmarshal([]byte(jsonData), &contractData)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error unmarshaling the json file %q: %s", contractFilePath, err)
+	}
+
+	// read the bytecode
+	bytecode := []byte(contractData.Data.Bytecode.Object)
+
+	// deploy the contract
+	return contract._New(bytecode, adminKey, gas, options...)
+}
+
+// This function reads in a contracts bytecode file, creates a new contract,
+// deploys it on the Hedera network, and returns transaction receipt.
+func (contract *HederaSmartContract) NewFromBin(contractFilePath string, adminKey interface{}, gas int64, options ...TransactionOption) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, []byte, error) {
+	var err error
+
+	// Import and parse the compiled contract from the contract file
+	bytecode, err := os.ReadFile(contractFilePath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error reading contract file %q: %s", contractFilePath, err)
+	}
+
+	// deploy the contract
+	return contract._New(bytecode, adminKey, gas, options...)
 
 }
 
 // Delete the contract
-func (contract *HederaSmartContract) Delete(adminKey interface{}) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) Delete(adminKey interface{}, options ...TransactionOption) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, []byte, error) {
 	var err error
 
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	// delete the topic
-	newContractDeleteTransaction := hederasdk.NewContractDeleteTransaction().
+	newContractDeleteTransaction, err := hederasdk.NewContractDeleteTransaction().
 		SetContractID(contract.ID).
-		SetTransferAccountID(Manager.Operator.AccountID)
+		SetTransferAccountID(Manager.Operator.AccountID).
+		FreezeWith(Manager.NetworkClient)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	// if the topic has a AdminKey
 	if contract.Info.AdminKey != nil {
-
-		// Freeze the transaction for signing (this prevents the transaction can be
-		// modified while signing it)
-		newContractDeleteTransaction, err := newContractDeleteTransaction.FreezeWith(Manager.NetworkClient)
-		if err != nil {
-			return nil, nil, err
-		}
 
 		// if the type of the passed key is a PrivateKey
 		thisKey, ok := adminKey.(hederasdk.PrivateKey)
@@ -324,86 +287,153 @@ func (contract *HederaSmartContract) Delete(adminKey interface{}) (*hederasdk.Tr
 
 	}
 
-	// sign with client operator private key and submit the query to a Hedera network
-	// NOTE: This will only delete the contract, if the operator account's key was set
-	//       as admin key
-	transactionResponse, err := newContractDeleteTransaction.Execute(Manager.NetworkClient)
-	if err != nil {
-		return nil, nil, err
+	// if the transaction should be directly executed
+	if settings.Execute {
+
+		// sign with client operator private key and submit the query to a Hedera network
+		// NOTE: This will only delete the contract, if the operator account's key was set
+		//       as admin key
+		transactionResponse, err := newContractDeleteTransaction.Execute(Manager.NetworkClient)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return &transactionResponse, nil, nil, err
+		}
+
+		// log the receipt status of the transaction
+		logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
+
+		// free the pointer
+		contract = nil
+
+		return &transactionResponse, &transactionReceipt, nil, err
+
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+	// get the transaction bytes
+	transactionBytes, err := newContractDeleteTransaction.ToBytes()
 	if err != nil {
-		return &transactionResponse, nil, err
+		return nil, nil, nil, err
 	}
 
-	// log the receipt status of the transaction
-	logger.Manager.Package["hedera"].Trace().Msg(fmt.Sprintf(" [#] Receipt: %s (Status: %s)", transactionReceipt.TransactionID.String(), transactionReceipt.Status))
-
-	// free the pointer
-	contract = nil
-
-	return &transactionResponse, &transactionReceipt, err
+	return nil, nil, transactionBytes, err
 
 }
 
 // Call a smart contract function
-func (contract *HederaSmartContract) CallFunction(name string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) CallFunction(name string, parameters *hederasdk.ContractFunctionParameters, gas uint64, options ...TransactionOption) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, []byte, error) {
 	var err error
+	var transaction interface{}
+	var transactionResponse hederasdk.TransactionResponse
+
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	// create the cmart contract call
-	newContractExecuteTransaction := hederasdk.NewContractExecuteTransaction().
+	transaction = hederasdk.NewContractExecuteTransaction().
 		SetContractID(contract.ID).
 		SetGas(gas).
 		SetFunction(name, parameters)
 
-	// get the transaction response
-	transactionResponse, err := newContractExecuteTransaction.Execute(Manager.NetworkClient)
+	// freeze the transaction for signing
+	transaction, err = _TransactionFreeze(transaction, options...)
 	if err != nil {
-		return &transactionResponse, nil, err
+		return nil, nil, nil, err
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
-	if err != nil {
-		return &transactionResponse, &transactionReceipt, err
+	// if the transaction should be directly executed
+	if settings.Execute {
+
+		// get the transaction response
+		transactionResponse, err = hederasdk.TransactionExecute(transaction, Manager.NetworkClient)
+		if err != nil {
+			return &transactionResponse, nil, nil, err
+		}
+
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return &transactionResponse, &transactionReceipt, nil, err
+		}
+
+		return &transactionResponse, &transactionReceipt, nil, err
+
 	}
 
-	return &transactionResponse, &transactionReceipt, err
+	// get the transaction bytes
+	transactionBytes, err := hederasdk.TransactionToBytes(transaction)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return nil, nil, transactionBytes, err
 
 }
 
 // Call a smart contract function
-func (contract *HederaSmartContract) CallPayableFunction(name string, amount string, parameters *hederasdk.ContractFunctionParameters, gas uint64) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, error) {
+func (contract *HederaSmartContract) CallPayableFunction(name string, amount string, parameters *hederasdk.ContractFunctionParameters, gas uint64, options ...TransactionOption) (*hederasdk.TransactionResponse, *hederasdk.TransactionReceipt, []byte, error) {
 	var err error
+	var transaction interface{}
+	var transactionResponse hederasdk.TransactionResponse
+
+	// get the settings for the transaction
+	settings, err := MakeTransactionSettings(options...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	// get the amount as HBAR
 	_amount, err := hederasdk.HbarFromString(amount)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// create the cmart contract call
-	newContractExecuteTransaction := hederasdk.NewContractExecuteTransaction().
+	transaction = hederasdk.NewContractExecuteTransaction().
 		SetContractID(contract.ID).
 		SetGas(gas).
 		SetPayableAmount(_amount).
 		SetFunction(name, parameters)
 
-	// get the transaction response
-	transactionResponse, err := newContractExecuteTransaction.Execute(Manager.NetworkClient)
+	// freeze the transaction for signing
+	transaction, err = _TransactionFreeze(transaction, options...)
 	if err != nil {
-		return &transactionResponse, nil, err
+		return nil, nil, nil, err
 	}
 
-	// get the transaction receipt
-	transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
-	if err != nil {
-		return &transactionResponse, &transactionReceipt, err
+	// if the transaction should be directly executed
+	if settings.Execute {
+
+		// get the transaction response
+		transactionResponse, err = hederasdk.TransactionExecute(transaction, Manager.NetworkClient)
+		if err != nil {
+			return &transactionResponse, nil, nil, err
+		}
+
+		// get the transaction receipt
+		transactionReceipt, err := transactionResponse.GetReceipt(Manager.NetworkClient)
+		if err != nil {
+			return &transactionResponse, &transactionReceipt, nil, err
+		}
+
+		return &transactionResponse, &transactionReceipt, nil, err
+
 	}
 
-	return &transactionResponse, &transactionReceipt, err
+	// get the transaction bytes
+	transactionBytes, err := hederasdk.TransactionToBytes(transaction)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return nil, nil, transactionBytes, err
 
 }
 
@@ -428,9 +458,9 @@ func (contract *HederaSmartContract) CallFunctionLocal(name string, parameters *
 }
 
 // Get the events emitted by the contract after a function call
-// TODO: Might be good, if the wallet address would be an indexed event parameter
-//
-//	This would later allow to scan the event history for the user. Useful?
+// TODO:
+// Might be good, if the wallet address would be an indexed event parameter
+// This would later allow to scan the event history for the user. Useful?
 func (contract *HederaSmartContract) GetEventLog(callFunctionResponse *hederasdk.TransactionResponse, eventName string) ([][]interface{}, error) {
 	var err error
 	var events [][]interface{}

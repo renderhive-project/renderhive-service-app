@@ -1,5 +1,5 @@
 import { BladeConnector, HederaNetwork } from "@bladelabs/blade-web3.js";
-import { AccountId, ContractExecuteTransaction, ContractId, TokenAssociateTransaction, TokenId, TransferTransaction } from "@hashgraph/sdk";
+import { AccountId, ContractExecuteTransaction, ContractId, TokenAssociateTransaction, TokenId, TransferTransaction, Transaction} from "@hashgraph/sdk";
 import EventEmitter from "events";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { BladeContext } from "../../../contexts/BladeContext";
@@ -132,6 +132,31 @@ class BladeWallet implements WalletInterface {
     // after getting the contract call results, use ethers and abi.decode to decode the call_result
     return transactionId;
   }
+
+  // Purpose: takes a prepared transaction in hex encoding and signs it with the wallet
+  // Returns: Promise<TransactionId | null>
+  async executeTransaction(transactionBytes: string) {
+    const bladeSigner = bladeConnector.getSigner();
+    if (!bladeSigner) {
+      return null;
+    }
+
+    // decode the transaction bytes
+    const bytes = Buffer.from(transactionBytes, "hex");
+
+    // create a transaction from the bytes and execute it with the signer
+    const transaction = Transaction.fromBytes(bytes);
+    const transactionId = await transaction.executeWithSigner(bladeSigner)
+    .then(txResult => txResult.transactionId)
+    .catch((error) => {
+      console.log(error.message ? error.message : error);
+      return null;
+    });
+    
+    return transactionId;
+  }
+
+
   disconnect() {
     syncWithBladeEvent.emit("syncDisconnect");
     localStorage.removeItem(bladeLocalStorage);

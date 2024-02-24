@@ -193,6 +193,13 @@ class MetaMaskWallet implements WalletInterface {
     }
   }
 
+  // Purpose: takes a prepared transaction in hex encoding and signs it with the wallet
+  // Returns: Promise<TransactionId | null>
+  async executeTransaction(transactionBytes: string) {
+    // not available on Metamask
+    return null;
+  }
+
   disconnect() {
     alert("Please disconnect using the Metamask extension.")
   }
