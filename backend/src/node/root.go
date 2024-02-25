@@ -86,9 +86,9 @@ type NodeDataJSON struct {
 type RenderData struct {
 
 	// Render requests and offers
-	Offer    *RenderOffer              // Active render offer of this node
-	Offers   map[string]*RenderOffer   // Render offers of this node
-	Requests map[string]*RenderRequest // Render jobs requested by this node
+	ActiveOffer *RenderOffer              // Active render offer of this node
+	Offers      map[string]*RenderOffer   // Render offers of this node
+	Requests    map[string]*RenderRequest // Render jobs requested by this node
 
 	// Job queues
 	NodeQueue []*RenderJob // Queue of render jobs to be performed on this node
@@ -152,10 +152,10 @@ func (nm *PackageManager) Init() error {
 	nm.InitRenderRequests()
 
 	// // Add a Blender version to the node's render offer
-	// nm.Renderer.Offer.AddBlenderVersion("3.2.1", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
+	// nm.Renderer.ActiveOffer.AddBlenderVersion("3.2.1", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
 
 	// // start a benchmark with this version
-	// err = nm.Renderer.Offer.Blender["3.2.1"].BenchmarkTool.Run(nm.Renderer.Offer, "3.2.1", "CPU")
+	// err = nm.Renderer.ActiveOffer.Blender["3.2.1"].BenchmarkTool.Run(nm.Renderer.ActiveOffer, "3.2.1", "CPU")
 	// if err  != nil {
 	//     // log error event
 	//     logger.Manager.Package["node"].Error().Msg(err.Error())
@@ -391,13 +391,13 @@ func (nm *PackageManager) CreateCommandInfo() *cobra.Command {
 			// print the render offer
 			if offer {
 				// if the node has a render offer, print it
-				if nm.Renderer.Offer != nil {
+				if nm.Renderer.ActiveOffer != nil {
 
 					fmt.Println("")
 					fmt.Println("This node offers the following render services:")
-					fmt.Printf(" [#] Render offer document (CID): %v\n", nm.Renderer.Offer.DocumentCID)
+					fmt.Printf(" [#] Render offer document (CID): %v\n", nm.Renderer.ActiveOffer.DocumentCID)
 					fmt.Printf(" [#] Supported Blender versions:\n")
-					for _, blender := range nm.Renderer.Offer.Blender {
+					for _, blender := range nm.Renderer.ActiveOffer.Blender {
 						fmt.Printf("     - Blender v%v (Engines: %v | Devices: %v) \n", blender.BuildVersion, strings.Join(blender.Engines, ", "), strings.Join(blender.Devices, ", "))
 					}
 					fmt.Println("")

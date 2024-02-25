@@ -40,7 +40,7 @@ const jsonRpcTemplates = {
     "params": {
       "blenderversions": [
         {
-          "version": "4.00",
+          "version": "4.0.2",
           "engines": ["CYCLES"],
           "devices": ["METAL", "CUDA", "OPTIX"],
           "threads": 4
