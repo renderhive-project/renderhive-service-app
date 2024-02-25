@@ -25,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile.dev
+    platform: linux/amd64
     user: "renderhive"
     ports:
       # NOTE: The specification of the IP address is important here, since we bind vite to "0.0.0.0"

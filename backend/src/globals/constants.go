@@ -63,12 +63,14 @@ const RENDERHIVE_CONFIG_HIVE_CYCLE_SYNCHRONIZATION_INTERVAL = 1 * time.Hour
 const RENDERHIVE_APP_DIRECTORY = "renderhive/"
 const RENDERHIVE_APP_DIRECTORY_DATA = "data/"
 const RENDERHIVE_APP_DIRECTORY_CONFIG = "config/"
+const RENDERHIVE_APP_DIRECTORY_TEMP = "/tmp/"
 
 // path to local IPFS repository
 const RENDERHIVE_APP_DIRECTORY_IPFS_REPO = "ipfs/repo/"
 
-// local path to Blender benchmark results
-const RENDERHIVE_APP_DIRECTORY_BLENDER_BENCHMARKS = "data/blender_benchmarks/"
+// local path to Blender related directories
+const RENDERHIVE_APP_DIRECTORY_BLENDER_BINARIES = "/usr/local/bin/blender/"
+const RENDERHIVE_APP_DIRECTORY_BLENDER_BENCHMARKS = "data/blender/blender_benchmarks/"
 
 // local paths to the render request and render offer documents (both own and from the hive)
 const RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS = "data/render_requests/local/"

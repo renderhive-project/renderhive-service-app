@@ -83,11 +83,8 @@ func (ops *NodeService) CreateRenderOffer(r *http.Request, args *CreateRenderOff
 	// iterate over the Blender versions and add them to the offer
 	for _, blender := range args.BlenderVersions {
 
-		// TODO: Find the blender version in the local file system
-		path := "/Applications/Blender 3.00.app/Contents/MacOS/blender"
-
 		// add the blender version to the offer
-		err = offer.AddBlenderVersion(blender.Version, path, &blender.Engines, &blender.Devices, blender.Threads)
+		err = offer.AddBlenderVersion(blender.Version, &blender.Engines, &blender.Devices, blender.Threads)
 		if err != nil {
 			return fmt.Errorf("Could not add blender version to render offer: %v", err)
 		}

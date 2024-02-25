@@ -63,7 +63,7 @@ import (
 type BlenderAppData struct {
 
 	// Blender app and build info
-	Path         string // Path to the Blender app
+	Path         string // Path to the Blender app on the local filesystem
 	BuildVersion string // Build version of this Blender app
 	BuildHash    string // Build hash of this Blender app
 	BuildDate    string // Build date of this Blender app
@@ -356,24 +356,6 @@ func (nm *PackageManager) LoadRenderOffers() error {
 
 // RENDER OFFER OBJECTS
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Create a new render offer object for this node
-func (nm *PackageManager) NewRenderOffer(render_price float64) (*RenderOffer, error) {
-	var err error
-
-	// create the render offer object
-	offer := &RenderOffer{
-		CreatedTimestamp:  time.Now(),
-		ModifiedTimestamp: time.Now(),
-		BlenderVersions:   []RenderOfferBlenderVersions{},
-		Price:             render_price,
-		Blender:           make(map[string]BlenderAppData),
-
-		Owner: &Manager.User.UserAccount.AccountID,
-	}
-
-	return offer, err
-
-}
 
 // Load a render offer into memory
 func (nm *PackageManager) LoadRenderOfferFromFile(path string) error {
@@ -437,14 +419,54 @@ func (nm *PackageManager) LoadRenderOfferFromFile(path string) error {
 
 	// add all Blender versions to the offer
 	for _, blender := range offer.BlenderVersions {
-		nm.Renderer.Offers[offer_document_cid].AddBlenderVersion(blender.Version, "", &blender.Engines, &blender.Devices, blender.Threads)
+		nm.Renderer.Offers[offer_document_cid].AddBlenderVersion(blender.Version, &blender.Engines, &blender.Devices, blender.Threads)
 	}
 
 	return nil
 
 }
 
-// Get the render offer object from a CID
+// Create a new render offer object for this node
+func (nm *PackageManager) NewRenderOffer(render_price float64) (*RenderOffer, error) {
+	var err error
+
+	// create the render offer object
+	offer := &RenderOffer{
+		CreatedTimestamp:  time.Now(),
+		ModifiedTimestamp: time.Now(),
+		BlenderVersions:   []RenderOfferBlenderVersions{},
+		Price:             render_price,
+		Blender:           make(map[string]BlenderAppData),
+
+		Owner: &Manager.User.UserAccount.AccountID,
+	}
+
+	return offer, err
+
+}
+
+// Set the node's active render offer object
+func (nm *PackageManager) SetActiveRenderOffer(offer *RenderOffer) error {
+	var err error
+	var ok bool
+
+	// if the offer does NOT exist
+	if nm.Renderer.ActiveOffer, ok = nm.Renderer.Offers[offer.DocumentCID]; !ok {
+		return errors.New(fmt.Sprintf("Render offer with CID '%v' does not exist.", offer.DocumentCID))
+	}
+
+	return err
+
+}
+
+// Get the node's active render offer object
+func (nm *PackageManager) GetActiveRenderOffer() *RenderOffer {
+
+	return nm.Renderer.ActiveOffer
+
+}
+
+// Get the render offer object from the render offer document CID
 func (nm *PackageManager) GetRenderOffer(document_cid string) (*RenderOffer, error) {
 	var err error
 
@@ -559,15 +581,14 @@ func (ro *RenderOffer) GetPrice() float64 {
 }
 
 // Add a Blender version to the render offer
-func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[]string, devices *[]string, threads uint8) error {
+func (ro *RenderOffer) AddBlenderVersion(version string, engines *[]string, devices *[]string, threads uint8) error {
 	var err error
 
 	// log event
-	logger.Manager.Package["node"].Trace().Msg("Add a Blender version supported by this node:")
-	logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Internal name: %v", version))
-	logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Path: %v", path))
-	logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Engines: %v", strings.Join(*engines, ",")))
-	logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Devices: %v", strings.Join(*devices, ",")))
+	logger.Manager.Package["node"].Debug().Msg("Start adding a Blender version for this node:")
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Internal name: %v", version))
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Engines: %v", strings.Join(*engines, ",")))
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Devices: %v", strings.Join(*devices, ",")))
 
 	// check if the version WAS already added before
 	if _, ok := ro.Blender[version]; ok {
@@ -584,16 +605,49 @@ func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[
 		return errors.New(fmt.Sprintf("At least one of the defined devices '%v' is not valid.", *devices))
 	}
 
+	// get the blender version from the map of valid Blender versions
+	blender_bin, ok := RENDERHIVE_BLENDER_ARCHIVE_FILES[version]
+	if !ok {
+		return errors.New(fmt.Sprintf("Blender version '%v' is not supported by the Renderhive network.", version))
+	}
+
+	// check if the Blender binary is already available on the local file system
+	blender_bin_path := filepath.Join(RENDERHIVE_APP_DIRECTORY_BLENDER_BINARIES, version+"-"+blender_bin.Linux.Commit, "blender")
+	fmt.Println()
+	if _, err := os.Stat(blender_bin_path); os.IsNotExist(err) {
+
+		// log info event
+		logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Fetching Blender binary for version v%v from IPFS: %v (%v)", version, blender_bin.Linux.Filename, blender_bin.Linux.CID))
+
+		// download the Blender binary from IPFS
+		_, err := ipfs.Manager.GetObject(blender_bin.Linux.CID, filepath.Join(RENDERHIVE_APP_DIRECTORY_TEMP, blender_bin.Linux.Filename))
+		if err != nil {
+			return err
+		}
+
+		// TODO: unpack the .tar.xz and move the Blender binary to the correct location
+
+	} else {
+
+		// log info event
+		logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Blender binary for version v%v found: %v", version, blender_bin_path))
+
+	}
+
 	// create the BlenderAppData instance for the new version
 	blender := BlenderAppData{
-		Path:          path,
+		Path:          blender_bin_path,
 		Engines:       *engines,
 		Devices:       *devices,
 		Threads:       threads,
 		BenchmarkTool: &BlenderBenchmarkTool{},
 	}
 
-	// TODO: Re-implement the following code
+	// log info event
+	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Start Blender v%v and get app data.", version))
+
+	// TODO: Does currently not work in Docker on Apple Silicon, because of Pixar/USD bug,
+	//	     which makes it unable to run Blender (/proc/cpuinfo does not deliver the correct CPU info)
 	// // start this Blender version and query its version and build info
 	// err = blender.Execute([]string{"-v"})
 	// if err != nil {
@@ -629,7 +683,6 @@ func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[
 
 // Delete a Blender version from the render offer
 func (ro *RenderOffer) DeleteBlenderVersion(version string) error {
-	var err error
 
 	// log event
 	logger.Manager.Package["node"].Trace().Msg("Remove a Blender version from the node's render offer:")
@@ -637,13 +690,29 @@ func (ro *RenderOffer) DeleteBlenderVersion(version string) error {
 	// delete the element from the map, if it exists
 	blender, ok := ro.Blender[version]
 	if ok {
-		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Version: %v", blender.BuildVersion))
+
+		// delete from the map
 		delete(ro.Blender, version)
-	} else {
-		err = errors.New(fmt.Sprintf("Blender v'%v' could not be removed from the node's render offer.", blender.BuildVersion))
+
+		// delete from the slice of supported versions
+		for index, element := range ro.BlenderVersions {
+			if element.Version == version {
+
+				// make a new slice without the element
+				ro.BlenderVersions = append(ro.BlenderVersions[:index], ro.BlenderVersions[index+1:]...)
+				break
+
+			}
+		}
+
+		// log debug event
+		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Version: %v", blender.BuildVersion))
+
+		return nil
+
 	}
 
-	return err
+	return errors.New(fmt.Sprintf(" [#] Blender v'%v' could not be removed from the node's render offer.", blender.BuildVersion))
 
 }
 
@@ -2359,7 +2428,7 @@ func (nm *PackageManager) CreateCommandBlender() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			// if a render offer exists
-			if nm.Renderer.Offer != nil {
+			if nm.Renderer.ActiveOffer != nil {
 
 				// list all Blender versions
 				if list {
@@ -2368,7 +2437,7 @@ func (nm *PackageManager) CreateCommandBlender() *cobra.Command {
 					fmt.Println("The node offers the following Blender versions for rendering:")
 
 					// find each Blender version added to the node
-					for _, blender := range nm.Renderer.Offer.Blender {
+					for _, blender := range nm.Renderer.ActiveOffer.Blender {
 						fmt.Printf(" [#] Version: %v (Engines: %v | Devices: %v) \n", blender.BuildVersion, strings.Join(blender.Engines, ", "), strings.Join(blender.Devices, ", "))
 					}
 					fmt.Println("")
@@ -2418,7 +2487,7 @@ func (nm *PackageManager) CreateCommandBlender_Add() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			// if a render offer exists
-			if nm.Renderer.Offer != nil {
+			if nm.Renderer.ActiveOffer != nil {
 
 				// add a Blender version
 				if len(version) != 0 {
@@ -2431,13 +2500,13 @@ func (nm *PackageManager) CreateCommandBlender_Add() *cobra.Command {
 					}
 
 					// Add a new Blender version to the node's render offer
-					err := nm.Renderer.Offer.AddBlenderVersion(version, path, &engines, &devices, threads)
+					err := nm.Renderer.ActiveOffer.AddBlenderVersion(version, &engines, &devices, threads)
 					if err != nil {
 						fmt.Println("")
 						fmt.Println(err)
 					} else {
 
-						fmt.Printf("Added the Blender v'%v' with path '%v' to the render offer. \n", nm.Renderer.Offer.Blender[version].BuildVersion, path)
+						fmt.Printf("Added the Blender v'%v' with path '%v' to the render offer. \n", nm.Renderer.ActiveOffer.Blender[version].BuildVersion, path)
 
 					}
 					fmt.Println("")
@@ -2482,20 +2551,20 @@ func (nm *PackageManager) CreateCommandBlender_Remove() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			// if a render offer exists
-			if nm.Renderer.Offer != nil {
+			if nm.Renderer.ActiveOffer != nil {
 
 				// remove the Blender version
 				if len(version) != 0 {
 
 					// if the parsed version is supported by the node
-					_, ok := nm.Renderer.Offer.Blender[version]
+					_, ok := nm.Renderer.ActiveOffer.Blender[version]
 					if ok {
 						fmt.Println("")
 						fmt.Printf("Removing Blender v%v from the render offer of this node. \n", version)
 						fmt.Println("")
 
 						// Delete the Blender version from the node's render offer
-						nm.Renderer.Offer.DeleteBlenderVersion(version)
+						nm.Renderer.ActiveOffer.DeleteBlenderVersion(version)
 
 					} else {
 
@@ -2542,13 +2611,13 @@ func (nm *PackageManager) CreateCommandBlender_Run() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			// if a render offer exists
-			if nm.Renderer.Offer != nil {
+			if nm.Renderer.ActiveOffer != nil {
 
 				// if a version was parsed and
 				if len(version) != 0 {
 
 					// if the parsed version is supported by this node
-					if blender, ok := nm.Renderer.Offer.Blender[version]; ok {
+					if blender, ok := nm.Renderer.ActiveOffer.Blender[version]; ok {
 						fmt.Println("")
 						fmt.Printf("Starting Blender v%v. \n", blender.BuildVersion)
 						fmt.Println("")
@@ -2620,19 +2689,19 @@ func (nm *PackageManager) CreateCommandBlender_Benchmark() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			// if a render offer exists
-			if nm.Renderer.Offer != nil {
+			if nm.Renderer.ActiveOffer != nil {
 
 				// if a version was parsed and
 				if len(version) != 0 {
 
 					// if the parsed version is supported by this node
-					if blender, ok := nm.Renderer.Offer.Blender[version]; ok {
+					if blender, ok := nm.Renderer.ActiveOffer.Blender[version]; ok {
 
 						// if the official Blender benchmark tool shall be used
 						if use_tool {
 
 							// run the this Blender version
-							err := blender.BenchmarkTool.Run(nm.Renderer.Offer, version, device, scene)
+							err := blender.BenchmarkTool.Run(nm.Renderer.ActiveOffer, version, device, scene)
 							if err != nil {
 								// log error event
 								logger.Manager.Package["node"].Error().Msg(err.Error())
