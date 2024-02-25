@@ -64,15 +64,6 @@ const jsonRpcTemplates = {
     }
   }`,
 
-  // "resolutionX": "1920",
-  // "resolutionY": "1080",
-  // "samples": "128",
-  // "frameStart": 1,
-  // "frameEnd": 250,
-  // "frameStep": 1,
-  // "outputFormat": "PNG",
-  // "outputPath": "/render/output",
-  // "outputFilename": "render"
 }
 
 const RenderOfferPlayground = () => {

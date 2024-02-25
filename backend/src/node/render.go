@@ -613,19 +613,46 @@ func (ro *RenderOffer) AddBlenderVersion(version string, engines *[]string, devi
 
 	// check if the Blender binary is already available on the local file system
 	blender_bin_path := filepath.Join(RENDERHIVE_APP_DIRECTORY_BLENDER_BINARIES, version+"-"+blender_bin.Linux.Commit, "blender")
-	fmt.Println()
+	blender_tar_path := filepath.Join(RENDERHIVE_APP_DIRECTORY_TEMP, blender_bin.Linux.Filename)
 	if _, err := os.Stat(blender_bin_path); os.IsNotExist(err) {
 
 		// log info event
 		logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Fetching Blender binary for version v%v from IPFS: %v (%v)", version, blender_bin.Linux.Filename, blender_bin.Linux.CID))
 
-		// download the Blender binary from IPFS
-		_, err := ipfs.Manager.GetObject(blender_bin.Linux.CID, filepath.Join(RENDERHIVE_APP_DIRECTORY_TEMP, blender_bin.Linux.Filename))
-		if err != nil {
-			return err
+		// check if the archiveis also NOT available on the local file system
+		if _, err := os.Stat(blender_tar_path); os.IsNotExist(err) {
+
+			// // download the Blender binary from IPFS
+			// _, err := ipfs.Manager.GetObject(blender_bin.Linux.CID, filepath.Join(RENDERHIVE_APP_DIRECTORY_TEMP, blender_bin.Linux.Filename))
+			// if err != nil {
+			// 	return err
+			// }
+
+			// define the channel for the download progress
+			progress_channel := make(chan float64)
+
+			// download the Blender binary from IPFS in a separate goroutine
+			go func() {
+				err := ipfs.Manager.DownloadFromGateway(blender_bin.Linux.CID, blender_tar_path, progress_channel)
+				if err != nil {
+					logger.Manager.Package["node"].Error().Msg(fmt.Sprintf(" [#] Error downloading the Blender binary v%v: %v", version, err))
+				}
+				close(progress_channel)
+			}()
+
+			// get progress updates from the channel
+			for p := range progress_channel {
+				logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Progress: %.1f %%", p))
+			}
+
 		}
 
-		// TODO: unpack the .tar.xz and move the Blender binary to the correct location
+		// log info event
+		logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Blender binary for version v%v downloaded to: %v", version, blender_tar_path))
+
+		// TODO: Extract the archive and move the binary to the correct location
+
+		// TODO: Delete the archive after extraction
 
 	} else {
 
@@ -643,8 +670,8 @@ func (ro *RenderOffer) AddBlenderVersion(version string, engines *[]string, devi
 		BenchmarkTool: &BlenderBenchmarkTool{},
 	}
 
-	// log info event
-	logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Start Blender v%v and get app data.", version))
+	// // log info event
+	// logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Start Blender v%v and get app data.", version))
 
 	// TODO: Does currently not work in Docker on Apple Silicon, because of Pixar/USD bug,
 	//	     which makes it unable to run Blender (/proc/cpuinfo does not deliver the correct CPU info)
