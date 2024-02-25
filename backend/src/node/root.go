@@ -86,8 +86,9 @@ type NodeDataJSON struct {
 type RenderData struct {
 
 	// Render requests and offers
-	Offer    *RenderOffer           // Render offer provided by this node (if any)
-	Requests map[int]*RenderRequest // Render jobs requested by this node (if any)
+	Offer    *RenderOffer              // Active render offer of this node
+	Offers   map[string]*RenderOffer   // Render offers of this node
+	Requests map[string]*RenderRequest // Render jobs requested by this node
 
 	// Job queues
 	NodeQueue []*RenderJob // Queue of render jobs to be performed on this node
@@ -145,13 +146,13 @@ func (nm *PackageManager) Init() error {
 	}
 
 	// Initialize the render offer
-	nm.InitRenderOffer()
+	nm.InitRenderOffers()
 
-	// initialized the render requests
-	nm.Renderer.Requests = make(map[int]*RenderRequest)
+	// Initialize the render requests
+	nm.InitRenderRequests()
 
-	// Add a Blender version to the node's render offer
-	nm.Renderer.Offer.AddBlenderVersion("3.2.1", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
+	// // Add a Blender version to the node's render offer
+	// nm.Renderer.Offer.AddBlenderVersion("3.2.1", "/Applications/Blender 3.00.app/Contents/MacOS/blender", &[]string{"CYCLES", "EEVEE"}, &[]string{"CPU"}, 4)
 
 	// // start a benchmark with this version
 	// err = nm.Renderer.Offer.Blender["3.2.1"].BenchmarkTool.Run(nm.Renderer.Offer, "3.2.1", "CPU")
@@ -264,7 +265,7 @@ func (nm *PackageManager) ReadNodeData(allowSkipping bool) error {
 
 }
 
-// Hash the node from the configuration file
+// Hash the node data from the configuration file
 func (nm *PackageManager) HashNodeData() ([]byte, error) {
 	var err error
 
@@ -428,7 +429,7 @@ func (nm *PackageManager) CreateCommandInfo() *cobra.Command {
 
 					// go through the list and print each queue
 					for i, job := range nm.NetworkQueue {
-						fmt.Printf(" [#] [%v] Render job #%v (User: %v; Node: %v): %v\n", job.Request.SubmittedTimestamp, i, job.UserID, job.NodeID, job.Request.DocumentCID)
+						fmt.Printf(" [#] [%v] Render job #%v: %v\n", job.Request.SubmittedTimestamp, i, job.Request.DocumentCID)
 					}
 
 					fmt.Println("")

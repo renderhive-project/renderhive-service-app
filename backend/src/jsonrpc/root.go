@@ -80,6 +80,7 @@ type PackageManager struct {
 	PingService     *PingService
 	ContractService *ContractService
 	OperatorService *OperatorService
+	NodeService     *NodeService
 
 	// Session data
 	SessionActive bool
@@ -117,6 +118,7 @@ func (jsonrpcm *PackageManager) Init() error {
 	jsonrpcm.PingService = new(PingService)
 	jsonrpcm.ContractService = new(ContractService)
 	jsonrpcm.OperatorService = new(OperatorService)
+	jsonrpcm.NodeService = new(NodeService)
 
 	return err
 
@@ -153,6 +155,10 @@ func (jsonrpcm *PackageManager) StartServer(port string, certFile string, keyFil
 		return err
 	}
 	err = jsonrpcm.JsonRpcServer.RegisterService(jsonrpcm.OperatorService, "OperatorService")
+	if err != nil {
+		return err
+	}
+	err = jsonrpcm.JsonRpcServer.RegisterService(jsonrpcm.NodeService, "NodeService")
 	if err != nil {
 		return err
 	}

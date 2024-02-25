@@ -435,3 +435,96 @@ type IsSessionValidArgs struct{}
 type IsSessionValidReply struct {
 	Valid bool
 }
+
+// RENDERHIVE NODE SERVICE – RENDER OFFERS
+// #############################################################################
+
+// Method: CreateRenderOffer
+// #############################################################################
+
+// Arguments and reply
+type CreateRenderOfferArgs struct {
+	BlenderVersions []struct {
+		Version string
+		Engines []string
+		Devices []string
+		Threads uint8
+	}
+	Price float64
+}
+type CreateRenderOfferReply struct {
+	Message string
+}
+
+// Method: SubmitRenderOffer
+// #############################################################################
+
+// Arguments and reply
+type SubmitRenderOfferArgs struct {
+	RenderOfferCID string
+}
+type SubmitRenderOfferReply struct {
+	Message          string
+	TransactionBytes string
+}
+
+// Method: PauseRenderOffer
+// #############################################################################
+
+// Arguments and reply
+type PauseRenderOfferArgs struct {
+	RenderOfferCID string
+}
+type PauseRenderOfferReply struct {
+	Message          string
+	TransactionBytes string
+}
+
+// RENDERHIVE NODE SERVICE – RENDER REQUESTS
+// #############################################################################
+
+// Method: CreateRenderRequest
+// #############################################################################
+
+// Arguments and reply
+type CreateRenderRequestArgs struct {
+	Files []struct {
+		FileName   string
+		FileScheme string
+		FileData   string
+	}
+	Blender struct {
+		Version string
+		Engine  string
+		Device  string
+	}
+	Price float64
+}
+type CreateRenderRequestReply struct {
+	Message string
+}
+
+// Method: SubmitRenderRequest
+// #############################################################################
+
+// Arguments and reply
+type SubmitRenderRequestArgs struct {
+	RenderRequestCID string
+	BlenderFileCID   string
+}
+type SubmitRenderRequestReply struct {
+	Message          string
+	TransactionBytes string
+}
+
+// Method: CancelRenderRequest
+// #############################################################################
+
+// Arguments and reply
+type CancelRenderRequestArgs struct {
+	RenderRequestCID string
+}
+type CancelRenderRequestReply struct {
+	Message          string
+	TransactionBytes string
+}

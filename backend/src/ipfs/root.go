@@ -427,32 +427,69 @@ func (ipfsm *PackageManager) SwarmDisconnect(address string) error {
 	return err
 }
 
-// Calculate only the hash without putting the file on IPFS
-func (ipfsm *PackageManager) GetOnlyHash(path string) (string, error) {
+// Calculate only the hash without putting the file/directory on IPFS
+func (ipfsm *PackageManager) GetHashFromPath(path string) (string, error) {
 	var err error
 
-	// prepare the local file for storage
+	// get the file information
 	stat, err := os.Stat(path)
 	if err != nil {
 		return "", err
 	}
 
+	// load the file into memory
 	file, err := files.NewSerialFile(path, false, stat)
 	if err != nil {
 		return "", err
 	}
 
+	// calculate the hash
 	cid, err := ipfsm.IpfsAPI.Unixfs().Add(ipfsm.IpfsContext, file, ioptions.Unixfs.HashOnly(true))
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("Failed to calculate only hash: %v", err.Error()))
 	}
 
-	return cid.String(), nil
+	return cid.RootCid().String(), nil
 
 }
 
-// Add a file/directory on the local IPFS node
-func (ipfsm *PackageManager) AddObject(path string, pin bool) (string, error) {
+// Calculate only the hash without putting the file/directory on IPFS
+func (ipfsm *PackageManager) GetHashFromObject(object files.Node) (string, error) {
+	var err error
+
+	cid, err := ipfsm.IpfsAPI.Unixfs().Add(ipfsm.IpfsContext, object, ioptions.Unixfs.HashOnly(true))
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Failed to calculate only hash: %v", err.Error()))
+	}
+
+	// seek back to the start of the file object
+	// NOTE: this required after each operation on MemoryFiles because otherwise,
+	//		 the file would be read from the end in the next time.
+	if file, ok := object.(io.Seeker); ok {
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return cid.RootCid().String(), nil
+
+}
+
+// Add a file/directory on the local IPFS node from the object
+func (ipfsm *PackageManager) AddObject(object files.Node, pin bool) (string, error) {
+	var err error
+
+	cid, err := ipfsm.IpfsAPI.Unixfs().Add(ipfsm.IpfsContext, object, ioptions.Unixfs.Pin(pin))
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Failed to put file/directory on the IPFS node: %v", err.Error()))
+	}
+	return cid.RootCid().String(), nil
+
+}
+
+// Add a file/directory on the local IPFS node from a given path
+func (ipfsm *PackageManager) AddObjectFromPath(path string, pin bool) (string, error) {
 	var err error
 
 	// prepare the local file for storage
@@ -471,8 +508,40 @@ func (ipfsm *PackageManager) AddObject(path string, pin bool) (string, error) {
 		return "", errors.New(fmt.Sprintf("Failed to put file on the IPFS node: %v", err.Error()))
 	}
 
-	return cid.String(), nil
+	return cid.RootCid().String(), nil
 
+}
+
+// Add a file from a byte array of the file data to the local IPFS node
+func (ipfsm *PackageManager) AddObjectFromBytes(data []byte, pin bool) (string, error) {
+
+	// Create a File from the byte array
+	file := files.NewBytesFile(data)
+
+	// Add the File to IPFS
+	cid, err := ipfsm.IpfsAPI.Unixfs().Add(ipfsm.IpfsContext, file, ioptions.Unixfs.Pin(pin))
+	if err != nil {
+		return "", fmt.Errorf("Failed to put data on the IPFS node: %v", err)
+	}
+
+	return cid.RootCid().String(), nil
+}
+
+// Create and add a directory on the local IPFS node based on a map of files
+func (ipfsm *PackageManager) AddDirectoryFromFiles(fileMap map[string]files.Node, pin bool) (string, error) {
+	var err error
+
+	// create a local directory mapping from the file list
+	dirObject := files.NewMapDirectory(fileMap)
+
+	// add the directory to IPFS
+	cid, err := ipfsm.IpfsAPI.Unixfs().Add(ipfsm.IpfsContext, dirObject, ioptions.Unixfs.Pin(pin))
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Failed to put directory on the IPFS node: %v", err.Error()))
+	}
+
+	// return the CID of the directory
+	return cid.RootCid().String(), nil
 }
 
 // Get a file/directory from IPFS and write it to a local path
@@ -920,7 +989,7 @@ func (ipfsm *PackageManager) CreateCommandAdd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			// add the file/directory from IPFS and write it to the given path
-			cid, err := ipfsm.AddObject(args[0], pin)
+			cid, err := ipfsm.AddObjectFromPath(args[0], pin)
 			if err != nil {
 
 				fmt.Println("")

@@ -24,6 +24,7 @@ import (
 
 	// standard
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,11 +34,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	// external
+
 	hederasdk "github.com/hashgraph/hedera-sdk-go/v2"
+	"github.com/ipfs/boxo/files"
 	"github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
@@ -46,6 +50,7 @@ import (
 
 	// internal
 	. "renderhive/globals"
+	"renderhive/hedera"
 	"renderhive/ipfs"
 	"renderhive/logger"
 	. "renderhive/utility"
@@ -53,13 +58,14 @@ import (
 
 // RENDER JOBS, OFFERS, AND REQUESTS
 // #############################################################################
+
 // App data of supported Blender version
 type BlenderAppData struct {
 
 	// Blender app and build info
 	Path         string // Path to the Blender app
 	BuildVersion string // Build version of this Blender app
-	BuildHash    string // Build hast of this Blender app
+	BuildHash    string // Build hash of this Blender app
 	BuildDate    string // Build date of this Blender app
 	BuildTime    string // Build time of this Blender app
 
@@ -181,7 +187,7 @@ type RenderSettings struct {
 	TileX       int    // x resolution of tiles to be rendered
 	TileY       int    // y resolution of tiles to be rendered
 
-	OutAddObjectpath string // Output path (includes file naming)
+	OutputPath string // Output path (includes file naming)
 
 }
 
@@ -200,81 +206,337 @@ type RenderJob struct {
 }
 
 // a render job that is requested by this node for rendering on the render hive
+// NOTE: Fields with the `json:"-"` tag are not included in the JSON representation
 type RenderRequest struct {
 
-	// TODO: Fill with information
+	// TO BE DEPRECATED
+	ID int `json:"-"` // Internal ID for the render request management
+
 	// General info
-	ID                 int       // Internal ID for the render request management
-	DocumentCID        string    // content identifier (CID) of the render request document on the IPFS
-	DocumentPath       string    // local path of the render request document on this node
+	DocumentCID        string    `json:"-"` // content identifier (CID) of the render request document on the IPFS
+	DocumentPath       string    `json:"-"` // local path of the render request document on this node
+	DirectoryCID       string    // content identifier (CID) of the render request directory on IPFS
 	CreatedTimestamp   time.Time // The datetime this request was created
 	ModifiedTimestamp  time.Time // The datetime this request was last modified
-	SubmittedTimestamp time.Time // The datetime this request was published to the render hive
-	FinishedTimestamp  time.Time // The datetime this request was completely rendered by the render hive
+	SubmittedTimestamp time.Time `json:"-"` // The datetime this request was submitted to the network
+	ClosedTimestamp    time.Time `json:"-"` // The datetime this request was closed (finished, cancelled, etc)
 
-	// File data
-	BlenderFile BlenderFileData // data of the Blender file to be rendered
+	// Project files
+	Files       map[string]files.Node `json:"-"`
+	Directory   files.Directory       `json:"-"`
+	BlenderFile BlenderFileData       // data of the Blender file to be rendered
 
 	// Render request data
 	// TODO: Prices need to be implemented using Decimals instead float ("apd" package or "currency" package?)
-	Version  string  // Blender version the job should be rendered on
-	Price    float64 // Price maximum in cents (USD) per BBP
-	ThisNode bool    // True, if this node participates in rendering this job
+	Version   string  // Blender version the job should be rendered on
+	Price     float64 // Price maximum in cents (USD) per BBP
+	ThisNode  bool    // True, if this node participates in rendering this job
+	Cancelled bool    `json:"-"` // True, if the render request was cancelled
 
 	// Hedera data
-	Receipt *hederasdk.TransactionReceipt
+	Owner   *hederasdk.AccountID          // Account ID of the operator who created this render request
+	Receipt *hederasdk.TransactionReceipt `json:"-"` // Transaction receipt of the render request submission
 }
 
 // Representation of the JSON message for the Job Queue Topic
 type RenderRequestMessage struct {
 
+	// TODO: Add version info?
 	// General info
-	UserID         int    `json:"user_id"`          // Renderhive User ID of the user this request belongs to
-	NodeID         int    `json:"node_id"`          // Renderhive Node ID of the node this request belongs to
 	DocumentCID    string `json:"document_cid"`     // Render request document CID
 	BlenderFileCID string `json:"blender_file_cid"` // Blender file CID
 
 }
 
+// Supported Blender versions
+type RenderOfferBlenderVersions struct {
+	Version string   // Blender version
+	Engines []string // Render engines supported with this offer
+	Devices []string // Devices supported with this offer
+	Threads uint8    // Threads supported with this offer
+}
+
 // a render offer that is provided by this node for rendering on the render hive
 type RenderOffer struct {
 
-	// TODO: Fill with information
 	// General offer information
-	UserID             int       // ID of the user this offer belongs to
-	DocumentCID        string    // content identifier (CID) of the render offer document on the IPFS
-	DocumentPath       string    // local path of the render offer document on this node
-	ModifiedTimestamp  time.Time // The datetime this request was last modified
-	PublishedTimestamp time.Time // The datetime this request was published to the render hive
-	Paused             bool      // True, if the offer is currently paused and no new render jobs are accepted
+	DocumentCID        string    `json:"-"` // content identifier (CID) of the render offer document on the IPFS
+	DocumentPath       string    `json:"-"` // local path of the render offer document on this node
+	CreatedTimestamp   time.Time // The datetime this offer was created
+	ModifiedTimestamp  time.Time // The datetime this offer was last modified
+	SubmittedTimestamp time.Time `json:"-"` // The datetime this offer was submitted to the network
+	PausedTimestamp    time.Time `json:"-"` // The datetime this offer was paused
 
 	// Render offer data
 	// TODO: Prices need to be implemented using Decimals instead float ("apd" package or "currency" package?)
-	Blender map[string]BlenderAppData // supported Blender versions and Blender render options (includes benchmark results, i.e. "offered render power" per version)
-	Price   float64                   // price threshold in cents (USD) per BBP for rendering
-	Tax     []struct {                // Some jurisdictions may require taxation for the services offered on the render hive by a node
+	BlenderVersions []RenderOfferBlenderVersions // Blender versions supported with this offer
+	Price           float64                      // Psrice threshold in cents (USD) per BBP for rendering
+	// Tax     []struct {                // Some jurisdictions may require taxation for the services offered on the render hive by a node
 
-		Name        string  // Name of the tax (e.g., Sales Tax, VAT, etc.)
-		Description string  // Description of the text
-		Value       float64 // Tax value in %
+	// 	Name        string  // Name of the tax (e.g., Sales Tax, VAT, etc.)
+	// 	Description string  // Description of the text
+	// 	Value       float64 // Tax value in %
 
-	}
+	// }
+	Paused bool `json:"-"` // True, if the offer is currently paused
 
 	// Terms of Service
 	// Each node can allow/disallow certain
 
+	// Blender data
+	Blender map[string]BlenderAppData `json:"-"` // supported Blender versions and Blender render options (includes benchmark results, i.e. "offered render power" per version)
+
+	// Hedera data
+	Owner   *hederasdk.AccountID          // Account ID of the operator who created this render offer
+	Receipt *hederasdk.TransactionReceipt `json:"-"` // Transaction receipt of the last transaction of this render offer
 }
 
-// RENDER OFFER
+// RENDER OFFERS
 // #############################################################################
-// Initialize the render offer for this node
-func (nm *PackageManager) InitRenderOffer() *RenderOffer {
+// Initialize the render offers for this node
+func (nm *PackageManager) InitRenderOffers() error {
+	var err error
 
-	// initialize the node's render offer
-	nm.Renderer.Offer = &RenderOffer{}
-	nm.Renderer.Offer.Blender = map[string]BlenderAppData{}
+	// initialize the node's render offers
+	nm.Renderer.Offers = make(map[string]*RenderOffer)
 
-	return nm.Renderer.Offer
+	// load the render offers from the local file system
+	err = nm.LoadRenderOffers()
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not load render offers: %v", err))
+	}
+
+	return err
+
+}
+
+// Load a render offer into memory
+func (nm *PackageManager) LoadRenderOffers() error {
+	var err error
+
+	// path to the local render offer documents
+	offer_document_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_LOCAL_OFFERS)
+
+	// if the directory does NOT exist
+	if _, err := os.Stat(offer_document_directory); os.IsNotExist(err) {
+		return errors.New(fmt.Sprintf("Render offer directory '%v' does not exist.", offer_document_directory))
+	}
+
+	// go through all files in the directory
+	err = filepath.Walk(offer_document_directory, func(path string, info os.FileInfo, err error) error {
+
+		// if the file is a regular file
+		if info.Mode().IsRegular() {
+
+			// if the file is a render offer document
+			if matched, _ := regexp.MatchString(`^offer-.*\.json$`, info.Name()); matched {
+
+				// load the render offer from the file
+				err = nm.LoadRenderOfferFromFile(path)
+
+			}
+
+		}
+
+		// log error event
+		if err != nil {
+			logger.Manager.Package["node"].Error().Msg(fmt.Sprintf("Could not load render offer %v: %v", path, err))
+		}
+
+		// reset error
+		err = nil
+
+		return nil
+
+	})
+
+	return err
+
+}
+
+// RENDER OFFER OBJECTS
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Create a new render offer object for this node
+func (nm *PackageManager) NewRenderOffer(render_price float64) (*RenderOffer, error) {
+	var err error
+
+	// create the render offer object
+	offer := &RenderOffer{
+		CreatedTimestamp:  time.Now(),
+		ModifiedTimestamp: time.Now(),
+		BlenderVersions:   []RenderOfferBlenderVersions{},
+		Price:             render_price,
+		Blender:           make(map[string]BlenderAppData),
+
+		Owner: &Manager.User.UserAccount.AccountID,
+	}
+
+	return offer, err
+
+}
+
+// Load a render offer into memory
+func (nm *PackageManager) LoadRenderOfferFromFile(path string) error {
+	var err error
+
+	// if the offer does NOT exist
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return errors.New(fmt.Sprintf("Render offer document '%v' does not exist.", path))
+	}
+
+	// get the CID of the render offer document
+	offer_document_cid, err := ipfs.Manager.GetHashFromPath(path)
+	if err != nil {
+		return err
+	}
+
+	// load the render offer document file
+	offer_document_file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer offer_document_file.Close()
+
+	// decode the render offer data from the file
+	// NOTE: The *hedera.AccountID is not supported by the JSON decoder.
+	//		 Therefore, the Owner field is decoded manually using this workaround.
+	var offer struct {
+		RenderOffer
+		Owner struct {
+			Shard   uint64 `json:"Shard"`
+			Realm   uint64 `json:"Realm"`
+			Account uint64 `json:"Account"`
+
+			// TODO: Currently, the AliasKey and AliasEvmAddress are ignored
+			// AliasKey        hederasdk.PublicKey `json:"AliasKey"`
+			// AliasEvmAddress []byte              `json:"AliasEvmAddress"`
+		} `json:"Owner"`
+	}
+	decoder := json.NewDecoder(offer_document_file)
+	err = decoder.Decode(&offer)
+	if err != nil {
+		return err
+	}
+
+	// create the render offer object
+	nm.Renderer.Offers[offer_document_cid] = &RenderOffer{
+		DocumentCID:       offer_document_cid,
+		DocumentPath:      path,
+		CreatedTimestamp:  offer.CreatedTimestamp,
+		ModifiedTimestamp: offer.ModifiedTimestamp,
+		BlenderVersions:   offer.BlenderVersions,
+		Price:             offer.Price,
+		Blender:           make(map[string]BlenderAppData),
+		Owner: &hederasdk.AccountID{
+			Shard:   offer.Owner.Shard,
+			Realm:   offer.Owner.Realm,
+			Account: offer.Owner.Account,
+		},
+		Receipt: offer.Receipt,
+	}
+
+	// add all Blender versions to the offer
+	for _, blender := range offer.BlenderVersions {
+		nm.Renderer.Offers[offer_document_cid].AddBlenderVersion(blender.Version, "", &blender.Engines, &blender.Devices, blender.Threads)
+	}
+
+	return nil
+
+}
+
+// Get the render offer object from a CID
+func (nm *PackageManager) GetRenderOffer(document_cid string) (*RenderOffer, error) {
+	var err error
+
+	// Get the Render Offer from the CID of the render offer document
+	offer, ok := nm.Renderer.Offers[document_cid]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("Render offer with CID '%v' does not exist.", document_cid))
+	}
+
+	// create the render offer object
+	return offer, err
+
+}
+
+// Create the render offer document file from the offer object
+func (offer *RenderOffer) AddDocument() error {
+	var err error
+
+	// // check if the render request was already submitted
+	// if offer._isSubmitted() {
+	// 	return errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	// }
+
+	// check if the document was already added
+	if offer.DocumentCID != "" {
+		return errors.New(fmt.Sprintf("Render offer document '%v' already exists.", offer.DocumentCID))
+	}
+
+	// Prepare the creation of a local render offer document file
+	offer_document_filename := fmt.Sprintf("offer-%v-%v.json", strings.ReplaceAll(offer.Owner.String(), ".", "_"), offer.CreatedTimestamp.Unix())
+	offer_document_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_LOCAL_OFFERS)
+	offer.DocumentPath = filepath.Join(offer_document_directory, offer_document_filename)
+
+	// if the request does NOT already exist
+	if _, err := os.Stat(offer.DocumentPath); os.IsNotExist(err) {
+
+		// create the directory
+		err = os.MkdirAll(offer_document_directory, 0700)
+		if err != nil && !os.IsExist(err) {
+			return err
+		}
+
+		// create the local render offer document file
+		offer_document_file, err := os.Create(offer.DocumentPath)
+		if err != nil {
+			return err
+		}
+		defer offer_document_file.Close()
+
+		// write the render offer data into the file in JSON format
+		encoder := json.NewEncoder(offer_document_file)
+		encoder.SetIndent("", "  ")
+		encoder.Encode(offer)
+
+		// add the CID of the render offer document to the offer data
+		offer.DocumentCID, err = ipfs.Manager.GetHashFromPath(offer.DocumentPath)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		return errors.New(fmt.Sprintf("Render offer document '%v' already exists.", offer.DocumentPath))
+	}
+
+	return err
+
+}
+
+// Deploy the render offer to IPFS via the local IPFS node
+// NOTE:
+// This makes the render offer document available to the IPFS network.
+// Anyone, who knows the CID, the render offer document.
+// However, the CID is not shared at this point with anyone.
+func (offer *RenderOffer) Deploy() (string, error) {
+	var err error
+
+	// add the render request document to the file list
+	err = offer.AddDocument()
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Could not add render request document: %v", err))
+	}
+
+	// Upload the render request document file to IPFS
+	offer.DocumentCID, err = ipfs.Manager.AddObjectFromPath(offer.DocumentPath, true)
+	if err != nil {
+		return "", err
+	}
+
+	// add the offer to the node's render offers
+	Manager.Renderer.Offers[offer.DocumentCID] = offer
+
+	return offer.DocumentCID, err
 
 }
 
@@ -331,17 +593,26 @@ func (ro *RenderOffer) AddBlenderVersion(version string, path string, engines *[
 		BenchmarkTool: &BlenderBenchmarkTool{},
 	}
 
-	// start this Blender version and query its version and build info
-	err = blender.Execute([]string{"-v"})
-	if err != nil {
-		return err
-	}
+	// TODO: Re-implement the following code
+	// // start this Blender version and query its version and build info
+	// err = blender.Execute([]string{"-v"})
+	// if err != nil {
+	// 	return err
+	// }
 
-	// wait until the command execution finished
-	err = blender.Cmd.Wait()
-	if err != nil {
-		return err
-	}
+	// // wait until the command execution finished
+	// err = blender.Cmd.Wait()
+	// if err != nil {
+	// 	return err
+	// }
+
+	// append to the list of supported Blender versions
+	ro.BlenderVersions = append(ro.BlenderVersions, RenderOfferBlenderVersions{
+		Version: version,
+		Engines: *engines,
+		Devices: *devices,
+		Threads: threads,
+	})
 
 	// add the new BlenderAppData to the map
 	ro.Blender[version] = blender
@@ -376,30 +647,700 @@ func (ro *RenderOffer) DeleteBlenderVersion(version string) error {
 
 }
 
-// create a new render offer document (locally) and pin it to the local IPFS node
-// NOTE: This document will be downloaded by all render nodes
-func (ro *RenderOffer) Publish() error {
+// Submit the render request to the network
+// NOTE:
+// This announces the render offer to the renderhive network.
+// From that point on, anyone can access the render offer document and expects the
+// node to be ready for rendering.
+func (offer *RenderOffer) Submit() (*hederasdk.TransactionReceipt, []byte, error) {
 	var err error
+	var transactionBytes []byte
 
-	// log event
-	logger.Manager.Package["node"].Trace().Msg("Remove a Blender version from the node's render offer:")
+	// // check if the render offer was already submitted
+	// if offer._isSubmitted() {
+	// 	return nil, nil, errors.New(fmt.Sprintf("Render offer was already submitted and cannot be modified."))
+	// }
 
-	// Create the render offer document JSON file
-	// ...
+	// Submit the message to the render hive network
+	// Prepare the HCS message
+	jsonMessage, err := Manager.EncodeCommand(
+		[]string{},
+		SERVICE_NODE,
+		METHOD_NODE_SUBMIT_RENDER_OFFER,
+		&SubmitRenderOfferArgs{
+			RenderOfferCID: offer.DocumentCID,
+		},
+	)
 
-	// Pin the file on the local IPFS
-	// ...
+	// Encode the message as JSON
+	if err != nil {
+		return nil, nil, err
+	} else {
 
-	// Update the internal CID
-	ro.DocumentCID = ""
+		// send it to the Renderhive Job Queue topic on Hedera
+		offer.Receipt, transactionBytes, err = Manager.JobQueueTopic.SubmitMessage(string(jsonMessage), "renderhive-v0.1.0::submit-render-offer", nil, hedera.TransactionOptions.SetExecute(false, Manager.User.UserAccount.AccountID))
+		if err != nil {
+			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
+			return nil, nil, errors.New(fmt.Sprintf("Render offer %v could not be submitted: %v.", nil, err.Error()))
+		}
 
-	return err
+	}
+
+	// TODO: Temporary workaround – Does not account for failed transactions
+	// 		 We may safe the transactions ID and query the status later?
+	// update the submitted timestamp
+	offer._updateSubmittedTimestamp()
+
+	return offer.Receipt, transactionBytes, err
+
+}
+
+// Pause the render offer
+func (offer *RenderOffer) Pause() (*hederasdk.TransactionReceipt, []byte, error) {
+	var err error
+	var transactionBytes []byte
+	var receipt *hederasdk.TransactionReceipt
+
+	// Submit the render offer message to the job queue topic
+	// Prepare the HCS message
+	jsonMessage, err := Manager.EncodeCommand(
+		[]string{},
+		SERVICE_NODE,
+		METHOD_NODE_PAUSE_RENDER_OFFER,
+		&PauseRenderOfferArgs{
+			RenderOfferCID: offer.DocumentCID,
+		},
+	)
+
+	// Encode the message as JSON
+	if err != nil {
+		return nil, nil, err
+	} else {
+
+		// send it to the Renderhive Job Queue topic on Hedera
+		receipt, transactionBytes, err = Manager.JobQueueTopic.SubmitMessage(string(jsonMessage), "renderhive-v0.1.0::pause-render-offer", nil, hedera.TransactionOptions.SetExecute(false, Manager.User.UserAccount.AccountID))
+		if err != nil {
+			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
+			return nil, nil, errors.New(fmt.Sprintf("Command could not be submitted: %v.", nil, err.Error()))
+		}
+
+	}
+
+	// TODO: Temporary workaround – Does not account for failed transactions
+	// update the cancelled status and closed timestamp
+	offer._updatePausedTimestamp()
+
+	return receipt, transactionBytes, err
+
+}
+
+// helper function to check if the offer was already successfully submitted
+func (offer *RenderOffer) _isSubmitted() bool {
+
+	// if the receipt is nil then it was not submitted
+	if offer.Receipt == nil || offer.Receipt.Status != hederasdk.StatusSuccess {
+		return false
+	}
+
+	return offer.Receipt.Status == hederasdk.StatusSuccess
+
+}
+
+// helper function to check if the offer was paused
+func (offer *RenderOffer) _isPaused() bool {
+
+	return offer.Paused
+
+}
+
+// helper function to update the modified timestamp of the offer
+func (offer *RenderOffer) _updateModifiedTimestamp() {
+
+	offer.ModifiedTimestamp = time.Now()
+
+}
+
+// helper function to update the submitted timestamp of the offer
+func (offer *RenderOffer) _updateSubmittedTimestamp() {
+
+	offer.SubmittedTimestamp = time.Now()
+
+}
+
+// helper function to update the activity status and the paused timestamp of the offer
+func (offer *RenderOffer) _updatePausedTimestamp() {
+
+	// if the was already submitted and not cancelled
+	if offer._isSubmitted() && !offer._isPaused() {
+
+		// update the closed timestamp and cancelled status
+		offer.PausedTimestamp = time.Now()
+		offer.Paused = true
+
+	}
 
 }
 
 // RENDER REQUESTS
 // #############################################################################
-// Create a new render request for this node
+// Initialize the render requests for this node
+func (nm *PackageManager) InitRenderRequests() error {
+	var err error
+
+	// initialize the node's render requests
+	nm.Renderer.Requests = make(map[string]*RenderRequest)
+
+	// load the render requests from the local file system
+	err = nm.LoadRenderRequests()
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not load render requests: %v", err))
+	}
+
+	return err
+
+}
+
+// Load a render request into memory
+func (nm *PackageManager) LoadRenderRequests() error {
+	var err error
+
+	// path to the local render request documents
+	request_document_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS)
+
+	// if the directory does NOT exist
+	if _, err := os.Stat(request_document_directory); os.IsNotExist(err) {
+		return errors.New(fmt.Sprintf("Render request directory '%v' does not exist.", request_document_directory))
+	}
+
+	// go through all files in the directory
+	err = filepath.Walk(request_document_directory, func(path string, info os.FileInfo, err error) error {
+
+		// if the file is a regular file
+		if info.Mode().IsRegular() {
+
+			// if the file is a render request document
+			if matched, _ := regexp.MatchString(`^request-.*\.json$`, info.Name()); matched {
+
+				// load the render request from the file
+				err = nm.LoadRenderRequestFromFile(path)
+
+			}
+
+		}
+
+		// log error event
+		if err != nil {
+			logger.Manager.Package["node"].Error().Msg(fmt.Sprintf("Could not load render request %v: %v", path, err))
+		}
+
+		// reset error
+		err = nil
+
+		return nil
+
+	})
+
+	return err
+
+}
+
+// RENDER REQUEST OBJECTS
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Create a new render request object for this node
+func (nm *PackageManager) NewRenderRequest(blender_version string, render_price float64) (*RenderRequest, error) {
+	var err error
+
+	// create the render request object
+	return &RenderRequest{
+
+		Files: make(map[string]files.Node),
+
+		CreatedTimestamp:  time.Now(),
+		ModifiedTimestamp: time.Now(),
+
+		BlenderFile: BlenderFileData{},
+		Version:     blender_version,
+		Price:       render_price,
+		ThisNode:    false,
+
+		Owner: &Manager.User.UserAccount.AccountID,
+	}, err
+
+}
+
+// Load a render request into memory
+func (nm *PackageManager) LoadRenderRequestFromFile(path string) error {
+	var err error
+
+	// if the request does NOT exist
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return errors.New(fmt.Sprintf("Render request document '%v' does not exist.", path))
+	}
+
+	// get the CID of the render request document
+	request_document_cid, err := ipfs.Manager.GetHashFromPath(path)
+	if err != nil {
+		return err
+	}
+
+	// load the render request document file
+	request_document_file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer request_document_file.Close()
+
+	// decode the render offer data from the file
+	// NOTE: The *hedera.AccountID is not supported by the JSON decoder.
+	//		 Therefore, the Owner field is decoded manually using this workaround.
+	var request struct {
+		RenderRequest
+		Owner struct {
+			Shard   uint64 `json:"Shard"`
+			Realm   uint64 `json:"Realm"`
+			Account uint64 `json:"Account"`
+
+			// TODO: Currently, the AliasKey and AliasEvmAddress are ignored
+			// AliasKey        hederasdk.PublicKey `json:"AliasKey"`
+			// AliasEvmAddress []byte              `json:"AliasEvmAddress"`
+		} `json:"Owner"`
+	}
+	decoder := json.NewDecoder(request_document_file)
+	err = decoder.Decode(&request)
+	if err != nil {
+		return err
+	}
+
+	// create the render offer object
+	nm.Renderer.Requests[request_document_cid] = &RenderRequest{
+		DocumentCID:       request_document_cid,
+		DocumentPath:      path,
+		DirectoryCID:      request.DirectoryCID,
+		CreatedTimestamp:  request.CreatedTimestamp,
+		ModifiedTimestamp: request.ModifiedTimestamp,
+		BlenderFile:       request.BlenderFile,
+		Version:           request.Version,
+		Price:             request.Price,
+		ThisNode:          request.ThisNode,
+		Owner: &hederasdk.AccountID{
+			Shard:   request.Owner.Shard,
+			Realm:   request.Owner.Realm,
+			Account: request.Owner.Account,
+		},
+		Receipt: request.Receipt,
+	}
+
+	return nil
+}
+
+// Get the render request object from a CID
+func (nm *PackageManager) GetRenderRequest(document_cid string) (*RenderRequest, error) {
+	var err error
+
+	// Get the Render Request from the CID of the render request document
+	request, ok := nm.Renderer.Requests[document_cid]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("Render request with CID '%v' does not exist.", document_cid))
+	}
+
+	// create the render request object
+	return request, err
+
+}
+
+// Add a local file to the render request
+func (request *RenderRequest) AddFile(path string, filename string) error {
+	var err error
+	var stat os.FileInfo
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// check if the file exists
+	if stat, err = os.Stat(path); os.IsNotExist(err) {
+		return err
+	}
+
+	// create a new serial file from the file path
+	file, err := files.NewSerialFile(path, false, stat)
+	if err != nil {
+		return err
+	}
+
+	// add the file to the list of files
+	request.Files[filename] = file
+
+	// update the modified timestamp
+	request._updateModifiedTimestamp()
+
+	return err
+
+}
+
+// Add a file from zje file data to the render request
+func (request *RenderRequest) AddFileFromBytes(filename string, data []byte) error {
+	var err error
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// Create a File from a byte array of file data
+	file := files.NewBytesFile(data)
+	if err != nil {
+		return err
+	}
+
+	// add the file to the list of files
+	request.Files[filename] = file
+
+	// update the modified timestamp
+	request._updateModifiedTimestamp()
+
+	return err
+
+}
+
+// Remove a file from the render request
+func (request *RenderRequest) RemoveFile(filename string) error {
+	var err error
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// delete the element from the map, if it exists
+	_, ok := request.Files[filename]
+	if ok {
+		delete(request.Files, filename)
+	} else {
+		err = errors.New(fmt.Sprintf("File '%v' could not be removed from the render request.", filename))
+	}
+
+	// update the modified timestamp
+	request._updateModifiedTimestamp()
+
+	return err
+}
+
+// Add the directory mapping from the files to the render request
+func (request *RenderRequest) MakeDirectory(overwrite bool) error {
+	var err error
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// if there is no directory yet or it should be overwritten
+	if request.Directory == nil || overwrite == true {
+
+		// if there are NO files
+		if len(request.Files) == 0 {
+			return errors.New(fmt.Sprintf("No files were added to the render request."))
+		}
+
+		// create a new directory from the files
+		request.Directory = files.NewMapDirectory(request.Files)
+
+	} else {
+
+		err = errors.New(fmt.Sprintf("Directory already exists."))
+
+	}
+
+	// update the modified timestamp
+	request._updateModifiedTimestamp()
+
+	return err
+
+}
+
+// Remove the directory mapping from the files to the render request
+func (request *RenderRequest) RemoveDirectory() error {
+	var err error
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// TODO: Implement the removal of the directory from the request
+	// check if the directory was already uploaded
+	if request.DirectoryCID != "" {
+		return errors.New(fmt.Sprintf("Directory was already uploaded and cannot be removed."))
+	}
+
+	// if there is a directory
+	if request.Directory != nil {
+
+		// remove the directory
+		request.Directory = nil
+
+	} else {
+
+		err = errors.New(fmt.Sprintf("Directory does not exist."))
+	}
+
+	// update the modified timestamp
+	request._updateModifiedTimestamp()
+
+	return err
+
+}
+
+// Create the render request document file from the request object and add it to the request directory
+func (request *RenderRequest) AddDocument() error {
+	var err error
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// check if the document was already added
+	if request.DocumentCID != "" {
+		return errors.New(fmt.Sprintf("Render request document '%v' already exists.", request.DocumentCID))
+	}
+
+	// Prepare the creation of a local render request document file
+	request_document_filename := fmt.Sprintf("request-%v-%v.json", strings.ReplaceAll(request.Owner.String(), ".", "_"), request.CreatedTimestamp.Unix())
+	request_document_directory := filepath.Join(GetAppDataPath(), RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS)
+	request.DocumentPath = filepath.Join(request_document_directory, request_document_filename)
+
+	// if the directory does NOT exist
+	if _, err := os.Stat(request.DocumentPath); os.IsNotExist(err) {
+
+		// create the directory
+		err = os.MkdirAll(request_document_directory, 0700)
+		if err != nil && !os.IsExist(err) {
+			return err
+		}
+
+		// create the local render request document file
+		request_document_file, err := os.Create(request.DocumentPath)
+		if err != nil {
+			return err
+		}
+		defer request_document_file.Close()
+
+		// write the render request data into the file in JSON format
+		encoder := json.NewEncoder(request_document_file)
+		encoder.SetIndent("", "  ")
+		encoder.Encode(request)
+
+		// add the CID of the render request document to the request data
+		request.DocumentCID, err = ipfs.Manager.GetHashFromPath(request.DocumentPath)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		return errors.New(fmt.Sprintf("Render request document '%v' already exists.", request.DocumentPath))
+	}
+
+	return err
+
+}
+
+// Deploy the render request directory to IPFS via the local IPFS node
+// NOTE:
+// This makes the render request document and all files available to the IPFS network.
+// Anyone, who knows the CID, can access the files and the render request document.
+// However, the CID is not shared at this point with anyone.
+func (request *RenderRequest) Deploy() (string, error) {
+	var err error
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return "", errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// make the render request directory
+	err = request.MakeDirectory(false)
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Could not create render request directory: %v", err))
+	}
+
+	// Upload the request directory to the local IPFS node
+	request.DirectoryCID, err = ipfs.Manager.AddObject(request.Directory, true)
+	if err != nil {
+		return "", err
+	}
+
+	// close all files and free the memory
+	for _, file := range request.Files {
+		file.Close()
+	}
+
+	// add the render request document to the file list
+	err = request.AddDocument()
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Could not add render request document: %v", err))
+	}
+
+	// Upload the render request document file to IPFS
+	request.DocumentCID, err = ipfs.Manager.AddObjectFromPath(request.DocumentPath, true)
+	if err != nil {
+		return "", err
+	}
+
+	// add the request to the node's render requests
+	Manager.Renderer.Requests[request.DocumentCID] = request
+
+	return request.DocumentCID, err
+
+}
+
+// Submit the render request to the network
+// NOTE:
+// This announces the render request to the renderhive network.
+// From that point on, anyone can access the render request document and the Blender files.
+// Later we might add some encryption here to protect the data and making it only
+// accessible to those render nodes, which shall render the file. However, this would
+// require that the user submitting the render request needs to stay online until the
+// job distribution is done.
+func (request *RenderRequest) Submit() (*hederasdk.TransactionReceipt, []byte, error) {
+	var err error
+	var transactionBytes []byte
+
+	// check if the render request was already submitted
+	if request._isSubmitted() {
+		return nil, nil, errors.New(fmt.Sprintf("Render request was already submitted and cannot be modified."))
+	}
+
+	// Submit the message to the render hive network
+	// Prepare the HCS message
+	jsonMessage, err := Manager.EncodeCommand(
+		[]string{},
+		SERVICE_NODE,
+		METHOD_NODE_SUBMIT_RENDER_REQUEST,
+		&SubmitRenderRequestArgs{
+			RenderRequestCID: request.DocumentCID,
+			BlenderFileCID:   request.BlenderFile.CID,
+		},
+	)
+
+	// Encode the message as JSON
+	if err != nil {
+		return nil, nil, err
+	} else {
+
+		// send it to the Renderhive Job Queue topic on Hedera
+		request.Receipt, transactionBytes, err = Manager.JobQueueTopic.SubmitMessage(string(jsonMessage), "renderhive-v0.1.0::submit-render-request", nil, hedera.TransactionOptions.SetExecute(false, Manager.User.UserAccount.AccountID))
+		if err != nil {
+			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
+			return nil, nil, errors.New(fmt.Sprintf("Render request %v could not be submitted: %v.", nil, err.Error()))
+		}
+
+	}
+
+	// TODO: Temporary workaround – Does not account for failed transactions
+	// update the submitted timestamp
+	request._updateSubmittedTimestamp()
+
+	return request.Receipt, transactionBytes, err
+
+}
+
+// Cancel the render request
+func (request *RenderRequest) Cancel() (*hederasdk.TransactionReceipt, []byte, error) {
+	var err error
+	var transactionBytes []byte
+	var receipt *hederasdk.TransactionReceipt
+
+	// Submit the render request message to the job queue topic
+	// Prepare the HCS message
+	jsonMessage, err := Manager.EncodeCommand(
+		[]string{},
+		SERVICE_NODE,
+		METHOD_NODE_CANCEL_RENDER_REQUEST,
+		&CancelRenderRequestArgs{
+			RenderRequestCID: request.DocumentCID,
+		},
+	)
+
+	// Encode the message as JSON
+	if err != nil {
+		return nil, nil, err
+	} else {
+
+		// send it to the Renderhive Job Queue topic on Hedera
+		receipt, transactionBytes, err = Manager.JobQueueTopic.SubmitMessage(string(jsonMessage), "renderhive-v0.1.0::cancel-render-request", nil, hedera.TransactionOptions.SetExecute(false, Manager.User.UserAccount.AccountID))
+		if err != nil {
+			logger.Manager.Package["hedera"].Error().Err(err).Msg("")
+			return nil, nil, errors.New(fmt.Sprintf("Command could not be submitted: %v.", nil, err.Error()))
+		}
+
+	}
+
+	// if the transaction was successful
+	if receipt.Status == hederasdk.StatusSuccess {
+
+		// update the cancelled status and closed timestamp
+		request._updateCancelledTimestamp()
+
+	}
+
+	return receipt, transactionBytes, err
+
+}
+
+// helper function to check if the request was already successfully submitted
+func (request *RenderRequest) _isSubmitted() bool {
+
+	// if the receipt is nil then it was not submitted
+	if request.Receipt == nil || request.Receipt.Status != hederasdk.StatusSuccess {
+		return false
+	}
+
+	return request.Receipt.Status == hederasdk.StatusSuccess
+
+}
+
+// helper function to check if the request was cancelled
+func (request *RenderRequest) _isCancelled() bool {
+
+	return request.Cancelled
+
+}
+
+// helper function to update the modified timestamp of the request
+func (request *RenderRequest) _updateModifiedTimestamp() {
+
+	request.ModifiedTimestamp = time.Now()
+
+}
+
+// helper function to update the submitted timestamp of the request
+func (request *RenderRequest) _updateSubmittedTimestamp() {
+
+	request.SubmittedTimestamp = time.Now()
+
+}
+
+// helper function to update the cancelled status and the closed timestamp of the request
+func (request *RenderRequest) _updateCancelledTimestamp() {
+
+	// if the was already submitted and not cancelled
+	if request._isSubmitted() && !request._isCancelled() {
+
+		// update the closed timestamp and cancelled status
+		request.ClosedTimestamp = time.Now()
+		request.Cancelled = true
+
+	}
+
+}
+
+// RENDER REQUEST ON THE NODE
+// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+// Add a new render request for this node
 func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite bool) (int, error) {
 	var err error
 	var newID int
@@ -416,23 +1357,23 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite boo
 	if nm.Renderer.Requests != nil {
 
 		// convert map to slice of keys
-		ids := make([]int, 0, len(nm.Renderer.Requests))
+		ids := make([]string, 0, len(nm.Renderer.Requests))
 		for id := range nm.Renderer.Requests {
 			ids = append(ids, id)
 		}
 
 		// sort the slice of IDs
-		sort.Ints(ids)
+		sort.Strings(ids)
 
 		// Get the ID assigned to the last render request and add 1 for the new ID
 		if len(ids) > 0 {
-			newID = ids[len(ids)-1] + 1
+			newID = len(ids) + 1
 		}
 
 	} else {
 
 		// initialized the map first
-		nm.Renderer.Requests = make(map[int]*RenderRequest)
+		nm.Renderer.Requests = make(map[string]*RenderRequest)
 
 	}
 
@@ -440,10 +1381,10 @@ func (nm *PackageManager) AddRenderRequest(request *RenderRequest, overwrite boo
 	request.ID = newID
 
 	// Append the request to the list of requests of this node
-	nm.Renderer.Requests[newID] = request
+	nm.Renderer.Requests[strconv.Itoa(newID)] = request
 
 	// Add the CID of the Blender file to the render request data
-	request.BlenderFile.CID, err = ipfs.Manager.GetOnlyHash(request.BlenderFile.Path)
+	request.BlenderFile.CID, err = ipfs.Manager.GetHashFromPath(request.BlenderFile.Path)
 	if err != nil {
 		return 0, err
 	}
@@ -487,10 +1428,10 @@ func (nm *PackageManager) RemoveRenderRequest(id int) error {
 	logger.Manager.Package["node"].Trace().Msg("Removing a render request from the node:")
 
 	// delete the element from the map, if it exists
-	request, ok := nm.Renderer.Requests[id]
+	request, ok := nm.Renderer.Requests[strconv.Itoa(id)]
 	if ok {
 		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] ID: %v", request.ID))
-		delete(nm.Renderer.Requests, id)
+		delete(nm.Renderer.Requests, strconv.Itoa(id))
 	} else {
 		err = errors.New(fmt.Sprintf("Render request %v could not be removed from the node.", id))
 	}
@@ -508,14 +1449,14 @@ func (nm *PackageManager) SubmitRenderRequest(id int) error {
 	logger.Manager.Package["node"].Trace().Msg("Submitting a render request for this node to the render hive:")
 
 	// if the render request exists
-	request, ok := nm.Renderer.Requests[id]
+	request, ok := nm.Renderer.Requests[strconv.Itoa(id)]
 	if ok {
 
 		// log trace event
 		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] ID: %v", request.ID))
 
 		// Put the Blender file on the local IPFS node
-		request.BlenderFile.CID, err = ipfs.Manager.AddObject(request.BlenderFile.Path, true)
+		request.BlenderFile.CID, err = ipfs.Manager.AddObjectFromPath(request.BlenderFile.Path, true)
 		if err != nil {
 			return err
 		}
@@ -527,7 +1468,7 @@ func (nm *PackageManager) SubmitRenderRequest(id int) error {
 		//       render request document
 
 		// Put the render request document on the local IPFS node
-		request.DocumentCID, err = ipfs.Manager.AddObject(request.DocumentPath, true)
+		request.DocumentCID, err = ipfs.Manager.AddObjectFromPath(request.DocumentPath, true)
 		if err != nil {
 			return err
 		}
@@ -538,9 +1479,6 @@ func (nm *PackageManager) SubmitRenderRequest(id int) error {
 		// Submit the render request message to the job queue topic
 		// Prepare the HCS message
 		message := RenderRequestMessage{
-
-			UserID:         nm.User.ID,
-			NodeID:         nm.Node.ID,
 			DocumentCID:    request.DocumentCID,
 			BlenderFileCID: request.BlenderFile.CID,
 		}
@@ -552,7 +1490,7 @@ func (nm *PackageManager) SubmitRenderRequest(id int) error {
 		} else {
 
 			// send it to the Renderhive Job Queue topic on Hedera
-			request.Receipt, err = nm.JobQueueTopic.SubmitMessage(string(jsonMessage), nil, false, nil, false)
+			request.Receipt, _, err = nm.JobQueueTopic.SubmitMessage(string(jsonMessage), "renderhive-v0.1.0::submit-render-request", nil)
 			if err != nil {
 				logger.Manager.Package["hedera"].Error().Err(err).Msg("")
 				return errors.New(fmt.Sprintf("Render request %v could not be submitted: %v.", id, err.Error()))
@@ -584,49 +1522,110 @@ func (nm *PackageManager) JobQueueMessageCallback() func(message hederasdk.Topic
 	return func(message hederasdk.TopicMessage) {
 		var err error
 
-		// Import and parse the compiled contract from the contract file
-		jsonData := message.Contents
-
-		// Parse the new render request message from the JSON string
-		var request RenderRequestMessage
-		err = json.Unmarshal(jsonData, &request)
+		// decode the received command
+		command, err := nm.DecodeCommand(message.Contents)
 		if err != nil {
-
-			logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Message received but not processed: %s", string(message.Contents)))
+			logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Failed to process received command: %s", string(message.Contents)))
 			return
-
 		}
 
-		// TODO: Validate that the message was from a valid source.
+		// decode rpc call from base64 to JSON
+		jsonMessage := make([]byte, base64.StdEncoding.DecodedLen(len(command.Message)))
+		n, err := base64.StdEncoding.Decode(jsonMessage, command.Message)
+		if err != nil {
+			logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Failed to decode base64 encoded JSON-RPC message: %s", string(command.Message)))
+			return
+		}
+
+		// reduce to the number of bytes actually written
+		jsonMessage = jsonMessage[:n]
+
+		// unmarshal the JSON message into a JsonRpcMessage
+		var rpcMessage JsonRpcMessage
+		err = json.Unmarshal(jsonMessage, &rpcMessage)
+		if err != nil {
+			logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Failed to retrieve JSON-RPC message (%s): %v", string(jsonMessage), err))
+			return
+		}
+
+		// Convert Params to JSON
+		params, err := json.Marshal(rpcMessage.Params)
+		if err != nil {
+			logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Failed to retrieve JSON-RPC parameters (%s): %v", rpcMessage.Params, err))
+			return
+		}
+
+		// get the service and method types
+		service, method, err := nm.GetServiceAndMethodInt(rpcMessage.Method)
+		if service == SERVICE_UNKNOWN && method == METHOD_UNKNOWN {
+			logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Unknown JSON-RPC method (%s): %v", rpcMessage.Method, err))
+			return
+		}
+
+		// TODO: Verify that the message is valid.
 		// ...
 
-		// Pin the render request document and blender file to the local IPFS node
-		// TODO: Add a proper file management. Downloading each file, probably is
-		//       too resource intensive at larger network scales.
-		go ipfs.Manager.PinObject(request.DocumentCID)
-		go ipfs.Manager.PinObject(request.BlenderFileCID)
+		// Process the message according to the service and method types
+		if service == SERVICE_NODE && method == METHOD_NODE_SUBMIT_RENDER_REQUEST {
+			// Unmarshal Params into SubmitRenderRequestArgs
+			var request SubmitRenderRequestArgs
+			err = json.Unmarshal(params, &request)
+			if err != nil {
+				logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Message received but not processed: %s", string(message.Contents)))
+				return
+			}
 
-		// create the RenderJob element for the internal job management
-		job := &RenderJob{
-			UserID: request.UserID,
-			NodeID: request.NodeID,
-			Request: &RenderRequest{
-				DocumentCID:        request.DocumentCID,
+			// Pin the render request document and blender file to the local IPFS node
+			// TODO: Add a proper file management. Downloading each file, probably is
+			//       too resource intensive at larger network scales.
+			go ipfs.Manager.PinObject(request.RenderRequestCID)
+			go ipfs.Manager.PinObject(request.BlenderFileCID)
+
+			// create the RenderJob element for the internal job management
+			job := &RenderJob{
+				Request: &RenderRequest{
+					DocumentCID:        request.RenderRequestCID,
+					SubmittedTimestamp: message.ConsensusTimestamp,
+				},
+			}
+
+			// add the request to the slice of render jobs for the internal job management
+			nm.NetworkQueue = append(nm.NetworkQueue, job)
+
+			// log trace event
+			logger.Manager.Package["node"].Debug().Msg("Received a new render request:")
+			logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Render request document: %v", job.Request.DocumentCID))
+			logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Submitted: %v", job.Request.SubmittedTimestamp))
+
+		} else if service == SERVICE_NODE && method == METHOD_NODE_CANCEL_RENDER_REQUEST {
+
+			// TODO: Implement the cancellation of a render request
+
+		} else if service == SERVICE_NODE && method == METHOD_NODE_SUBMIT_RENDER_OFFER {
+
+			// Unmarshal Params into SubmitRenderOfferArgs
+			var offer SubmitRenderOfferArgs
+			err = json.Unmarshal(params, &offer)
+			if err != nil {
+				logger.Manager.Package["hedera"].Error().Msg(fmt.Sprintf("Message received but not processed: %s", string(message.Contents)))
+				return
+			}
+
+			// Pin the render offer document to the local IPFS node
+			go ipfs.Manager.PinObject(offer.RenderOfferCID)
+
+			// create the RenderOffer element for the internal job management
+			ro := &RenderOffer{
+				DocumentCID:        offer.RenderOfferCID,
 				SubmittedTimestamp: message.ConsensusTimestamp,
-			},
+			}
+
+			// log trace event
+			logger.Manager.Package["node"].Debug().Msg("Received a new render offer:")
+			logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Render offer document: %v", ro.DocumentCID))
+			logger.Manager.Package["node"].Debug().Msg(fmt.Sprintf(" [#] Submitted: %v", ro.SubmittedTimestamp))
+
 		}
-
-		// add the request to the slice of render jobs for the internal job management
-		nm.NetworkQueue = append(nm.NetworkQueue, job)
-
-		// log trace event
-		logger.Manager.Package["node"].Trace().Msg("Detected a new render job request:")
-		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] UserID: %v", job.UserID))
-		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] NodeID: %v", job.NodeID))
-		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Request document: %v", job.Request.DocumentCID))
-		logger.Manager.Package["node"].Trace().Msg(fmt.Sprintf(" [#] Submitted: %v", job.Request.SubmittedTimestamp))
-
-		return
 
 	}
 
@@ -1206,7 +2205,7 @@ func (nm *PackageManager) CreateCommandRequest_Remove() *cobra.Command {
 				if id != -1 {
 
 					// if the parsed version is supported by the node
-					_, ok := nm.Renderer.Requests[id]
+					_, ok := nm.Renderer.Requests[strconv.Itoa(id)]
 					if ok {
 
 						// Remove the render request
@@ -1284,7 +2283,7 @@ func (nm *PackageManager) CreateCommandRequest_Submit() *cobra.Command {
 				if id != -1 {
 
 					// if the parsed version is supported by the node
-					request, ok := nm.Renderer.Requests[id]
+					request, ok := nm.Renderer.Requests[strconv.Itoa(id)]
 					if ok {
 
 						// Submit the render request

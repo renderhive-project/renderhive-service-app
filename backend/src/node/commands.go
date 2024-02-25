@@ -39,6 +39,9 @@ import (
 	// standard
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
 	// external
 	// "github.com/cockroachdb/apd"
 	// "golang.org/x/exp/slices" <-- would be handy, but requires Go 1.18; TODO: Update possible for Hedera SDK?
@@ -55,8 +58,10 @@ const RENDERHIVE_COMMAND_PROTOCOL_VERSION string = "1.0"
 
 // enum for service names
 const (
-	SERVICE_PING int = iota
-	SERVICE_CONTRACT
+	SERVICE_UNKNOWN  int = iota
+	SERVICE_PING     int = 1 + iota
+	SERVICE_CONTRACT int = 1001 + iota
+	SERVICE_NODE     int = 2001 + iota
 )
 
 // enum for method names
@@ -87,6 +92,14 @@ const (
 	METHOD_CONTRACT_GET_NODE_STAKE
 	METHOD_CONTRACT_ADD_RENDER_JOB
 	METHOD_CONTRACT_CLAIM_RENDER_JOB
+
+	// NODE SERVICE
+	METHOD_NODE_CREATE_RENDER_REQUEST int = 2001 + iota
+	METHOD_NODE_SUBMIT_RENDER_REQUEST
+	METHOD_NODE_CANCEL_RENDER_REQUEST
+	METHOD_NODE_CREATE_RENDER_OFFER
+	METHOD_NODE_SUBMIT_RENDER_OFFER
+	METHOD_NODE_PAUSE_RENDER_OFFER
 )
 
 // define the default message structure for the renderhive JSON-RPC
@@ -143,9 +156,60 @@ func (nm *PackageManager) GetMethodName(method int) string {
 		return "SubmitRenderRequest"
 	case METHOD_NODE_CANCEL_RENDER_REQUEST:
 		return "CancelRenderRequest"
+	case METHOD_NODE_CREATE_RENDER_OFFER:
+		return "CreateRenderOffer"
+	case METHOD_NODE_SUBMIT_RENDER_OFFER:
+		return "SubmitRenderOffer"
+	case METHOD_NODE_PAUSE_RENDER_OFFER:
+		return "PauseRenderOffer"
 	default:
 		return "Unknown"
 	}
+}
+
+// get service and method int from a string in the form "SERVICE.METHOD"
+func (nm *PackageManager) GetServiceAndMethodInt(methodString string) (int, int, error) {
+
+	// split the string
+	parts := strings.Split(methodString, ".")
+	if len(parts) != 2 {
+		return -1, -1, errors.New(fmt.Sprintf("Invalid service method string: %s", methodString))
+	}
+
+	// get the service and method
+	service := SERVICE_UNKNOWN
+	method := METHOD_UNKNOWN
+	switch parts[0] {
+	case "PingService":
+		service = SERVICE_PING
+	case "ContractService":
+		service = SERVICE_CONTRACT
+	case "NodeService":
+		service = SERVICE_NODE
+	}
+
+	switch parts[1] {
+	case "SayHello":
+		method = METHOD_PING_SAYHELLO
+	case "Deploy":
+		method = METHOD_CONTRACT_DEPLOY
+	case "GetCurrentHiveCycle":
+		method = METHOD_CONTRACT_GET_CURRENT_HIVECYCLE
+	case "CreateRenderRequest":
+		method = METHOD_NODE_CREATE_RENDER_REQUEST
+	case "SubmitRenderRequest":
+		method = METHOD_NODE_SUBMIT_RENDER_REQUEST
+	case "CancelRenderRequest":
+		method = METHOD_NODE_CANCEL_RENDER_REQUEST
+	case "CreateRenderOffer":
+		method = METHOD_NODE_CREATE_RENDER_OFFER
+	case "SubmitRenderOffer":
+		method = METHOD_NODE_SUBMIT_RENDER_OFFER
+	case "PauseRenderOffer":
+		method = METHOD_NODE_PAUSE_RENDER_OFFER
+	}
+
+	return service, method, nil
 }
 
 // create a standard message for the renderhive JSON-RPC for submission to the Hedera Consensus Service

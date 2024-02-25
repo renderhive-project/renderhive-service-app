@@ -67,12 +67,14 @@ const RENDERHIVE_APP_DIRECTORY_CONFIG = "config/"
 // path to local IPFS repository
 const RENDERHIVE_APP_DIRECTORY_IPFS_REPO = "ipfs/repo/"
 
-// path to Blender benchmark results
+// local path to Blender benchmark results
 const RENDERHIVE_APP_DIRECTORY_BLENDER_BENCHMARKS = "data/blender_benchmarks/"
 
-// path to the render request documents (both own and from the hive) on this node
+// local paths to the render request and render offer documents (both own and from the hive)
 const RENDERHIVE_APP_DIRECTORY_LOCAL_REQUESTS = "data/render_requests/local/"
 const RENDERHIVE_APP_DIRECTORY_NETWORK_REQUESTS = "data/render_requests/network/"
+const RENDERHIVE_APP_DIRECTORY_LOCAL_OFFERS = "data/render_offers/local/"
+const RENDERHIVE_APP_DIRECTORY_NETWORK_OFFERS = "data/render_offers/network/"
 
 // BLENDER CONSTANTS
 // #############################################################################
