@@ -87,13 +87,6 @@ func (service *AppManager) Init() error {
 	logger.Manager.Package["logger"].Debug().Msg("Initialized the logger manager.")
 	logger.Manager.Package["logger"].Debug().Msg(fmt.Sprintf(" [#] The log file is located at '%s'", logger.Manager.FileWriter.Name()))
 
-	// initialize the node manager
-	service.NodeManager = &node.Manager
-	err = service.NodeManager.Init()
-	if err != nil {
-		return err
-	}
-
 	// initialize the Hedera manager
 	service.HederaManager = &hedera.Manager
 	err = service.HederaManager.Init(hedera.NETWORK_TYPE_TESTNET)
@@ -104,6 +97,13 @@ func (service *AppManager) Init() error {
 	// initialize the IPFS manager
 	service.IPFSManager = &ipfs.Manager
 	err = service.IPFSManager.Init()
+	if err != nil {
+		return err
+	}
+
+	// initialize the node manager
+	service.NodeManager = &node.Manager
+	err = service.NodeManager.Init()
 	if err != nil {
 		return err
 	}
