@@ -44,8 +44,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	// external
@@ -557,11 +559,17 @@ func (ipfsm *PackageManager) GetObject(cid_string string, outputPath string) (st
 	// get a path object from the CID object
 	cidPath := path.FromCid(cidObject)
 
+	// log info event
+	logger.Manager.Package["ipfs"].Debug().Msg(fmt.Sprintf("Downloading a new object from IPFS: %v", cidPath.String()))
+
 	// try to retrieve the file/directory
 	rootNode, err := ipfsm.IpfsAPI.Unixfs().Get(ipfsm.IpfsContext, cidPath)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("Could not get file with CID: %s", err))
 	}
+
+	// log info event
+	logger.Manager.Package["ipfs"].Debug().Msg(fmt.Sprintf(" [#] Finished and obtained rootNode: %v", rootNode))
 
 	err = files.WriteTo(rootNode, outputPath)
 	if err != nil {
@@ -696,6 +704,47 @@ func (ipfsm *PackageManager) StartHTTPServer() error {
 		return nil
 	}
 
+}
+
+// Download a file from the w3up service's public gateway and track the download progress
+type progressReader struct {
+	r        io.Reader
+	total    int64
+	read     int64
+	progress chan<- float64
+}
+
+func (pr *progressReader) Read(p []byte) (n int, err error) {
+	n, err = pr.r.Read(p)
+	pr.read += int64(n)
+	percentage := float64(pr.read) / float64(pr.total) * 100
+	pr.progress <- percentage // Send progress update
+	return n, err
+}
+func (ipfsm *PackageManager) DownloadFromGateway(cid string, outputPath string, progress chan<- float64) error {
+	resp, err := http.Get("https://" + cid + ".ipfs.w3s.link")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Get the total size of the file
+	totalSize, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	// Wrap the reader in a progressReader
+	pr := &progressReader{r: resp.Body, total: totalSize, progress: progress}
+
+	out, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, pr)
+	return err
 }
 
 // IPFS MANAGER COMMAND LINE INTERFACE
